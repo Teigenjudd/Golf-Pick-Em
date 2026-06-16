@@ -9,7 +9,13 @@ export default function AuthCallback() {
   useEffect(() => {
     if (loading) return
     if (profile?.status === 'approved' || profile?.role === 'admin') {
-      navigate('/dashboard', { replace: true })
+      const pendingJoinCode = sessionStorage.getItem('pendingJoinCode')
+      if (pendingJoinCode) {
+        sessionStorage.removeItem('pendingJoinCode')
+        navigate(`/join/${pendingJoinCode}`, { replace: true })
+      } else {
+        navigate('/dashboard', { replace: true })
+      }
     } else {
       navigate('/pending', { replace: true })
     }

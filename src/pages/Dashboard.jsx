@@ -1,8 +1,35 @@
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Navigate, Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 
 export default function Dashboard() {
   const { user, profile, loading, signOut } = useAuth()
+  const [myTournaments, setMyTournaments] = useState([])
+
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from('picks')
+      .select('tournament_id, status, tournaments(id, name)')
+      .eq('user_id', user.id)
+      .then(({ data }) => {
+        if (!data) return
+        const map = {}
+        data.forEach(row => {
+          const tid = row.tournament_id
+          if (!map[tid]) map[tid] = { ...row.tournaments, statuses: [] }
+          map[tid].statuses.push(row.status)
+        })
+        setMyTournaments(
+          Object.values(map).map(t => ({
+            id: t.id,
+            name: t.name,
+            pickStatus: t.statuses.every(s => s === 'confirmed') ? 'confirmed' : 'pending',
+          }))
+        )
+      })
+  }, [user])
 
   if (loading) return null
   if (!user) return <Navigate to="/" replace />
@@ -23,6 +50,31 @@ export default function Dashboard() {
         <p className="text-gray-600 mb-6">
           Welcome back, {profile?.display_name || user.email}
         </p>
+
+        {myTournaments.length > 0 && (
+          <div className="border border-gray-200 rounded-xl p-4 bg-white mb-4">
+            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">My Picks</h2>
+            <div className="space-y-2">
+              {myTournaments.map(t => (
+                <div key={t.id} className="flex items-center justify-between">
+                  <Link
+                    to={`/tournament/${t.id}/picks`}
+                    className="text-sm text-gray-800 hover:text-green-700 transition-colors"
+                  >
+                    {t.name}
+                  </Link>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    t.pickStatus === 'confirmed'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {t.pickStatus}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {profile?.role === 'admin' && (
           <div className="border border-gray-200 rounded-xl p-4 bg-white">

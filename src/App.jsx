@@ -4,6 +4,8 @@ import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
 import Pending from './pages/Pending'
 import Dashboard from './pages/Dashboard'
+import Join from './pages/Join'
+import Picks from './pages/Picks'
 import CreateTournament from './pages/admin/CreateTournament'
 import TournamentDetail from './pages/TournamentDetail'
 
@@ -30,9 +32,11 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/pending" element={<Pending />} />
+          <Route path="/join/:code" element={<Join />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/admin/create-tournament" element={<AdminRoute><CreateTournament /></AdminRoute>} />
           <Route path="/tournament/:id" element={<ProtectedRoute><TournamentDetail /></ProtectedRoute>} />
+          <Route path="/tournament/:id/picks" element={<ProtectedRoute><Picks /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
