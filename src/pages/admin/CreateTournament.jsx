@@ -123,6 +123,9 @@ export default function CreateTournament() {
   const [saving, setSaving] = useState(false)
 
   const [error, setError] = useState(null)
+  const [oddsWarning, setOddsWarning] = useState(false)
+  const [retryIn, setRetryIn] = useState(0)
+  const [cachedData, setCachedData] = useState(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -135,6 +138,44 @@ export default function CreateTournament() {
       .finally(() => setLoadingTournaments(false))
   }, [])
 
+  useEffect(() => {
+    if (retryIn <= 0) return
+    const id = setTimeout(() => setRetryIn(r => r - 1), 1000)
+    return () => clearTimeout(id)
+  }, [retryIn])
+
+  function proceedToStep2(fieldData, rankingsData, oddsOutcomes) {
+    const rawField = fieldData.players ?? []
+    const fieldPlayers = rawField
+      .filter(entry => entry?.playerId)
+      .map(p => ({
+        player_id: String(unwrapNumber(p.playerId) ?? p.playerId),
+        player_name: `${p.firstName} ${p.lastName}`.trim(),
+      }))
+
+    const oddsMap = {}
+    oddsOutcomes.forEach(o => { oddsMap[normalizeName(o.name)] = o.price })
+
+    const rankMap = {}
+    const rawRankings = rankingsData?.rankings ?? []
+    rawRankings.forEach(r => {
+      rankMap[normalizeName(`${r.firstName} ${r.lastName}`)] = unwrapNumber(r.rank)
+    })
+
+    const players = fieldPlayers.map(p => ({
+      ...p,
+      odds: oddsMap[normalizeName(p.player_name)] ?? null,
+      owgr_rank: rankMap[normalizeName(p.player_name)] ?? null,
+    }))
+
+    const { tiers: builtTiers } = buildTiers(players, pickCount)
+    setTiers(builtTiers)
+    setOddsWarning(false)
+    setCachedData(null)
+    setRetryIn(0)
+    setStep(2)
+  }
+
   async function handleNext() {
     if (!name || !selectedSlashId) {
       setError('Please fill in all required fields.')
@@ -142,6 +183,7 @@ export default function CreateTournament() {
     }
     setBuildingTiers(true)
     setError(null)
+    setOddsWarning(false)
     try {
       const [fieldData, oddsOutcomes, rankingsData] = await Promise.all([
         getTournamentField(selectedSlashId),
@@ -149,39 +191,42 @@ export default function CreateTournament() {
         getRankings().catch(() => null),
       ])
 
-      // /tournament returns { players: [{ playerId, firstName, lastName, ... }] }
-      const rawField = fieldData.players ?? []
-      const fieldPlayers = rawField
-        .filter(entry => entry?.playerId)
-        .map(p => ({
-          player_id: String(unwrapNumber(p.playerId) ?? p.playerId),
-          player_name: `${p.firstName} ${p.lastName}`.trim(),
-        }))
+      if (sportKey && oddsOutcomes.length === 0) {
+        setCachedData({ fieldData, rankingsData })
+        setRetryIn(180)
+        setOddsWarning(true)
+        return
+      }
 
-      const oddsMap = {}
-      oddsOutcomes.forEach(o => { oddsMap[normalizeName(o.name)] = o.price })
-
-      // OWGR rankings have no playerId — match by normalized name
-      const rankMap = {}
-      const rawRankings = rankingsData?.rankings ?? []
-      rawRankings.forEach(r => {
-        rankMap[normalizeName(`${r.firstName} ${r.lastName}`)] = unwrapNumber(r.rank)
-      })
-
-      const players = fieldPlayers.map(p => ({
-        ...p,
-        odds: oddsMap[normalizeName(p.player_name)] ?? null,
-        owgr_rank: rankMap[normalizeName(p.player_name)] ?? null,
-      }))
-
-      const { tiers: builtTiers } = buildTiers(players, pickCount)
-      setTiers(builtTiers)
-      setStep(2)
+      proceedToStep2(fieldData, rankingsData, oddsOutcomes)
     } catch (err) {
       setError(err.message)
     } finally {
       setBuildingTiers(false)
     }
+  }
+
+  async function handleRetryOdds() {
+    if (!cachedData) return
+    setBuildingTiers(true)
+    setError(null)
+    try {
+      const oddsOutcomes = await getGolfOdds(sportKey).catch(() => [])
+      if (oddsOutcomes.length === 0) {
+        setRetryIn(180)
+        return
+      }
+      proceedToStep2(cachedData.fieldData, cachedData.rankingsData, oddsOutcomes)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBuildingTiers(false)
+    }
+  }
+
+  function handleContinueWithOwgr() {
+    if (!cachedData) return
+    proceedToStep2(cachedData.fieldData, cachedData.rankingsData, [])
   }
 
   function handleDragStart({ active }) {
@@ -349,13 +394,40 @@ export default function CreateTournament() {
               />
             </div>
 
-            <button
-              onClick={handleNext}
-              disabled={buildingTiers || !name || !selectedSlashId}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
-            >
-              {buildingTiers ? 'Fetching field & odds…' : 'Next →'}
-            </button>
+            {oddsWarning ? (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-3">
+                <p className="text-sm font-medium text-amber-800">
+                  Odds unavailable — the market may not be open yet.
+                </p>
+                <p className="text-sm text-amber-700">
+                  Tiers will fall back to OWGR rankings. You can retry now or wait for odds to post.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleRetryOdds}
+                    disabled={buildingTiers || retryIn > 0}
+                    className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+                  >
+                    {buildingTiers ? 'Checking…' : retryIn > 0 ? `Retry in ${retryIn}s` : 'Try Again'}
+                  </button>
+                  <button
+                    onClick={handleContinueWithOwgr}
+                    disabled={buildingTiers}
+                    className="flex-1 border border-amber-400 text-amber-800 hover:bg-amber-100 disabled:opacity-50 text-sm font-medium py-2 rounded-lg transition-colors"
+                  >
+                    Continue with OWGR Rankings
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={handleNext}
+                disabled={buildingTiers || !name || !selectedSlashId}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+              >
+                {buildingTiers ? 'Fetching field & odds…' : 'Next →'}
+              </button>
+            )}
           </div>
         )}
 
