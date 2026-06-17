@@ -266,7 +266,7 @@ export default function TournamentDetail() {
                                 )}
 
                                 <span className={`font-mono text-xs w-8 text-right tabular-nums ${pickScoreColor}`}>
-                                  {inactive ? '–' : pickScore}
+                                  {pick.score === null ? '–' : pickScore}
                                 </span>
                               </div>
                             )
