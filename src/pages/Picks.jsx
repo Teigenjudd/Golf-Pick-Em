@@ -97,7 +97,6 @@ export default function Picks() {
         .delete()
         .eq('tournament_id', id)
         .eq('user_id', user.id)
-        .eq('status', 'pending')
 
       const { error: insertErr } = await supabase.from('picks').insert(
         tiers.map(tier => ({
@@ -106,7 +105,7 @@ export default function Picks() {
           user_id: user.id,
           player_id: selections[tier.id].player_id,
           player_name: selections[tier.id].player_name,
-          status: 'pending',
+          status: 'confirmed',
         }))
       )
       if (insertErr) throw insertErr
@@ -150,7 +149,7 @@ export default function Picks() {
           </div>
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Picks submitted</h2>
           <p className="text-sm text-gray-500 mb-6">
-            Your picks have been submitted and are pending admin approval.
+            Your picks have been submitted.
           </p>
           <Link
             to="/dashboard"
