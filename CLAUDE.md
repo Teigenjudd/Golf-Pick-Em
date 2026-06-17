@@ -1,0 +1,72 @@
+# Golf Pick'Em — Project Reference
+
+## Design System
+
+**Stack:** React + Vite + Tailwind CSS v4 (`@tailwindcss/vite`). Theme tokens live in `src/index.css` via `@theme {}` — there is no `tailwind.config.js`.
+
+### Color Tokens
+
+| Token | Hex | Usage |
+|---|---|---|
+| `fairway` | `#1B4332` | Primary dark — headers, primary buttons, active states |
+| `cream` | `#F8F5EE` | Page background |
+| `gold` | `#C9A368` | Accent — "you" tag, tier markers, left-bar on scorecard expand |
+| `birdie` | `#B23A2D` | Under-par scores ONLY (red = good in golf) |
+| `charcoal` | `#2D2D2A` | Body text |
+| `warm-100` | `#F0EBE1` | Card backgrounds, hover states |
+| `warm-200` | `#E4DDD0` | Borders, dividers |
+| `warm-300` | `#C9BFB0` | Light borders |
+| `warm-400` | `#9E9488` | Muted/secondary text |
+| `warm-500` | `#736A5F` | Slightly less muted |
+| `warm-600` | `#4A4440` | Dark muted |
+
+### Typography
+
+- **`font-display`** — Barlow Condensed 700/800. Use on: tournament names, leaderboard section headers (`LEADERBOARD`, `MY PICKS`), rank numbers, score totals, tier labels. Always `tracking-tight` or `uppercase tracking-widest`.
+- **`font-body`** (default) — Inter 400/500/600. Use on: player names, form inputs, descriptions, body copy.
+- **Scores:** always `font-display font-bold tabular-nums`. `text-birdie` for negative (under par), `text-charcoal` for positive (over par), `font-medium text-charcoal` for even (0/"E"), `text-warm-400` for unscored.
+
+### Component Patterns
+
+**Cards:** `bg-white border border-warm-200 rounded-lg` — not `rounded-2xl`. Clubhouse, not consumer app.
+
+**Primary button:** `bg-fairway hover:bg-fairway/90 text-cream font-medium py-2.5 px-4 rounded-lg transition-colors`
+
+**Secondary button:** `border border-warm-300 text-charcoal hover:bg-warm-100 py-2 px-3 rounded-lg transition-colors`
+
+**Danger button:** `border border-birdie/30 text-birdie hover:bg-birdie/5`
+
+**Form input:** `border border-warm-300 rounded-lg px-3 py-2.5 text-charcoal bg-white placeholder:text-warm-300 focus:outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway transition-colors`
+
+**Section header label:** `font-display font-bold text-xs uppercase tracking-widest text-warm-400`
+
+**Status badges:**
+- open → `bg-fairway/10 text-fairway`
+- locked → `bg-gold/20 text-gold`
+- complete/draft → `bg-warm-200 text-warm-400`
+
+### Signature Element: The Scorecard Expand
+
+On the leaderboard (TournamentDetail), each row expands via a `flex` container where the first child is a `w-[3px] bg-gold` bar — the gold stripe that runs the full height of the expanded content. Inside: tier numbers as small `w-5 h-5 rounded-full bg-fairway/80` circles with `text-cream` numbers (hole-marker style), player names, and tabular scores. The last row is a "TOTAL" row with `border-t border-warm-200`.
+
+### Page Header Pattern
+
+Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` header band with `text-cream` content. Auth/utility pages (Login, Join, Pending) use a centered layout on `bg-cream` with a large `font-display font-bold text-fairway` wordmark.
+
+### Copy Guidelines
+
+- Empty leaderboard: "Leaderboard opens once the first tee times go off."
+- No picks submitted: "No cards in yet."
+- Tournament status → "Close Tournament" (not "Mark Complete")
+- Picks locked notice: "Picks are locked for this tournament."
+- Picks confirmed: "Your picks are in — you can update them before the round locks."
+- Score display: negative = red (birdie), positive = charcoal, 0 = "E" in charcoal/medium
+
+## Architecture Summary
+
+- **Auth:** Supabase magic link (`signInWithOtp`). Callback at `/auth/callback` checks `profile.status === 'approved'` or `role === 'admin'`.
+- **Picks:** Auto-confirmed on submit (`status: 'confirmed'`). Re-submit deletes existing picks and re-inserts.
+- **Leaderboard:** Cached in `leaderboard_cache` table. Poll via `poll-leaderboard` edge function (pg_cron on tournament weekends, or admin "Refresh Now" button — 3/tournament limit).
+- **Scoring:** `src/utils/scoring.js`. WD and CUT both penalized +20. Best N of M scores count.
+- **Cron SQL:** `supabase/cron-schedule.sql` — run manually before/after each tournament weekend.
+- **Admin approval:** Profiles start with `status: 'pending'`. Admin approves in Users tab of `/admin`.

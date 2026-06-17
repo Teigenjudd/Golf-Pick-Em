@@ -15,7 +15,7 @@ export default function Picks() {
   const [tournament, setTournament] = useState(null)
   const [tiers, setTiers] = useState([])
   const [existingPicks, setExistingPicks] = useState([])
-  const [selections, setSelections] = useState({}) // { [tier_id]: { player_id, player_name } }
+  const [selections, setSelections] = useState({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -61,7 +61,6 @@ export default function Picks() {
         initSelections[p.tier_id] = { player_id: p.player_id, player_name: p.player_name }
       })
       setSelections(initSelections)
-
       setLoading(false)
     }
     load()
@@ -90,12 +89,7 @@ export default function Picks() {
     setSubmitting(true)
     setError(null)
     try {
-      await supabase
-        .from('picks')
-        .delete()
-        .eq('tournament_id', id)
-        .eq('user_id', user.id)
-
+      await supabase.from('picks').delete().eq('tournament_id', id).eq('user_id', user.id)
       const { error: insertErr } = await supabase.from('picks').insert(
         tiers.map(tier => ({
           tournament_id: id,
@@ -117,18 +111,18 @@ export default function Picks() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-gray-400 text-sm">Loading…</p>
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <p className="text-warm-400 text-sm">Loading…</p>
       </div>
     )
   }
 
   if (!tournament) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-cream">
         <div className="text-center">
-          <p className="text-gray-900 font-medium mb-2">Tournament not found</p>
-          <Link to="/dashboard" className="text-sm text-green-700 hover:text-green-800 font-medium">
+          <p className="text-charcoal font-medium mb-2">Tournament not found</p>
+          <Link to="/dashboard" className="text-sm text-fairway hover:text-fairway/80 font-medium transition-colors">
             Go to dashboard
           </Link>
         </div>
@@ -138,20 +132,20 @@ export default function Picks() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="min-h-screen flex items-center justify-center bg-cream px-6">
+        <div className="w-full max-w-sm bg-white border border-warm-200 rounded-lg p-8 text-center">
+          <div className="w-12 h-12 bg-fairway/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-fairway" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">Picks submitted</h2>
-          <p className="text-sm text-gray-500 mb-6">
-            Your picks have been submitted.
+          <h2 className="font-display font-bold text-xl text-charcoal tracking-tight mb-2">Picks submitted</h2>
+          <p className="text-sm text-warm-400 mb-6">
+            Your card is in. You can update your picks any time before the round locks.
           </p>
           <Link
             to="/dashboard"
-            className="block w-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+            className="block w-full bg-fairway hover:bg-fairway/90 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm text-center"
           >
             Go to dashboard
           </Link>
@@ -161,44 +155,51 @@ export default function Picks() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto">
-        <Link to="/dashboard" className="text-sm text-gray-400 hover:text-gray-600 transition-colors mb-4 inline-block">
-          ← Dashboard
-        </Link>
-        <h1 className="text-2xl font-semibold text-gray-900 mb-1">{tournament.name}</h1>
-        <p className="text-sm text-gray-500 mb-6">Pick one player from each tier</p>
+    <div className="min-h-screen bg-cream">
+      {/* Header */}
+      <div className="bg-fairway px-6 pt-8 pb-6">
+        <div className="max-w-2xl mx-auto">
+          <Link to="/dashboard" className="text-cream/50 hover:text-cream/80 text-sm transition-colors">
+            ← Dashboard
+          </Link>
+          <h1 className="font-display font-bold text-3xl text-cream tracking-tight leading-tight mt-4">
+            {tournament.name}
+          </h1>
+          <p className="text-cream/50 text-sm mt-1">Pick one player from each tier</p>
+        </div>
+      </div>
 
+      <div className="max-w-2xl mx-auto px-6 py-6">
         {isLocked && (
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 font-medium">
+          <div className="mb-5 p-4 bg-warm-100 border border-warm-200 rounded-lg text-sm text-warm-500 font-medium">
             Picks are locked for this tournament.
           </div>
         )}
 
         {!isLocked && hasExistingPicks && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
-            Your picks are confirmed — you can still update them before the tournament locks.
+          <div className="mb-5 p-4 bg-fairway/5 border border-fairway/20 rounded-lg text-sm text-fairway">
+            Your picks are in — you can still update them before the round locks.
           </div>
         )}
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <div className="mb-5 p-4 bg-birdie/5 border border-birdie/20 rounded-lg text-sm text-birdie">
             {error}
           </div>
         )}
 
         {isReadOnly ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {tiers.map(tier => {
               const pick = existingPicks.find(p => p.tier_id === tier.id)
               return (
-                <div
-                  key={tier.id}
-                  className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between"
-                >
+                <div key={tier.id} className="bg-white border border-warm-200 rounded-lg flex items-center gap-4 px-4 py-3.5">
+                  <span className="w-5 h-5 rounded-full bg-fairway/80 flex items-center justify-center shrink-0 text-[10px] font-display font-bold text-cream leading-none">
+                    {tier.tier_number}
+                  </span>
                   <div>
-                    <p className="text-xs text-gray-500 mb-0.5">{tier.label}</p>
-                    <p className="text-sm font-medium text-gray-900">{pick?.player_name ?? '—'}</p>
+                    <p className="text-xs text-warm-400 leading-none mb-0.5">{tier.label}</p>
+                    <p className="text-sm font-medium text-charcoal">{pick?.player_name ?? '—'}</p>
                   </div>
                 </div>
               )
@@ -206,18 +207,26 @@ export default function Picks() {
           </div>
         ) : (
           <>
-            <div className="space-y-6">
+            <div className="space-y-4">
               {tiers.map(tier => (
-                <div key={tier.id} className="bg-white rounded-2xl border border-gray-200 p-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="font-medium text-gray-900">{tier.label}</h2>
+                <div key={tier.id} className="bg-white border border-warm-200 rounded-lg overflow-hidden">
+                  {/* Tier header */}
+                  <div className="flex items-center gap-3 px-4 py-3 border-b border-warm-200 bg-warm-100">
+                    <span className="w-5 h-5 rounded-full bg-fairway flex items-center justify-center shrink-0 text-[10px] font-display font-bold text-cream leading-none">
+                      {tier.tier_number}
+                    </span>
+                    <h2 className="font-display font-bold text-sm uppercase tracking-wide text-charcoal flex-1">
+                      {tier.label}
+                    </h2>
                     {selections[tier.id] && (
-                      <span className="text-xs text-green-600 font-medium">
-                        {selections[tier.id].player_name} selected
+                      <span className="text-xs text-fairway font-medium">
+                        {selections[tier.id].player_name} ✓
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+
+                  {/* Player grid */}
+                  <div className="p-4 grid grid-cols-2 gap-2">
                     {(tier.tier_players ?? []).map(player => {
                       const isSelected = selections[tier.id]?.player_id === player.player_id
                       const odds = formatOdds(player.odds)
@@ -225,14 +234,18 @@ export default function Picks() {
                         <button
                           key={player.id}
                           onClick={() => selectPlayer(tier.id, player)}
-                          className={`text-left px-3 py-2.5 rounded-lg border text-sm transition-colors
-                            ${isSelected
-                              ? 'bg-green-50 border-green-400 text-green-900'
-                              : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
+                          className={`text-left px-3 py-2.5 rounded-lg border text-sm transition-colors ${
+                            isSelected
+                              ? 'bg-fairway border-fairway text-cream'
+                              : 'bg-white border-warm-200 text-charcoal hover:border-warm-300 hover:bg-warm-100'
+                          }`}
                         >
                           <span className="block font-medium leading-snug">{player.player_name}</span>
-                          {odds && <span className="text-xs text-gray-400 font-mono">{odds}</span>}
+                          {odds && (
+                            <span className={`text-xs font-mono ${isSelected ? 'text-cream/60' : 'text-warm-400'}`}>
+                              {odds}
+                            </span>
+                          )}
                         </button>
                       )
                     })}
@@ -245,7 +258,7 @@ export default function Picks() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+                className="w-full bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm"
               >
                 {submitting ? 'Submitting…' : hasExistingPicks ? 'Update Picks' : 'Submit Picks'}
               </button>

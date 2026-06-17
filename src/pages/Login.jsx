@@ -24,42 +24,55 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-1">Golf Pick'Em</h1>
-        <p className="text-sm text-gray-500 mb-6">Sign in to manage your picks</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-cream px-6">
+      <div className="w-full max-w-sm">
+        {/* Wordmark */}
+        <div className="text-center mb-8">
+          <h1 className="font-display font-bold text-5xl text-fairway tracking-tight">PICK'EM</h1>
+          <p className="text-warm-400 text-sm mt-1">PGA Golf · Friends Edition</p>
+        </div>
 
-        {sent ? (
-          <div className="text-center">
-            <div className="text-4xl mb-3">📬</div>
-            <p className="text-gray-700 font-medium">Check your email for a login link</p>
-            <p className="text-sm text-gray-400 mt-1">{email}</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email address
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
+        <div className="bg-white border border-warm-200 rounded-lg p-8">
+          {sent ? (
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-full bg-fairway/10 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-fairway" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <p className="font-medium text-charcoal">Check your email</p>
+              <p className="text-sm text-warm-400 mt-1">{email}</p>
+              <p className="text-xs text-warm-400 mt-3 leading-relaxed">
+                We sent a sign-in link — no password needed.
+              </p>
             </div>
-            {error && <p className="text-sm text-red-500">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors"
-            >
-              {loading ? 'Sending…' : 'Send Magic Link'}
-            </button>
-          </form>
-        )}
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-warm-500 uppercase tracking-wider mb-1.5">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-3 py-2.5 border border-warm-300 rounded-lg text-sm text-charcoal bg-white placeholder:text-warm-300 focus:outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway transition-colors"
+                />
+              </div>
+              {error && <p className="text-sm text-birdie">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm"
+              >
+                {loading ? 'Sending…' : 'Send Magic Link'}
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   )
