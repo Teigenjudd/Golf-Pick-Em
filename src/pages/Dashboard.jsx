@@ -118,12 +118,20 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
-            <Link
-              to="/admin/create-tournament"
-              className="inline-flex items-center gap-2 text-sm text-green-700 font-medium hover:text-green-800 transition-colors"
-            >
-              + Create Tournament
-            </Link>
+            <div className="flex items-center gap-4">
+              <Link
+                to="/admin"
+                className="text-sm text-green-700 font-medium hover:text-green-800 transition-colors"
+              >
+                Admin Panel →
+              </Link>
+              <Link
+                to="/admin/create-tournament"
+                className="text-sm text-green-700 font-medium hover:text-green-800 transition-colors"
+              >
+                + Create Tournament
+              </Link>
+            </div>
           </div>
         )}
       </div>
