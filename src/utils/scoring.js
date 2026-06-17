@@ -59,24 +59,25 @@ const WD_PENALTY = 20
     }
     const entry = byId[String(pick.player_id)] ?? byName[normalizeName(pick.player_name)]
     const withdrawn = entry?.withdrawn ?? false
+    const cut = entry?.cut ?? false
+    const penalized = withdrawn || cut
     userMap[uid].rawPicks.push({
       player_name: pick.player_name,
       player_id: pick.player_id,
-      // WD gets a fixed +20 penalty; CUT and unstarted stay null
-      score: withdrawn ? WD_PENALTY : (entry?.score ?? null),
-      rawScore: withdrawn ? `+${WD_PENALTY}` : (entry?.rawScore ?? '-'),
+      // WD and CUT both get +20 penalty for not completing all 4 rounds
+      score: penalized ? WD_PENALTY : (entry?.score ?? null),
+      rawScore: penalized ? `+${WD_PENALTY}` : (entry?.rawScore ?? '-'),
       thru: entry?.thru ?? '',
       position: entry?.position ?? '-',
       withdrawn,
-      cut: entry?.cut ?? false,
+      cut,
     })
   })
 
   return Object.values(userMap)
     .map(user => {
-      // WD picks now have a real score so they stay in the eligible pool
-      const eligible = user.rawPicks.filter(p => !p.cut && p.score !== null)
-      const excluded = user.rawPicks.filter(p => p.cut || p.score === null)
+      const eligible = user.rawPicks.filter(p => p.score !== null)
+      const excluded = user.rawPicks.filter(p => p.score === null)
 
       // Best scores first (WD's +20 will naturally sort toward the bottom)
       eligible.sort((a, b) => a.score - b.score)
