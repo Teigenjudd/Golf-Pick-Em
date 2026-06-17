@@ -1,29 +1,26 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function AuthCallback() {
   const { profile, loading } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     if (loading) return
-    if (profile?.status === 'approved' || profile?.role === 'admin') {
-      const pendingJoinCode = sessionStorage.getItem('pendingJoinCode')
-      if (pendingJoinCode) {
-        sessionStorage.removeItem('pendingJoinCode')
-        navigate(`/join/${pendingJoinCode}`, { replace: true })
-      } else {
-        navigate('/dashboard', { replace: true })
-      }
+    if (!profile) return
+    const joinCode = new URLSearchParams(location.search).get('join')
+    if (joinCode) {
+      navigate(`/join/${joinCode}`, { replace: true })
     } else {
-      navigate('/pending', { replace: true })
+      navigate('/dashboard', { replace: true })
     }
-  }, [profile, loading, navigate])
+  }, [profile, loading, navigate, location.search])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <p className="text-gray-500 text-sm">Signing you in…</p>
+    <div className="min-h-screen flex items-center justify-center bg-cream">
+      <p className="text-warm-400 text-sm">Signing you in…</p>
     </div>
   )
 }
