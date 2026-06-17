@@ -3,24 +3,58 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const SLASH_GOLF_BASE = 'https://live-golf-data.p.rapidapi.com'
 
 Deno.serve(async (req) => {
-  // Simple secret check — cron caller must pass this header
-  const cronSecret = Deno.env.get('CRON_SECRET')
-  if (cronSecret && req.headers.get('x-cron-secret') !== cronSecret) {
-    return new Response('Unauthorized', { status: 401 })
-  }
-
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
+  // Auth: accept cron secret (from pg_cron) or a valid admin JWT (from frontend)
+  const cronSecret = Deno.env.get('CRON_SECRET')
+  const providedSecret = req.headers.get('x-cron-secret')
+  const authHeader = req.headers.get('Authorization')
+
+  let authorized = false
+
+  if (cronSecret && providedSecret === cronSecret) {
+    authorized = true
+  } else if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7)
+    const { data: { user } } = await supabase.auth.getUser(token)
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      if (profile?.role === 'admin') authorized = true
+    }
+  }
+
+  if (!authorized) {
+    return new Response('Unauthorized', { status: 401 })
+  }
+
   const slashGolfKey = Deno.env.get('SLASH_GOLF_API_KEY')!
 
-  // Find tournaments that are live (not draft or complete)
-  const { data: tournaments, error: tournamentsError } = await supabase
+  // Optional: target a single tournament (used by admin manual refresh)
+  let targetTournamentId: string | null = null
+  try {
+    const body = await req.json()
+    targetTournamentId = body?.tournament_id ?? null
+  } catch {
+    // No body — poll all active tournaments
+  }
+
+  let query = supabase
     .from('tournaments')
     .select('id, slash_golf_tournament_id')
     .in('status', ['open', 'locked'])
+
+  if (targetTournamentId) {
+    query = query.eq('id', targetTournamentId)
+  }
+
+  const { data: tournaments, error: tournamentsError } = await query
 
   if (tournamentsError) {
     return new Response(JSON.stringify({ error: tournamentsError.message }), {
@@ -59,7 +93,6 @@ Deno.serve(async (req) => {
 
       const data = await res.json()
 
-      // Keep the table lean — one fresh row per tournament
       await supabase
         .from('leaderboard_cache')
         .delete()

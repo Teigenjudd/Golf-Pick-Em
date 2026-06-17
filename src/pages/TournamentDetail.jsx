@@ -4,6 +4,36 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { computeScores, assignRanks, formatScore } from '../utils/scoring'
 
+// UTC day-of-week → cron interval in minutes. Window: 11:00–23:00 UTC (7am–7pm ET).
+const POLL_SCHEDULE = { 4: 60, 5: 60, 6: 30, 0: 15 }
+const MANUAL_REFRESH_LIMIT = 3
+
+function getNextPollTime() {
+  const now = new Date()
+  const dow = now.getUTCDay()
+  const interval = POLL_SCHEDULE[dow]
+  if (interval === undefined) return null
+
+  const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
+  const windowStart = 11 * 60  // 11:00 UTC = 7am ET
+  const windowEnd = 24 * 60    // midnight UTC = 8pm ET
+
+  if (nowMin >= windowEnd) return null
+
+  if (nowMin < windowStart) {
+    const next = new Date(now)
+    next.setUTCHours(11, 0, 0, 0)
+    return next
+  }
+
+  const nextMin = Math.ceil((nowMin + 1) / interval) * interval
+  if (nextMin >= windowEnd) return null
+
+  const next = new Date(now)
+  next.setUTCHours(Math.floor(nextMin / 60), nextMin % 60, 0, 0)
+  return next
+}
+
 export default function TournamentDetail() {
   const { id } = useParams()
   const { user, profile } = useAuth()
@@ -13,6 +43,7 @@ export default function TournamentDetail() {
   const [fetchedAt, setFetchedAt] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [manualRefreshing, setManualRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [expanded, setExpanded] = useState(new Set())
   const [copied, setCopied] = useState(false)
@@ -27,7 +58,7 @@ export default function TournamentDetail() {
     ] = await Promise.all([
       supabase
         .from('tournaments')
-        .select('id, name, status, scores_to_keep, pick_count, join_code, lock_time')
+        .select('id, name, status, scores_to_keep, pick_count, join_code, lock_time, manual_refresh_count')
         .eq('id', id)
         .single(),
       supabase
@@ -85,6 +116,25 @@ export default function TournamentDetail() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  async function handleManualRefresh() {
+    setManualRefreshing(true)
+    try {
+      const { error: fnError } = await supabase.functions.invoke('poll-leaderboard', {
+        body: { tournament_id: id },
+      })
+      if (fnError) throw fnError
+      await supabase
+        .from('tournaments')
+        .update({ manual_refresh_count: tournament.manual_refresh_count + 1 })
+        .eq('id', id)
+      await load(true)
+    } catch (err) {
+      console.error('Manual refresh failed:', err)
+    } finally {
+      setManualRefreshing(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -113,6 +163,12 @@ export default function TournamentDetail() {
   const lastUpdated = fetchedAt
     ? new Date(fetchedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
     : null
+
+  const nextPoll = getNextPollTime()
+  const nextPollLabel = nextPoll
+    ? nextPoll.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    : null
+  const refreshesRemaining = MANUAL_REFRESH_LIMIT - (tournament.manual_refresh_count ?? 0)
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -169,12 +225,39 @@ export default function TournamentDetail() {
 
         {/* Leaderboard */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          {/* Header row */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <h2 className="font-medium text-gray-900">Leaderboard</h2>
-            {lastUpdated && (
-              <span className="text-xs text-gray-400">Updated {lastUpdated}</span>
-            )}
+            <div className="flex flex-col items-end gap-0.5">
+              {lastUpdated && (
+                <span className="text-xs text-gray-400">Updated {lastUpdated}</span>
+              )}
+              {nextPollLabel && (
+                <span className="text-xs text-gray-400">Next update {nextPollLabel}</span>
+              )}
+            </div>
           </div>
+
+          {/* Admin: manual refresh controls */}
+          {isAdmin && (
+            <div className="flex items-center justify-between px-5 py-2.5 border-b border-gray-100 bg-gray-50">
+              <span className="text-xs text-gray-400">
+                {refreshesRemaining} of {MANUAL_REFRESH_LIMIT} manual refreshes remaining
+              </span>
+              <button
+                onClick={handleManualRefresh}
+                disabled={manualRefreshing || refreshesRemaining <= 0}
+                title={refreshesRemaining <= 0 ? 'Manual refresh limit reached (3/3)' : undefined}
+                className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition-colors ${
+                  refreshesRemaining <= 0
+                    ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                    : 'border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-50'
+                }`}
+              >
+                {manualRefreshing ? 'Refreshing…' : 'Refresh Now'}
+              </button>
+            </div>
+          )}
 
           {isDraft ? (
             <div className="p-10 text-center">
@@ -207,25 +290,18 @@ export default function TournamentDetail() {
                       onClick={() => toggleExpanded(entry.user_id)}
                       className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors text-left"
                     >
-                      {/* Rank */}
                       <span className="w-5 shrink-0 text-sm text-gray-400 font-medium tabular-nums">
                         {entry.rank ?? '–'}
                       </span>
-
-                      {/* Name */}
                       <span className="flex-1 text-sm font-medium text-gray-900">
                         {entry.display_name}
                         {isMe && (
                           <span className="ml-2 text-xs font-normal text-green-600">you</span>
                         )}
                       </span>
-
-                      {/* Score */}
                       <span className={`text-sm font-mono font-semibold tabular-nums ${scoreColor}`}>
                         {score}
                       </span>
-
-                      {/* Chevron */}
                       <svg
                         className={`w-4 h-4 text-gray-300 shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -234,7 +310,6 @@ export default function TournamentDetail() {
                       </svg>
                     </button>
 
-                    {/* Expanded picks detail */}
                     {isExpanded && (
                       <div className="bg-gray-50 border-t border-gray-100 px-5 py-3">
                         <div className="space-y-2">
@@ -251,7 +326,6 @@ export default function TournamentDetail() {
                                 <span className={`flex-1 ${inactive ? 'text-gray-400 line-through' : pick.used_in_total ? 'text-gray-800' : 'text-gray-400'}`}>
                                   {pick.player_name}
                                 </span>
-
                                 {pick.withdrawn && (
                                   <span className="text-xs font-medium text-red-500 bg-red-50 px-1.5 py-0.5 rounded">WD</span>
                                 )}
@@ -264,7 +338,6 @@ export default function TournamentDetail() {
                                 {!inactive && pick.thru && pick.thru !== 'F' && pick.thru !== '' && (
                                   <span className="text-xs text-gray-400">thru {pick.thru}</span>
                                 )}
-
                                 <span className={`font-mono text-xs w-8 text-right tabular-nums ${pickScoreColor}`}>
                                   {pick.score === null ? '–' : pickScore}
                                 </span>
