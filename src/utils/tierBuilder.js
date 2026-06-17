@@ -21,24 +21,22 @@ function interpolateProb(rank, calibration) {
   return last._prob
 }
 
-function distributeEvenly(players, tiers) {
-  if (!players.length) return
-  const chunkSize = Math.ceil(players.length / tiers.length)
-  players.forEach((player, i) => {
-    const tierIndex = Math.min(Math.floor(i / chunkSize), tiers.length - 1)
-    tiers[tierIndex].players.push(player)
-  })
-}
+// Format: tiers 1–(tierCount-2) get REGULAR_TIER_SIZE players each (best available),
+// the final 2 tiers are wildcard pools splitting the next WILDCARD_POOL_SIZE players.
+// Total player pool is capped at REGULAR_TIER_SIZE * (tierCount-2) + WILDCARD_POOL_SIZE.
+// TODO: make these values configurable in the tournament creation UI.
+const REGULAR_TIER_SIZE   = 6
+const WILDCARD_TIER_COUNT = 2
+const WILDCARD_POOL_SIZE  = 64
 
 // players: [{ player_id, player_name, odds, owgr_rank }]
-// Returns: { tiers: [{ tier_number, label, players }], unassigned: [...] }
+// Returns: { tiers: [{ tier_number, label, players }] }
 export function buildTiers(players, tierCount) {
   const withOdds = players
     .filter(p => p.odds != null)
     .map(p => ({ ...p, _prob: impliedProbability(p.odds) }))
 
   const withRankOnly = players.filter(p => p.odds == null && p.owgr_rank != null)
-  const noSignal = players.filter(p => p.odds == null && p.owgr_rank == null)
 
   // Calibration points: players with both signals, sorted by OWGR rank ascending
   const calibration = withOdds
@@ -54,18 +52,34 @@ export function buildTiers(players, tierCount) {
       : 1 / p.owgr_rank,
   }))
 
-  // Merge both groups and sort together by probability descending
+  // All rankable players sorted best → worst; players with no signal are excluded.
   const allOrdered = [...withOdds, ...estimatedRankOnly]
     .sort((a, b) => b._prob - a._prob)
 
+  const regularTierCount = tierCount - WILDCARD_TIER_COUNT
+  const regularPool      = regularTierCount * REGULAR_TIER_SIZE
+  const totalPool        = regularPool + WILDCARD_POOL_SIZE
+
+  const regular  = allOrdered.slice(0, regularPool)
+  const wildcard = allOrdered.slice(regularPool, totalPool)
+
   const tiers = Array.from({ length: tierCount }, (_, i) => ({
     tier_number: i + 1,
-    label: `Tier ${i + 1}`,
+    label: i < regularTierCount ? `Tier ${i + 1}` : `Wildcard ${i - regularTierCount + 1}`,
     players: [],
   }))
 
-  distributeEvenly(allOrdered, tiers)
-  tiers[tierCount - 1].players.push(...noSignal)
+  // Fill regular tiers — exactly REGULAR_TIER_SIZE players each
+  regular.forEach((player, i) => {
+    tiers[Math.floor(i / REGULAR_TIER_SIZE)].players.push(player)
+  })
+
+  // Fill wildcard tiers — split the pool evenly across the 2 wildcard tiers
+  const wildcardChunk = Math.ceil(wildcard.length / WILDCARD_TIER_COUNT)
+  wildcard.forEach((player, i) => {
+    const tierIdx = regularTierCount + Math.min(Math.floor(i / wildcardChunk), WILDCARD_TIER_COUNT - 1)
+    tiers[tierIdx].players.push(player)
+  })
 
   return { tiers }
 }
