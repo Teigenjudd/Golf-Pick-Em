@@ -3,16 +3,16 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 
-const STATUS_COLORS = {
-  open:     'bg-green-100 text-green-700',
-  locked:   'bg-amber-100 text-amber-700',
-  complete: 'bg-gray-100 text-gray-500',
-  draft:    'bg-gray-100 text-gray-400',
+const STATUS_BADGE = {
+  open:     'bg-fairway/10 text-fairway',
+  locked:   'bg-gold/20 text-gold',
+  complete: 'bg-warm-200 text-warm-500',
+  draft:    'bg-warm-200 text-warm-400',
 }
 
 function StatusBadge({ status }) {
   return (
-    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[status] ?? 'bg-gray-100 text-gray-500'}`}>
+    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[status] ?? 'bg-warm-200 text-warm-400'}`}>
       {status}
     </span>
   )
@@ -50,22 +50,24 @@ function TournamentsTab() {
     setUpdating(null)
   }
 
-  if (loading) return <p className="text-sm text-gray-400 py-6">Loading…</p>
+  if (loading) return <p className="text-sm text-warm-400 py-6">Loading…</p>
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-gray-500">{tournaments.length} tournament{tournaments.length !== 1 ? 's' : ''}</p>
+        <p className="text-sm text-warm-400">
+          {tournaments.length} tournament{tournaments.length !== 1 ? 's' : ''}
+        </p>
         <Link
           to="/admin/create-tournament"
-          className="text-sm text-green-700 font-medium hover:text-green-800 transition-colors"
+          className="text-sm text-fairway font-medium hover:text-fairway/80 transition-colors"
         >
-          + Create Tournament
+          + New Tournament
         </Link>
       </div>
 
       {tournaments.length === 0 ? (
-        <p className="text-sm text-gray-400 py-4">No tournaments yet.</p>
+        <p className="text-sm text-warm-400 py-4">No tournaments on the board yet.</p>
       ) : (
         <div className="space-y-3">
           {tournaments.map(t => {
@@ -73,17 +75,17 @@ function TournamentsTab() {
               ? new Date(t.lock_time).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
               : null
             return (
-              <div key={t.id} className="bg-white rounded-xl border border-gray-200 p-4">
+              <div key={t.id} className="bg-white border border-warm-200 rounded-lg p-4">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
                     <Link
                       to={`/tournament/${t.id}`}
-                      className="text-sm font-medium text-gray-900 hover:text-green-700 transition-colors"
+                      className="text-sm font-medium text-charcoal hover:text-fairway transition-colors"
                     >
                       {t.name}
                     </Link>
                     {lockDate && (
-                      <p className="text-xs text-gray-400 mt-0.5">Locks {lockDate}</p>
+                      <p className="text-xs text-warm-400 mt-0.5">Locks {lockDate}</p>
                     )}
                   </div>
                   <StatusBadge status={t.status} />
@@ -91,15 +93,15 @@ function TournamentsTab() {
 
                 {/* Join link */}
                 <div className="flex items-center gap-2 mb-3">
-                  <code className="flex-1 bg-gray-50 border border-gray-200 rounded px-2 py-1 text-xs text-gray-600 truncate">
+                  <code className="flex-1 bg-warm-100 border border-warm-200 rounded px-2 py-1 text-xs text-warm-500 truncate font-mono">
                     {window.location.origin}/join/{t.join_code}
                   </code>
                   <button
                     onClick={() => copyJoinLink(t)}
                     className={`shrink-0 text-xs px-2 py-1 rounded border font-medium transition-colors ${
                       copiedId === t.id
-                        ? 'bg-green-50 border-green-300 text-green-700'
-                        : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                        ? 'bg-fairway/10 border-fairway/30 text-fairway'
+                        : 'bg-white border-warm-300 text-warm-500 hover:bg-warm-100'
                     }`}
                   >
                     {copiedId === t.id ? 'Copied!' : 'Copy'}
@@ -113,7 +115,7 @@ function TournamentsTab() {
                       <button
                         onClick={() => setStatus(t.id, 'locked')}
                         disabled={updating === t.id}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 hover:bg-amber-50 disabled:opacity-50 transition-colors"
+                        className="text-xs px-3 py-1.5 rounded-lg border border-gold/40 text-gold hover:bg-gold/5 disabled:opacity-50 transition-colors"
                       >
                         Lock
                       </button>
@@ -122,7 +124,7 @@ function TournamentsTab() {
                       <button
                         onClick={() => setStatus(t.id, 'open')}
                         disabled={updating === t.id}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-50 transition-colors"
+                        className="text-xs px-3 py-1.5 rounded-lg border border-fairway/40 text-fairway hover:bg-fairway/5 disabled:opacity-50 transition-colors"
                       >
                         Re-open
                       </button>
@@ -130,9 +132,9 @@ function TournamentsTab() {
                     <button
                       onClick={() => setStatus(t.id, 'complete')}
                       disabled={updating === t.id}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                      className="text-xs px-3 py-1.5 rounded-lg border border-warm-300 text-warm-500 hover:bg-warm-100 disabled:opacity-50 transition-colors"
                     >
-                      Mark Complete
+                      Close Tournament
                     </button>
                   </div>
                 )}
@@ -209,11 +211,7 @@ function ParticipantsTab() {
   async function removeParticipant(userId, displayName) {
     if (!window.confirm(`Remove ${displayName}'s picks from this tournament? This cannot be undone.`)) return
     setRemoving(userId)
-    await supabase
-      .from('picks')
-      .delete()
-      .eq('tournament_id', selectedId)
-      .eq('user_id', userId)
+    await supabase.from('picks').delete().eq('tournament_id', selectedId).eq('user_id', userId)
     setParticipants(prev => prev.filter(p => p.user_id !== userId))
     setRemoving(null)
   }
@@ -225,7 +223,7 @@ function ParticipantsTab() {
           value={selectedId}
           onChange={e => handleSelectTournament(e.target.value)}
           disabled={loadingTournaments}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white disabled:opacity-50"
+          className="w-full px-3 py-2.5 border border-warm-300 rounded-lg text-sm text-charcoal bg-white focus:outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway disabled:opacity-50 transition-colors"
         >
           <option value="">{loadingTournaments ? 'Loading…' : 'Select a tournament'}</option>
           {tournaments.map(t => (
@@ -235,40 +233,40 @@ function ParticipantsTab() {
       </div>
 
       {!selectedId && (
-        <p className="text-sm text-gray-400 py-4">Select a tournament to view participants.</p>
+        <p className="text-sm text-warm-400 py-4">Select a tournament to view participants.</p>
       )}
-
       {selectedId && loadingParticipants && (
-        <p className="text-sm text-gray-400 py-4">Loading…</p>
+        <p className="text-sm text-warm-400 py-4">Loading…</p>
       )}
-
       {selectedId && !loadingParticipants && participants.length === 0 && (
-        <p className="text-sm text-gray-400 py-4">No participants yet.</p>
+        <p className="text-sm text-warm-400 py-4">No cards in yet.</p>
       )}
 
       {participants.length > 0 && (
         <div className="space-y-3">
-          <p className="text-sm text-gray-500">{participants.length} participant{participants.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-warm-400">
+            {participants.length} participant{participants.length !== 1 ? 's' : ''}
+          </p>
           {participants.map(p => (
-            <div key={p.user_id} className="bg-white rounded-xl border border-gray-200 p-4">
-              <div className="flex items-start justify-between gap-3 mb-2">
+            <div key={p.user_id} className="bg-white border border-warm-200 rounded-lg p-4">
+              <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{p.display_name}</p>
-                  <p className="text-xs text-gray-400">{p.email}</p>
+                  <p className="text-sm font-medium text-charcoal">{p.display_name}</p>
+                  <p className="text-xs text-warm-400">{p.email}</p>
                 </div>
                 <button
                   onClick={() => removeParticipant(p.user_id, p.display_name)}
                   disabled={removing === p.user_id}
-                  className="text-xs px-2.5 py-1 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors shrink-0"
+                  className="text-xs px-2.5 py-1 rounded-lg border border-birdie/30 text-birdie hover:bg-birdie/5 disabled:opacity-50 transition-colors shrink-0"
                 >
                   {removing === p.user_id ? 'Removing…' : 'Remove'}
                 </button>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {p.picks.map((pick, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs text-gray-600">
-                    <span className="text-gray-400 w-14 shrink-0">{pick.label}</span>
-                    <span>{pick.player_name}</span>
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    <span className="text-warm-400 w-14 shrink-0">{pick.label}</span>
+                    <span className="text-charcoal">{pick.player_name}</span>
                   </div>
                 ))}
               </div>
@@ -314,31 +312,33 @@ function UsersTab() {
     setUpdating(null)
   }
 
-  if (loading) return <p className="text-sm text-gray-400 py-6">Loading…</p>
+  if (loading) return <p className="text-sm text-warm-400 py-6">Loading…</p>
 
   const pendingUsers = users.filter(u => u.status !== 'approved' && u.role !== 'admin')
   const approvedUsers = users.filter(u => u.status === 'approved' || u.role === 'admin')
 
   return (
     <div>
-      <p className="text-sm text-gray-500 mb-4">{users.length} user{users.length !== 1 ? 's' : ''}</p>
+      <p className="text-sm text-warm-400 mb-4">
+        {users.length} user{users.length !== 1 ? 's' : ''}
+      </p>
 
       {pendingUsers.length > 0 && (
         <div className="mb-4">
-          <p className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-2">
+          <p className="text-xs font-display font-bold uppercase tracking-widest text-gold mb-2">
             Pending approval ({pendingUsers.length})
           </p>
           <div className="space-y-2">
             {pendingUsers.map(u => (
-              <div key={u.id} className="bg-amber-50 rounded-xl border border-amber-200 px-4 py-3 flex items-center gap-3">
+              <div key={u.id} className="flex items-center gap-3 bg-white border border-warm-200 rounded-lg px-4 py-3 border-l-[3px] border-l-gold">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{u.display_name || '—'}</p>
-                  <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                  <p className="text-sm font-medium text-charcoal truncate">{u.display_name || '—'}</p>
+                  <p className="text-xs text-warm-400 truncate">{u.email}</p>
                 </div>
                 <button
                   onClick={() => approveUser(u.id)}
                   disabled={updating === u.id}
-                  className="text-xs px-2.5 py-1 rounded-lg border border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-50 transition-colors shrink-0 font-medium"
+                  className="text-xs px-2.5 py-1 rounded-lg border border-fairway/40 text-fairway hover:bg-fairway/5 disabled:opacity-50 transition-colors shrink-0 font-medium"
                 >
                   {updating === u.id ? '…' : 'Approve'}
                 </button>
@@ -350,13 +350,13 @@ function UsersTab() {
 
       <div className="space-y-2">
         {approvedUsers.map(u => (
-          <div key={u.id} className="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center gap-3">
+          <div key={u.id} className="bg-white border border-warm-200 rounded-lg px-4 py-3 flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{u.display_name || '—'}</p>
-              <p className="text-xs text-gray-400 truncate">{u.email}</p>
+              <p className="text-sm font-medium text-charcoal truncate">{u.display_name || '—'}</p>
+              <p className="text-xs text-warm-400 truncate">{u.email}</p>
             </div>
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${
-              u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-500'
+              u.role === 'admin' ? 'bg-fairway/10 text-fairway' : 'bg-warm-200 text-warm-400'
             }`}>
               {u.role}
             </span>
@@ -364,7 +364,7 @@ function UsersTab() {
               <button
                 onClick={() => toggleRole(u.id, u.role)}
                 disabled={updating === u.id}
-                className="text-xs px-2.5 py-1 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors shrink-0"
+                className="text-xs px-2.5 py-1 rounded-lg border border-warm-300 text-warm-500 hover:bg-warm-100 disabled:opacity-50 transition-colors shrink-0"
               >
                 {updating === u.id ? '…' : u.role === 'admin' ? 'Make Player' : 'Make Admin'}
               </button>
@@ -385,33 +385,36 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('Tournaments')
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <Link to="/dashboard" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
+    <div className="min-h-screen bg-cream">
+      {/* Header */}
+      <div className="bg-fairway px-6 py-5">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link to="/dashboard" className="text-cream/50 hover:text-cream/80 text-sm transition-colors">
               ← Dashboard
             </Link>
-            <h1 className="text-2xl font-semibold text-gray-900">Admin</h1>
+            <span className="font-display font-bold text-cream text-xl tracking-tight">Admin</span>
           </div>
           <button
             onClick={signOut}
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            className="text-sm text-cream/50 hover:text-cream/80 transition-colors"
           >
             Sign out
           </button>
         </div>
+      </div>
 
+      <div className="max-w-2xl mx-auto px-6 py-6">
         {/* Tabs */}
-        <div className="flex gap-1 bg-gray-200 rounded-lg p-1 mb-6">
+        <div className="flex gap-0.5 bg-warm-200 rounded-lg p-0.5 mb-6">
           {TABS.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${
                 activeTab === tab
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white text-charcoal shadow-sm'
+                  : 'text-warm-500 hover:text-charcoal'
               }`}
             >
               {tab}

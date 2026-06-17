@@ -16,7 +16,6 @@ import { getTournaments, getTournamentField, getRankings } from '../../lib/slash
 import { getGolfOdds, GOLF_SPORT_KEYS } from '../../lib/oddsApi'
 import { buildTiers } from '../../utils/tierBuilder'
 
-// Slash Golf returns MongoDB Extended JSON — unwrap { $numberInt } / { $numberDouble }
 function unwrapNumber(val) {
   if (val == null) return null
   if (typeof val === 'number') return val
@@ -48,29 +47,27 @@ function generateJoinCode() {
 
 function PlayerCard({ player, isDragging = false }) {
   return (
-    <div
-      className={`flex justify-between items-center px-3 py-2 bg-white border rounded-lg text-sm select-none
-        ${isDragging ? 'shadow-lg border-green-400' : 'border-gray-200'}`}
-    >
-      <span className="text-gray-800">{player.player_name}</span>
-      <span className="text-gray-400 font-mono text-xs">{formatOdds(player.odds)}</span>
+    <div className={`flex justify-between items-center px-3 py-2 bg-white border rounded-lg text-sm select-none ${
+      isDragging ? 'shadow-lg border-fairway/40' : 'border-warm-200'
+    }`}>
+      <span className="text-charcoal">{player.player_name}</span>
+      <span className="text-warm-400 font-mono text-xs">{formatOdds(player.odds)}</span>
     </div>
   )
 }
 
 function DraggablePlayer({ player }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: player.player_id })
-
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`bg-white border border-gray-200 rounded-lg text-sm select-none cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
+      className={`bg-white border border-warm-200 rounded-lg text-sm select-none cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
     >
       <div className="flex justify-between items-center px-3 py-2">
-        <span className="text-gray-800">{player.player_name}</span>
-        <span className="text-gray-400 font-mono text-xs">
+        <span className="text-charcoal">{player.player_name}</span>
+        <span className="text-warm-400 font-mono text-xs">
           {formatOdds(player.odds)} · #{player.owgr_rank ?? '—'}
         </span>
       </div>
@@ -83,14 +80,18 @@ function DroppableTier({ tier }) {
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-xl p-4 border-2 transition-colors min-h-[60px]
-        ${isOver ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-gray-50'}`}
+      className={`rounded-lg border-2 transition-colors min-h-[60px] overflow-hidden ${
+        isOver ? 'border-fairway/40 bg-fairway/5' : 'border-warm-200 bg-warm-100'
+      }`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-medium text-gray-700 text-sm">{tier.label}</h3>
-        <span className="text-xs text-gray-400">{tier.players.length} players</span>
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-warm-200 bg-white">
+        <span className="w-5 h-5 rounded-full bg-fairway flex items-center justify-center text-[10px] font-display font-bold text-cream leading-none shrink-0">
+          {tier.tier_number}
+        </span>
+        <h3 className="font-display font-bold text-sm uppercase tracking-wide text-charcoal flex-1">{tier.label}</h3>
+        <span className="text-xs text-warm-400">{tier.players.length}</span>
       </div>
-      <div className="space-y-1.5">
+      <div className="p-3 space-y-1.5">
         {tier.players.map(player => (
           <DraggablePlayer key={player.player_id} player={player} />
         ))}
@@ -106,7 +107,6 @@ export default function CreateTournament() {
   const { user } = useAuth()
   const [step, setStep] = useState(1)
 
-  // Step 1
   const [name, setName] = useState('')
   const [slashTournaments, setSlashTournaments] = useState([])
   const [selectedSlashId, setSelectedSlashId] = useState('')
@@ -117,7 +117,6 @@ export default function CreateTournament() {
   const [loadingTournaments, setLoadingTournaments] = useState(true)
   const [buildingTiers, setBuildingTiers] = useState(false)
 
-  // Step 2
   const [tiers, setTiers] = useState([])
   const [activePlayer, setActivePlayer] = useState(null)
   const [saving, setSaving] = useState(false)
@@ -190,14 +189,12 @@ export default function CreateTournament() {
         sportKey ? getGolfOdds(sportKey).catch(() => []) : Promise.resolve([]),
         getRankings().catch(() => null),
       ])
-
       if (sportKey && oddsOutcomes.length === 0) {
         setCachedData({ fieldData, rankingsData })
         setRetryIn(180)
         setOddsWarning(true)
         return
       }
-
       proceedToStep2(fieldData, rankingsData, oddsOutcomes)
     } catch (err) {
       setError(err.message)
@@ -212,10 +209,7 @@ export default function CreateTournament() {
     setError(null)
     try {
       const oddsOutcomes = await getGolfOdds(sportKey).catch(() => [])
-      if (oddsOutcomes.length === 0) {
-        setRetryIn(180)
-        return
-      }
+      if (oddsOutcomes.length === 0) { setRetryIn(180); return }
       proceedToStep2(cachedData.fieldData, cachedData.rankingsData, oddsOutcomes)
     } catch (err) {
       setError(err.message)
@@ -268,7 +262,6 @@ export default function CreateTournament() {
         })
         .select()
         .single()
-
       if (tErr) throw tErr
 
       for (const tier of tiers) {
@@ -277,9 +270,7 @@ export default function CreateTournament() {
           .insert({ tournament_id: tournament.id, tier_number: tier.tier_number, label: tier.label })
           .select()
           .single()
-
         if (tierErr) throw tierErr
-
         if (tier.players.length > 0) {
           const { error: pErr } = await supabase.from('tier_players').insert(
             tier.players.map(p => ({
@@ -292,7 +283,6 @@ export default function CreateTournament() {
           if (pErr) throw pErr
         }
       }
-
       navigate(`/tournament/${tournament.id}`)
     } catch (err) {
       setError(err.message)
@@ -301,40 +291,46 @@ export default function CreateTournament() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Create Tournament</h1>
-          <span className="text-sm text-gray-400">Step {step} of 2</span>
-        </div>
+  const inputClass = "w-full px-3 py-2.5 border border-warm-300 rounded-lg text-sm text-charcoal bg-white focus:outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway transition-colors disabled:opacity-50"
+  const labelClass = "block text-xs font-medium text-warm-500 uppercase tracking-wider mb-1.5"
 
+  return (
+    <div className="min-h-screen bg-cream">
+      {/* Header */}
+      <div className="bg-fairway px-6 py-5">
+        <div className="max-w-4xl mx-auto flex items-center gap-4">
+          <span className="font-display font-bold text-cream text-xl tracking-tight">Create Tournament</span>
+          <span className="text-cream/40 text-sm">Step {step} of 2</span>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-6 py-6">
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+          <div className="mb-5 p-4 bg-birdie/5 border border-birdie/20 rounded-lg text-sm text-birdie">
             {error}
           </div>
         )}
 
         {step === 1 && (
-          <div className="bg-white rounded-2xl border border-gray-200 p-8 space-y-5">
+          <div className="bg-white border border-warm-200 rounded-lg p-8 space-y-5 max-w-xl">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tournament Name</label>
+              <label className={labelClass}>Tournament Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="e.g. 2026 US Open"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Slash Golf Tournament</label>
+              <label className={labelClass}>Slash Golf Tournament</label>
               <select
                 value={selectedSlashId}
                 onChange={e => setSelectedSlashId(e.target.value)}
                 disabled={loadingTournaments}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white disabled:opacity-50"
+                className={inputClass}
               >
                 <option value="">{loadingTournaments ? 'Loading…' : 'Select a tournament'}</option>
                 {slashTournaments.map(t => (
@@ -344,13 +340,13 @@ export default function CreateTournament() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Odds Market <span className="text-gray-400 font-normal">(optional — majors only)</span>
+              <label className={labelClass}>
+                Odds Market <span className="normal-case font-normal text-warm-400">(optional — majors only)</span>
               </label>
               <select
                 value={sportKey}
                 onChange={e => setSportKey(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                className={inputClass}
               >
                 <option value="">None (no odds)</option>
                 {GOLF_SPORT_KEYS.map(k => (
@@ -361,59 +357,59 @@ export default function CreateTournament() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Picks per Participant</label>
+                <label className={labelClass}>Picks per Participant</label>
                 <input
                   type="number"
                   min={1}
                   max={20}
                   value={pickCount}
                   onChange={e => setPickCount(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className={inputClass}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Scores to Keep</label>
+                <label className={labelClass}>Scores to Keep</label>
                 <input
                   type="number"
                   min={1}
                   max={20}
                   value={scoresToKeep}
                   onChange={e => setScoresToKeep(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className={inputClass}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Lock Time</label>
+              <label className={labelClass}>Lock Time</label>
               <input
                 type="datetime-local"
                 value={lockTime}
                 onChange={e => setLockTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
               />
             </div>
 
             {oddsWarning ? (
-              <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-3">
-                <p className="text-sm font-medium text-amber-800">
+              <div className="rounded-lg border border-gold/30 bg-gold/5 p-4 space-y-3">
+                <p className="text-sm font-medium text-charcoal">
                   Odds unavailable — the market may not be open yet.
                 </p>
-                <p className="text-sm text-amber-700">
+                <p className="text-sm text-warm-500">
                   Tiers will fall back to OWGR rankings. You can retry now or wait for odds to post.
                 </p>
                 <div className="flex gap-2">
                   <button
                     onClick={handleRetryOdds}
                     disabled={buildingTiers || retryIn > 0}
-                    className="flex-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+                    className="flex-1 bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream text-sm font-medium py-2 rounded-lg transition-colors"
                   >
                     {buildingTiers ? 'Checking…' : retryIn > 0 ? `Retry in ${retryIn}s` : 'Try Again'}
                   </button>
                   <button
                     onClick={handleContinueWithOwgr}
                     disabled={buildingTiers}
-                    className="flex-1 border border-amber-400 text-amber-800 hover:bg-amber-100 disabled:opacity-50 text-sm font-medium py-2 rounded-lg transition-colors"
+                    className="flex-1 border border-warm-300 text-warm-600 hover:bg-warm-100 disabled:opacity-50 text-sm font-medium py-2 rounded-lg transition-colors"
                   >
                     Continue with OWGR Rankings
                   </button>
@@ -423,7 +419,7 @@ export default function CreateTournament() {
               <button
                 onClick={handleNext}
                 disabled={buildingTiers || !name || !selectedSlashId}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+                className="w-full bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm"
               >
                 {buildingTiers ? 'Fetching field & odds…' : 'Next →'}
               </button>
@@ -433,19 +429,18 @@ export default function CreateTournament() {
 
         {step === 2 && (
           <div>
-            <p className="text-sm text-gray-500 mb-4">Drag players between tiers to adjust.</p>
+            <p className="text-sm text-warm-400 mb-4">Drag players between tiers to adjust.</p>
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-5">
                 {tiers.map(tier => (
                   <DroppableTier key={tier.tier_number} tier={tier} />
                 ))}
               </div>
-
               <DragOverlay>
                 {activePlayer ? <PlayerCard player={activePlayer} isDragging /> : null}
               </DragOverlay>
@@ -454,14 +449,14 @@ export default function CreateTournament() {
             <div className="flex gap-3">
               <button
                 onClick={() => { setStep(1); setError(null) }}
-                className="px-6 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="px-6 py-2.5 border border-warm-300 rounded-lg text-sm text-warm-500 hover:bg-warm-100 transition-colors"
               >
                 ← Back
               </button>
               <button
                 onClick={handleCreate}
                 disabled={saving}
-                className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+                className="flex-1 bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm"
               >
                 {saving ? 'Creating…' : 'Create Tournament'}
               </button>

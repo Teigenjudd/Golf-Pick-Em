@@ -52,50 +52,68 @@ export default function Join() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-gray-400 text-sm">Loading…</p>
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <p className="text-warm-400 text-sm">Loading…</p>
       </div>
     )
   }
 
+  /* ── Unauthenticated: show magic link form ── */
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          <h1 className="text-2xl font-semibold text-gray-900 mb-1">Golf Pick'Em</h1>
-          <p className="text-sm text-gray-500 mb-6">
-            Sign in to join with code{' '}
-            <span className="font-mono font-medium text-gray-700">{code}</span>
-          </p>
-          {sent ? (
-            <div className="text-center">
-              <div className="text-4xl mb-3">📬</div>
-              <p className="text-gray-700 font-medium">Check your email for a login link</p>
-              <p className="text-sm text-gray-400 mt-1">{email}</p>
-            </div>
-          ) : (
-            <form onSubmit={handleEmailSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email address</label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-cream px-6">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <h1 className="font-display font-bold text-5xl text-fairway tracking-tight">PICK'EM</h1>
+            <p className="text-warm-400 text-sm mt-1">PGA Golf · Friends Edition</p>
+          </div>
+
+          <div className="bg-white border border-warm-200 rounded-lg p-8">
+            <p className="text-sm text-warm-400 mb-5">
+              Sign in to join with code{' '}
+              <span className="font-mono font-semibold text-charcoal">{code}</span>
+            </p>
+
+            {sent ? (
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-fairway/10 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-fairway" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <p className="font-medium text-charcoal">Check your email</p>
+                <p className="text-sm text-warm-400 mt-1">{email}</p>
+                <p className="text-xs text-warm-400 mt-3 leading-relaxed">
+                  We sent a sign-in link — clicking it will drop you right into the tournament.
+                </p>
               </div>
-              {emailError && <p className="text-sm text-red-500">{emailError}</p>}
-              <button
-                type="submit"
-                disabled={sending}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2 rounded-lg transition-colors"
-              >
-                {sending ? 'Sending…' : 'Send Magic Link'}
-              </button>
-            </form>
-          )}
+            ) : (
+              <form onSubmit={handleEmailSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-warm-500 uppercase tracking-wider mb-1.5">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full px-3 py-2.5 border border-warm-300 rounded-lg text-sm text-charcoal bg-white placeholder:text-warm-300 focus:outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway transition-colors"
+                  />
+                </div>
+                {emailError && <p className="text-sm text-birdie">{emailError}</p>}
+                <button
+                  type="submit"
+                  disabled={sending}
+                  className="w-full bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm"
+                >
+                  {sending ? 'Sending…' : 'Send Magic Link'}
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -103,21 +121,21 @@ export default function Join() {
 
   if (tournamentLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-gray-400 text-sm">Looking up tournament…</p>
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <p className="text-warm-400 text-sm">Looking up tournament…</p>
       </div>
     )
   }
 
   if (tournamentError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-cream">
         <div className="text-center">
-          <p className="text-gray-900 font-medium mb-2">Invalid join code</p>
-          <p className="text-sm text-gray-500 mb-4">
-            The code <span className="font-mono">{code}</span> doesn't match any active tournament.
+          <p className="text-charcoal font-medium mb-2">Invalid join code</p>
+          <p className="text-sm text-warm-400 mb-4">
+            The code <span className="font-mono font-semibold text-charcoal">{code}</span> doesn't match any active tournament.
           </p>
-          <Link to="/dashboard" className="text-sm text-green-700 hover:text-green-800 font-medium">
+          <Link to="/dashboard" className="text-sm text-fairway hover:text-fairway/80 font-medium transition-colors">
             Go to dashboard
           </Link>
         </div>
@@ -131,31 +149,43 @@ export default function Join() {
     tournament.status === 'locked' ||
     (tournament.lock_time && new Date(tournament.lock_time) <= new Date())
 
+  /* ── Authenticated: tournament card ── */
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-        <p className="text-sm text-green-600 font-medium mb-2">You're invited</p>
-        <h1 className="text-2xl font-semibold text-gray-900 mb-1">{tournament.name}</h1>
-        <p className="text-sm text-gray-500 mb-6">
-          Pick {tournament.pick_count} player{tournament.pick_count !== 1 ? 's' : ''}, one from each tier
-        </p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-cream px-6">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <h1 className="font-display font-bold text-5xl text-fairway tracking-tight">PICK'EM</h1>
+        </div>
 
-        {isLocked ? (
-          <div className="rounded-lg bg-gray-100 p-4 text-sm text-gray-600">
-            Picks are locked for this tournament.
-          </div>
-        ) : (
-          <button
-            onClick={() => navigate(`/tournament/${tournament.id}/picks`)}
-            className="w-full bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+        <div className="bg-white border border-warm-200 rounded-lg p-8 text-center">
+          <p className="text-xs font-semibold text-gold uppercase tracking-widest mb-2">You're invited</p>
+          <h2 className="font-display font-bold text-2xl text-charcoal tracking-tight mb-1">
+            {tournament.name}
+          </h2>
+          <p className="text-sm text-warm-400 mb-6">
+            Pick {tournament.pick_count} player{tournament.pick_count !== 1 ? 's' : ''}, one from each tier
+          </p>
+
+          {isLocked ? (
+            <div className="rounded-lg bg-warm-100 border border-warm-200 p-4 text-sm text-warm-500">
+              Picks are locked for this tournament.
+            </div>
+          ) : (
+            <button
+              onClick={() => navigate(`/tournament/${tournament.id}/picks`)}
+              className="w-full bg-fairway hover:bg-fairway/90 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm"
+            >
+              Make Your Picks →
+            </button>
+          )}
+
+          <Link
+            to="/dashboard"
+            className="block mt-4 text-xs text-warm-400 hover:text-warm-500 transition-colors"
           >
-            Make Your Picks →
-          </button>
-        )}
-
-        <Link to="/dashboard" className="block mt-4 text-sm text-gray-400 hover:text-gray-600 transition-colors">
-          Go to dashboard
-        </Link>
+            Go to dashboard
+          </Link>
+        </div>
       </div>
     </div>
   )
