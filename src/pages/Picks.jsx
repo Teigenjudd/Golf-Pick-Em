@@ -71,10 +71,8 @@ export default function Picks() {
     tournament?.status === 'locked' ||
     (tournament?.lock_time && new Date(tournament.lock_time) <= new Date())
 
-  const anyConfirmed = existingPicks.some(p => p.status === 'confirmed')
-  const allConfirmed = existingPicks.length > 0 && existingPicks.every(p => p.status === 'confirmed')
-  const hasPending = existingPicks.some(p => p.status === 'pending')
-  const isReadOnly = isLocked || anyConfirmed
+  const hasExistingPicks = existingPicks.length > 0
+  const isReadOnly = isLocked
 
   function selectPlayer(tierId, player) {
     setSelections(prev => ({
@@ -177,21 +175,9 @@ export default function Picks() {
           </div>
         )}
 
-        {!isLocked && allConfirmed && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800 font-medium">
-            Your picks are confirmed.
-          </div>
-        )}
-
-        {!isLocked && anyConfirmed && !allConfirmed && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800 font-medium">
-            Some of your picks are confirmed — picks are now locked for editing.
-          </div>
-        )}
-
-        {!isReadOnly && hasPending && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-            You have pending picks — you can update them until the tournament locks.
+        {!isLocked && hasExistingPicks && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+            Your picks are confirmed — you can still update them before the tournament locks.
           </div>
         )}
 
@@ -214,16 +200,6 @@ export default function Picks() {
                     <p className="text-xs text-gray-500 mb-0.5">{tier.label}</p>
                     <p className="text-sm font-medium text-gray-900">{pick?.player_name ?? '—'}</p>
                   </div>
-                  {pick?.status === 'confirmed' && (
-                    <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
-                      confirmed
-                    </span>
-                  )}
-                  {pick?.status === 'pending' && (
-                    <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                      pending
-                    </span>
-                  )}
                 </div>
               )
             })}
@@ -271,7 +247,7 @@ export default function Picks() {
                 disabled={submitting}
                 className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
               >
-                {submitting ? 'Submitting…' : hasPending ? 'Update Picks' : 'Submit Picks'}
+                {submitting ? 'Submitting…' : hasExistingPicks ? 'Update Picks' : 'Submit Picks'}
               </button>
             </div>
           </>
