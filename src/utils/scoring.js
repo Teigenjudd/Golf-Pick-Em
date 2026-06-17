@@ -44,6 +44,8 @@ export function computeScores({ picks, leaderboardData, scoresToKeep }) {
     byName[normalizeName(`${row.firstName} ${row.lastName}`)] = entry
   })
 
+const WD_PENALTY = 20
+
   // Group picks by user
   const userMap = {}
   picks.forEach(pick => {
@@ -56,24 +58,27 @@ export function computeScores({ picks, leaderboardData, scoresToKeep }) {
       }
     }
     const entry = byId[String(pick.player_id)] ?? byName[normalizeName(pick.player_name)]
+    const withdrawn = entry?.withdrawn ?? false
     userMap[uid].rawPicks.push({
       player_name: pick.player_name,
       player_id: pick.player_id,
-      score: entry?.score ?? null,
-      rawScore: entry?.rawScore ?? '-',
+      // WD gets a fixed +20 penalty; CUT and unstarted stay null
+      score: withdrawn ? WD_PENALTY : (entry?.score ?? null),
+      rawScore: withdrawn ? `+${WD_PENALTY}` : (entry?.rawScore ?? '-'),
       thru: entry?.thru ?? '',
       position: entry?.position ?? '-',
-      withdrawn: entry?.withdrawn ?? false,
+      withdrawn,
       cut: entry?.cut ?? false,
     })
   })
 
   return Object.values(userMap)
     .map(user => {
-      const eligible = user.rawPicks.filter(p => !p.withdrawn && !p.cut && p.score !== null)
-      const excluded = user.rawPicks.filter(p => p.withdrawn || p.cut || p.score === null)
+      // WD picks now have a real score so they stay in the eligible pool
+      const eligible = user.rawPicks.filter(p => !p.cut && p.score !== null)
+      const excluded = user.rawPicks.filter(p => p.cut || p.score === null)
 
-      // Best scores first
+      // Best scores first (WD's +20 will naturally sort toward the bottom)
       eligible.sort((a, b) => a.score - b.score)
 
       const used = eligible.slice(0, scoresToKeep)
