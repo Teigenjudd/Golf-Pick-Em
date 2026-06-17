@@ -255,7 +255,7 @@ export default function CreateTournament() {
           slash_golf_tournament_id: selectedSlashId,
           pick_count: pickCount,
           scores_to_keep: scoresToKeep,
-          lock_time: lockTime || null,
+          lock_time: lockTime ? new Date(lockTime).toISOString() : null,
           join_code: generateJoinCode(),
           status: 'open',
           created_by: user.id,
