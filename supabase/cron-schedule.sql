@@ -10,7 +10,7 @@ select cron.schedule(
   $$
   select net.http_post(
     url     := 'https://ryvwayvaudnroewhpnpj.supabase.co/functions/v1/poll-leaderboard',
-    headers := '{"Content-Type":"application/json","x-cron-secret":"golf-pick-em-cron-2026","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5dndheXZhdWRucm9ld2hwbnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1Njk4NTYsImV4cCI6MjA5NzE0NTg1Nn0.di8PcSTA3GJ6iH4UntE7Gdh2_PzmYVu-iCIgw0syvZ4"}'::jsonb,
+    headers := '{"Content-Type":"application/json","x-cron-secret":"golf-pick-em-cron-2026","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5dndheXZhdWRucm9ld2hwbnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1Njk4NTYsImV4cCI6MjA5NzE0NTg1Nn0.di8PcSTA3GJ6iH4UntE7Gdh2_PzmYVu-iCIgw0syvZ4"}'::jsonb,
     body    := '{}'::jsonb
   )
   $$
@@ -22,7 +22,7 @@ select cron.schedule(
   $$
   select net.http_post(
     url     := 'https://ryvwayvaudnroewhpnpj.supabase.co/functions/v1/poll-leaderboard',
-    headers := '{"Content-Type":"application/json","x-cron-secret":"golf-pick-em-cron-2026","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5dndheXZhdWRucm9ld2hwbnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1Njk4NTYsImV4cCI6MjA5NzE0NTg1Nn0.di8PcSTA3GJ6iH4UntE7Gdh2_PzmYVu-iCIgw0syvZ4"}'::jsonb,
+    headers := '{"Content-Type":"application/json","x-cron-secret":"golf-pick-em-cron-2026","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5dndheXZhdWRucm9ld2hwbnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1Njk4NTYsImV4cCI6MjA5NzE0NTg1Nn0.di8PcSTA3GJ6iH4UntE7Gdh2_PzmYVu-iCIgw0syvZ4"}'::jsonb,
     body    := '{}'::jsonb
   )
   $$
@@ -34,7 +34,7 @@ select cron.schedule(
   $$
   select net.http_post(
     url     := 'https://ryvwayvaudnroewhpnpj.supabase.co/functions/v1/poll-leaderboard',
-    headers := '{"Content-Type":"application/json","x-cron-secret":"golf-pick-em-cron-2026","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5dndheXZhdWRucm9ld2hwbnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1Njk4NTYsImV4cCI6MjA5NzE0NTg1Nn0.di8PcSTA3GJ6iH4UntE7Gdh2_PzmYVu-iCIgw0syvZ4"}'::jsonb,
+    headers := '{"Content-Type":"application/json","x-cron-secret":"golf-pick-em-cron-2026","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5dndheXZhdWRucm9ld2hwbnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1Njk4NTYsImV4cCI6MjA5NzE0NTg1Nn0.di8PcSTA3GJ6iH4UntE7Gdh2_PzmYVu-iCIgw0syvZ4"}'::jsonb,
     body    := '{}'::jsonb
   )
   $$
@@ -46,7 +46,7 @@ select cron.schedule(
   $$
   select net.http_post(
     url     := 'https://ryvwayvaudnroewhpnpj.supabase.co/functions/v1/poll-leaderboard',
-    headers := '{"Content-Type":"application/json","x-cron-secret":"golf-pick-em-cron-2026","apikey":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5dndheXZhdWRucm9ld2hwbnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1Njk4NTYsImV4cCI6MjA5NzE0NTg1Nn0.di8PcSTA3GJ6iH4UntE7Gdh2_PzmYVu-iCIgw0syvZ4"}'::jsonb,
+    headers := '{"Content-Type":"application/json","x-cron-secret":"golf-pick-em-cron-2026","Authorization":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5dndheXZhdWRucm9ld2hwbnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1Njk4NTYsImV4cCI6MjA5NzE0NTg1Nn0.di8PcSTA3GJ6iH4UntE7Gdh2_PzmYVu-iCIgw0syvZ4"}'::jsonb,
     body    := '{}'::jsonb
   )
   $$
