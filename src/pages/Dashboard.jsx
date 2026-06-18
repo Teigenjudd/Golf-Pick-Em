@@ -14,7 +14,7 @@ export default function Dashboard() {
     if (!user) return
     supabase
       .from('picks')
-      .select('tournament_id, status, tournaments(id, name, status)')
+      .select('tournament_id, status, tournaments(id, name, status, lock_time)')
       .eq('user_id', user.id)
       .then(({ data }) => {
         if (!data) return
@@ -29,6 +29,7 @@ export default function Dashboard() {
             id: t.id,
             name: t.name,
             tournamentStatus: t.status,
+            lockTime: t.lock_time,
             pickStatus: t.statuses.every(s => s === 'confirmed') ? 'confirmed' : 'pending',
           }))
         )
@@ -108,12 +109,13 @@ export default function Dashboard() {
                 <div className="bg-white border border-warm-200 rounded-lg divide-y divide-warm-200">
                   {visible.map(t => {
                     const isComplete = t.tournamentStatus === 'complete'
+                    const isLocked = t.tournamentStatus === 'locked' || (t.lockTime && new Date(t.lockTime) <= new Date())
                     const dotColor = isComplete ? 'bg-warm-300' : t.pickStatus === 'confirmed' ? 'bg-fairway' : 'bg-gold'
                     return (
                       <div key={t.id} className={`flex items-center gap-3 px-4 py-3.5 ${isComplete ? 'opacity-60' : ''}`}>
                         <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
                         <Link to={`/tournament/${t.id}`} className="flex-1 text-sm font-medium text-charcoal hover:text-fairway transition-colors">{t.name}</Link>
-                        {!isComplete && t.tournamentStatus === 'open' && (
+                        {!isComplete && !isLocked && (
                           <Link
                             to={`/tournament/${t.id}/picks`}
                             className="text-xs text-warm-400 hover:text-fairway transition-colors shrink-0"
