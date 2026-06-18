@@ -110,6 +110,7 @@ export default function CreateTournament() {
   const [name, setName] = useState('')
   const [slashTournaments, setSlashTournaments] = useState([])
   const [selectedSlashId, setSelectedSlashId] = useState('')
+  const [selectedPgaName, setSelectedPgaName] = useState('')
   const [sportKey, setSportKey] = useState('')
   const [pickCount, setPickCount] = useState(8)
   const [scoresToKeep, setScoresToKeep] = useState(5)
@@ -259,6 +260,7 @@ export default function CreateTournament() {
         .from('tournaments')
         .insert({
           name,
+          pga_name: selectedPgaName || null,
           course_name: courseName.trim() || null,
           slash_golf_tournament_id: selectedSlashId,
           pick_count: pickCount,
@@ -351,7 +353,11 @@ export default function CreateTournament() {
               <label className={labelClass}>Slash Golf Tournament</label>
               <select
                 value={selectedSlashId}
-                onChange={e => setSelectedSlashId(e.target.value)}
+                onChange={e => {
+                  setSelectedSlashId(e.target.value)
+                  const t = slashTournaments.find(t => (t.tournId ?? t.id) === e.target.value)
+                  setSelectedPgaName(t?.name ?? '')
+                }}
                 disabled={loadingTournaments}
                 className={inputClass}
               >

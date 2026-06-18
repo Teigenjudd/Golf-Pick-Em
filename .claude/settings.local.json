@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git checkout *)",
+      "Bash(git pull *)",
+      "Bash(supabase db *)",
+      "Bash(supabase link *)",
+      "Bash(npm create *)",
+      "Bash(npx create-vite@latest . --template react)",
+      "Bash(cd /tmp)",
+      "Bash(npx create-vite@latest golf-temp --template react)",
+      "Bash(cp /tmp/golf-temp/index.html .)",
+      "Bash(cp /tmp/golf-temp/vite.config.js .)",
+      "Bash(cp /tmp/golf-temp/package.json .)",
+      "Bash(cp /tmp/golf-temp/eslint.config.js .)",
+      "Bash(cp -r /tmp/golf-temp/public .)",
+      "Bash(cp /tmp/golf-temp/src/main.jsx src/)",
+      "Bash(cp /tmp/golf-temp/src/App.css src/)",
+      "Bash(cp /tmp/golf-temp/src/index.css src/)",
+      "Bash(cp -r /tmp/golf-temp/src/assets src/)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(supabase status *)",
+      "Bash(cat .env)",
+      "Bash(cat .env.local)",
+      "Bash(cat .env.production)",
+      "Bash(supabase functions *)"
+    ]
+  }
+}

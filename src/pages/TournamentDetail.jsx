@@ -278,7 +278,7 @@ export default function TournamentDetail() {
     ] = await Promise.all([
       supabase
         .from('tournaments')
-        .select('id, name, course_name, status, scores_to_keep, pick_count, join_code, lock_time, manual_refresh_count, latitude, longitude')
+        .select('id, name, pga_name, course_name, status, scores_to_keep, pick_count, join_code, lock_time, manual_refresh_count, latitude, longitude')
         .eq('id', id)
         .single(),
       supabase
@@ -406,7 +406,7 @@ export default function TournamentDetail() {
     : null
 
   const heroName = tournament.course_name ?? tournament.name
-  const subLabel = tournament.course_name ? tournament.name : null
+  const subLabel = tournament.pga_name ?? (tournament.course_name ? tournament.name : null)
 
   return (
     <div className="min-h-screen bg-cream">
