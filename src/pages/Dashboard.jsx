@@ -8,6 +8,7 @@ export default function Dashboard() {
   const [myTournaments, setMyTournaments] = useState([])
   const [adminTournaments, setAdminTournaments] = useState([])
   const [showClosed, setShowClosed] = useState(false)
+  const [showClosedAdmin, setShowClosedAdmin] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -151,16 +152,29 @@ export default function Dashboard() {
         )}
 
         {/* Admin */}
-        {profile?.role === 'admin' && (
+        {profile?.role === 'admin' && (() => {
+          const adminClosedCount = adminTournaments.filter(t => t.status === 'complete').length
+          const visibleAdmin = showClosedAdmin ? adminTournaments : adminTournaments.filter(t => t.status !== 'complete')
+          return (
           <section>
-            <h2 className="font-display font-bold text-xs uppercase tracking-widest text-warm-400 mb-3">
-              Admin
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display font-bold text-xs uppercase tracking-widest text-warm-400">
+                Admin
+              </h2>
+              {adminClosedCount > 0 && (
+                <button
+                  onClick={() => setShowClosedAdmin(s => !s)}
+                  className="text-xs text-warm-400 hover:text-charcoal transition-colors"
+                >
+                  {showClosedAdmin ? 'Hide closed' : `Show closed (${adminClosedCount})`}
+                </button>
+              )}
+            </div>
             <div className="bg-white border border-warm-200 rounded-lg">
-              {adminTournaments.length > 0 && (
+              {visibleAdmin.length > 0 && (
                 <div className="divide-y divide-warm-200">
-                  {adminTournaments.map(t => (
-                    <div key={t.id} className="flex items-center gap-3 px-4 py-3.5">
+                  {visibleAdmin.map(t => (
+                    <div key={t.id} className={`flex items-center gap-3 px-4 py-3.5 ${t.status === 'complete' ? 'opacity-60' : ''}`}>
                       <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[t.status] ?? 'bg-warm-300'}`} />
                       <Link
                         to={`/tournament/${t.id}`}
@@ -191,7 +205,8 @@ export default function Dashboard() {
               </div>
             </div>
           </section>
-        )}
+          )
+        })()}
       </div>
     </div>
   )
