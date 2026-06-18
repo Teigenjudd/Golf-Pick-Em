@@ -114,6 +114,8 @@ export default function CreateTournament() {
   const [pickCount, setPickCount] = useState(8)
   const [scoresToKeep, setScoresToKeep] = useState(5)
   const [lockTime, setLockTime] = useState('')
+  const [courseName, setCourseName] = useState('')
+  const [geoCoords, setGeoCoords] = useState({ lat: null, lon: null })
   const [loadingTournaments, setLoadingTournaments] = useState(true)
   const [buildingTiers, setBuildingTiers] = useState(false)
 
@@ -184,11 +186,16 @@ export default function CreateTournament() {
     setError(null)
     setOddsWarning(false)
     try {
-      const [fieldData, oddsOutcomes, rankingsData] = await Promise.all([
+      const [fieldData, oddsOutcomes, rankingsData, geoResult] = await Promise.all([
         getTournamentField(selectedSlashId),
         sportKey ? getGolfOdds(sportKey).catch(() => []) : Promise.resolve([]),
         getRankings().catch(() => null),
+        courseName.trim()
+          ? fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(courseName.trim())}&count=1`)
+              .then(r => r.json()).then(d => d.results?.[0] ?? null).catch(() => null)
+          : Promise.resolve(null),
       ])
+      setGeoCoords({ lat: geoResult?.latitude ?? null, lon: geoResult?.longitude ?? null })
       if (sportKey && oddsOutcomes.length === 0) {
         setCachedData({ fieldData, rankingsData })
         setRetryIn(180)
@@ -252,10 +259,13 @@ export default function CreateTournament() {
         .from('tournaments')
         .insert({
           name,
+          course_name: courseName.trim() || null,
           slash_golf_tournament_id: selectedSlashId,
           pick_count: pickCount,
           scores_to_keep: scoresToKeep,
           lock_time: lockTime ? new Date(lockTime).toISOString() : null,
+          latitude: geoCoords.lat,
+          longitude: geoCoords.lon,
           join_code: generateJoinCode(),
           status: 'open',
           created_by: user.id,
@@ -320,6 +330,19 @@ export default function CreateTournament() {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="e.g. 2026 US Open"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className={labelClass}>
+                Course / Venue <span className="normal-case font-normal text-warm-400">(for weather widget)</span>
+              </label>
+              <input
+                type="text"
+                value={courseName}
+                onChange={e => setCourseName(e.target.value)}
+                placeholder="e.g. Shinnecock Hills"
                 className={inputClass}
               />
             </div>
