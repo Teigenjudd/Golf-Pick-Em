@@ -28,6 +28,7 @@ function TournamentsTab() {
   const [copiedId, setCopiedId] = useState(null)
   const [updating, setUpdating] = useState(null)
   const [refreshing, setRefreshing] = useState(null)
+  const [showClosed, setShowClosed] = useState(false)
 
   const load = useCallback(async () => {
     const { data } = await supabase
@@ -68,25 +69,38 @@ function TournamentsTab() {
 
   if (loading) return <p className="text-sm text-warm-400 py-6">Loading…</p>
 
+  const closedCount = tournaments.filter(t => t.status === 'complete').length
+  const visible = showClosed ? tournaments : tournaments.filter(t => t.status !== 'complete')
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-warm-400">
-          {tournaments.length} tournament{tournaments.length !== 1 ? 's' : ''}
+          {visible.length} tournament{visible.length !== 1 ? 's' : ''}
         </p>
-        <Link
-          to="/admin/create-tournament"
-          className="text-sm text-fairway font-medium hover:text-fairway/80 transition-colors"
-        >
-          + New Tournament
-        </Link>
+        <div className="flex items-center gap-4">
+          {closedCount > 0 && (
+            <button
+              onClick={() => setShowClosed(s => !s)}
+              className="text-sm text-warm-400 hover:text-charcoal transition-colors"
+            >
+              {showClosed ? 'Hide closed' : `Show closed (${closedCount})`}
+            </button>
+          )}
+          <Link
+            to="/admin/create-tournament"
+            className="text-sm text-fairway font-medium hover:text-fairway/80 transition-colors"
+          >
+            + New Tournament
+          </Link>
+        </div>
       </div>
 
-      {tournaments.length === 0 ? (
+      {visible.length === 0 ? (
         <p className="text-sm text-warm-400 py-4">No tournaments on the board yet.</p>
       ) : (
         <div className="space-y-3">
-          {tournaments.map(t => {
+          {visible.map(t => {
             const lockDate = t.lock_time
               ? new Date(t.lock_time).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
               : null
