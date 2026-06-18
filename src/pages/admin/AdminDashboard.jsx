@@ -342,20 +342,13 @@ function UsersTab() {
   const load = useCallback(async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, display_name, email, role, status, created_at')
+      .select('id, display_name, email, role, created_at')
       .order('created_at', { ascending: false })
     setUsers(data ?? [])
     setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
-
-  async function approveUser(userId) {
-    setUpdating(userId)
-    await supabase.from('profiles').update({ status: 'approved' }).eq('id', userId)
-    await load()
-    setUpdating(null)
-  }
 
   async function toggleRole(userId, currentRole) {
     const newRole = currentRole === 'admin' ? 'player' : 'admin'
@@ -367,42 +360,14 @@ function UsersTab() {
 
   if (loading) return <p className="text-sm text-warm-400 py-6">Loading…</p>
 
-  const pendingUsers = users.filter(u => u.status !== 'approved' && u.role !== 'admin')
-  const approvedUsers = users.filter(u => u.status === 'approved' || u.role === 'admin')
-
   return (
     <div>
       <p className="text-sm text-warm-400 mb-4">
         {users.length} user{users.length !== 1 ? 's' : ''}
       </p>
 
-      {pendingUsers.length > 0 && (
-        <div className="mb-4">
-          <p className="text-xs font-display font-bold uppercase tracking-widest text-gold mb-2">
-            Pending approval ({pendingUsers.length})
-          </p>
-          <div className="space-y-2">
-            {pendingUsers.map(u => (
-              <div key={u.id} className="flex items-center gap-3 bg-white border border-warm-200 rounded-lg px-4 py-3 border-l-[3px] border-l-gold">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-charcoal truncate">{u.display_name || '—'}</p>
-                  <p className="text-xs text-warm-400 truncate">{u.email}</p>
-                </div>
-                <button
-                  onClick={() => approveUser(u.id)}
-                  disabled={updating === u.id}
-                  className="text-xs px-2.5 py-1 rounded-lg border border-fairway/40 text-fairway hover:bg-fairway/5 disabled:opacity-50 transition-colors shrink-0 font-medium"
-                >
-                  {updating === u.id ? '…' : 'Approve'}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="space-y-2">
-        {approvedUsers.map(u => (
+        {users.map(u => (
           <div key={u.id} className="bg-white border border-warm-200 rounded-lg px-4 py-3 flex items-center gap-3">
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-charcoal truncate">{u.display_name || '—'}</p>
