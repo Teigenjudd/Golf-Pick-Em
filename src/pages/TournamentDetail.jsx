@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext'
 import { computeScores, assignRanks, formatScore } from '../utils/scoring'
 
 const POLL_SCHEDULE = { 4: 60, 5: 60, 6: 30, 0: 15 }
-const MANUAL_REFRESH_LIMIT = 3
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -238,7 +237,7 @@ function ConditionsWidget({ latitude, longitude }) {
 
   return (
     <div>
-      <WidgetHeader>Conditions</WidgetHeader>
+      <WidgetHeader>Course Conditions</WidgetHeader>
       <div className="bg-fairway rounded-lg px-5 py-5">
         <p className="font-display font-bold text-4xl text-cream tracking-tight leading-none">
           {weather.temp}°F
@@ -264,7 +263,6 @@ export default function TournamentDetail() {
   const [fetchedAt, setFetchedAt] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [manualRefreshing, setManualRefreshing] = useState(false)
   const [error, setError] = useState(null)
   const [expanded, setExpanded] = useState(new Set())
   const [copied, setCopied] = useState(false)
@@ -278,7 +276,7 @@ export default function TournamentDetail() {
     ] = await Promise.all([
       supabase
         .from('tournaments')
-        .select('id, name, pga_name, course_name, status, scores_to_keep, pick_count, join_code, lock_time, manual_refresh_count, latitude, longitude')
+        .select('id, name, pga_name, course_name, status, scores_to_keep, pick_count, join_code, lock_time, latitude, longitude')
         .eq('id', id)
         .single(),
       supabase
@@ -339,25 +337,6 @@ export default function TournamentDetail() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  async function handleManualRefresh() {
-    setManualRefreshing(true)
-    try {
-      const { error: fnError } = await supabase.functions.invoke('poll-leaderboard', {
-        body: { tournament_id: id },
-      })
-      if (fnError) throw fnError
-      await supabase
-        .from('tournaments')
-        .update({ manual_refresh_count: tournament.manual_refresh_count + 1 })
-        .eq('id', id)
-      await load(true)
-    } catch (err) {
-      console.error('Manual refresh failed:', err)
-    } finally {
-      setManualRefreshing(false)
-    }
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-cream">
@@ -397,8 +376,6 @@ export default function TournamentDetail() {
       })()
     : null
 
-  const refreshesRemaining = MANUAL_REFRESH_LIMIT - (tournament.manual_refresh_count ?? 0)
-
   const roundNum = unwrapNumber(leaderboardData?.roundId)
   const lbStatus = leaderboardData?.status ?? ''
   const roundBadge = roundNum
@@ -414,9 +391,19 @@ export default function TournamentDetail() {
       {/* ── Header ── */}
       <div className="bg-fairway px-6 pt-6 pb-8">
         <div className="max-w-5xl mx-auto">
-          <Link to="/dashboard" className="text-cream/40 hover:text-cream/70 text-sm transition-colors">
-            ← Dashboard
-          </Link>
+          <div className="flex items-center justify-between">
+            <Link to="/dashboard" className="text-cream/40 hover:text-cream/70 text-sm transition-colors">
+              ← Dashboard
+            </Link>
+            {isAdmin && (
+              <button
+                onClick={copyJoinLink}
+                className="text-xs text-cream/40 hover:text-cream/70 border border-cream/20 hover:border-cream/40 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {copied ? 'Link copied!' : 'Share invite'}
+              </button>
+            )}
+          </div>
           <div className="flex items-end justify-between mt-4 gap-6">
             <div>
               {subLabel && (
@@ -449,28 +436,6 @@ export default function TournamentDetail() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
-        {/* Admin: join link */}
-        {isAdmin && (
-          <div className="bg-white border border-warm-200 rounded-lg px-5 py-4 flex items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-warm-400 mb-1">Join link</p>
-              <code className="text-sm text-charcoal font-mono truncate block">
-                {window.location.origin}/join/{tournament.join_code}
-              </code>
-            </div>
-            <button
-              onClick={copyJoinLink}
-              className={`shrink-0 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                copied
-                  ? 'bg-fairway/10 border-fairway/30 text-fairway'
-                  : 'bg-white border-warm-300 text-charcoal hover:bg-warm-100'
-              }`}
-            >
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
-          </div>
-        )}
-
         {/* ── Two-column layout ── */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
 
@@ -480,26 +445,6 @@ export default function TournamentDetail() {
               Pick'em Standings
             </h2>
             <div className="bg-white border border-warm-200 rounded-lg overflow-hidden">
-
-              {/* Admin manual refresh strip */}
-              {isAdmin && (
-                <div className="flex items-center justify-between px-5 py-2.5 border-b border-warm-200 bg-warm-100">
-                  <span className="text-xs text-warm-400">
-                    {refreshesRemaining}/{MANUAL_REFRESH_LIMIT} manual refreshes left
-                  </span>
-                  <button
-                    onClick={handleManualRefresh}
-                    disabled={manualRefreshing || refreshesRemaining <= 0}
-                    className={`text-xs px-2.5 py-1 rounded border font-medium transition-colors ${
-                      refreshesRemaining <= 0
-                        ? 'border-warm-200 text-warm-300 cursor-not-allowed'
-                        : 'border-fairway/40 text-fairway hover:bg-fairway/5 disabled:opacity-50'
-                    }`}
-                  >
-                    {manualRefreshing ? 'Refreshing…' : 'Refresh Now'}
-                  </button>
-                </div>
-              )}
 
               {/* Content states */}
               {isDraft ? (
