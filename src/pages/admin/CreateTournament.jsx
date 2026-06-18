@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   DndContext,
   DragOverlay,
@@ -110,10 +110,13 @@ export default function CreateTournament() {
   const [name, setName] = useState('')
   const [slashTournaments, setSlashTournaments] = useState([])
   const [selectedSlashId, setSelectedSlashId] = useState('')
+  const [selectedPgaName, setSelectedPgaName] = useState('')
   const [sportKey, setSportKey] = useState('')
   const [pickCount, setPickCount] = useState(8)
   const [scoresToKeep, setScoresToKeep] = useState(5)
   const [lockTime, setLockTime] = useState('')
+  const [courseName, setCourseName] = useState('')
+  const [geoCoords, setGeoCoords] = useState({ lat: null, lon: null })
   const [loadingTournaments, setLoadingTournaments] = useState(true)
   const [buildingTiers, setBuildingTiers] = useState(false)
 
@@ -184,11 +187,23 @@ export default function CreateTournament() {
     setError(null)
     setOddsWarning(false)
     try {
-      const [fieldData, oddsOutcomes, rankingsData] = await Promise.all([
-        getTournamentField(selectedSlashId),
+      const fieldData = await getTournamentField(selectedSlashId)
+
+      const hostCourse = fieldData.courses?.find(c => c.host === 'Yes') ?? fieldData.courses?.[0]
+      if (hostCourse?.courseName && !courseName.trim()) setCourseName(hostCourse.courseName)
+
+      const loc = hostCourse?.location
+      const geoQuery = loc?.city && loc?.state ? `${loc.city}, ${loc.state}` : (hostCourse?.courseName || '')
+
+      const [oddsOutcomes, rankingsData, geoResult] = await Promise.all([
         sportKey ? getGolfOdds(sportKey).catch(() => []) : Promise.resolve([]),
         getRankings().catch(() => null),
+        geoQuery
+          ? fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(geoQuery)}&count=1`)
+              .then(r => r.json()).then(d => d.results?.[0] ?? null).catch(() => null)
+          : Promise.resolve(null),
       ])
+      setGeoCoords({ lat: geoResult?.latitude ?? null, lon: geoResult?.longitude ?? null })
       if (sportKey && oddsOutcomes.length === 0) {
         setCachedData({ fieldData, rankingsData })
         setRetryIn(180)
@@ -252,10 +267,14 @@ export default function CreateTournament() {
         .from('tournaments')
         .insert({
           name,
+          pga_name: selectedPgaName || null,
+          course_name: courseName.trim() || null,
           slash_golf_tournament_id: selectedSlashId,
           pick_count: pickCount,
           scores_to_keep: scoresToKeep,
           lock_time: lockTime ? new Date(lockTime).toISOString() : null,
+          latitude: geoCoords.lat,
+          longitude: geoCoords.lon,
           join_code: generateJoinCode(),
           status: 'open',
           created_by: user.id,
@@ -299,6 +318,8 @@ export default function CreateTournament() {
       {/* Header */}
       <div className="bg-fairway px-6 py-5">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
+          <Link to="/dashboard" className="text-cream/50 hover:text-cream transition-colors text-sm">← Dashboard</Link>
+          <span className="text-cream/20 select-none">|</span>
           <span className="font-display font-bold text-cream text-xl tracking-tight">Create Tournament</span>
           <span className="text-cream/40 text-sm">Step {step} of 2</span>
         </div>
@@ -324,11 +345,16 @@ export default function CreateTournament() {
               />
             </div>
 
+
             <div>
               <label className={labelClass}>Slash Golf Tournament</label>
               <select
                 value={selectedSlashId}
-                onChange={e => setSelectedSlashId(e.target.value)}
+                onChange={e => {
+                  setSelectedSlashId(e.target.value)
+                  const t = slashTournaments.find(t => (t.tournId ?? t.id) === e.target.value)
+                  setSelectedPgaName(t?.name ?? '')
+                }}
                 disabled={loadingTournaments}
                 className={inputClass}
               >

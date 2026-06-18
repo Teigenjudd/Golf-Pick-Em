@@ -20,16 +20,20 @@ function StatusBadge({ status }) {
 
 // ── Tournaments ───────────────────────────────────────────────────────────────
 
+const MANUAL_REFRESH_LIMIT = 3
+
 function TournamentsTab() {
   const [tournaments, setTournaments] = useState([])
   const [loading, setLoading] = useState(true)
   const [copiedId, setCopiedId] = useState(null)
   const [updating, setUpdating] = useState(null)
+  const [refreshing, setRefreshing] = useState(null)
+  const [showClosed, setShowClosed] = useState(false)
 
   const load = useCallback(async () => {
     const { data } = await supabase
       .from('tournaments')
-      .select('id, name, status, lock_time, join_code, created_at')
+      .select('id, name, status, lock_time, join_code, created_at, manual_refresh_count, slash_golf_tournament_id')
       .order('created_at', { ascending: false })
     setTournaments(data ?? [])
     setLoading(false)
@@ -50,27 +54,53 @@ function TournamentsTab() {
     setUpdating(null)
   }
 
+  async function refreshScores(t) {
+    setRefreshing(t.id)
+    try {
+      await supabase.functions.invoke('poll-leaderboard', { body: { tournament_id: t.id } })
+      await supabase.from('tournaments').update({ manual_refresh_count: (t.manual_refresh_count ?? 0) + 1 }).eq('id', t.id)
+      await load()
+    } catch (err) {
+      console.error('Refresh failed:', err)
+    } finally {
+      setRefreshing(null)
+    }
+  }
+
   if (loading) return <p className="text-sm text-warm-400 py-6">Loading…</p>
+
+  const closedCount = tournaments.filter(t => t.status === 'complete').length
+  const visible = showClosed ? tournaments : tournaments.filter(t => t.status !== 'complete')
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-warm-400">
-          {tournaments.length} tournament{tournaments.length !== 1 ? 's' : ''}
+          {visible.length} tournament{visible.length !== 1 ? 's' : ''}
         </p>
-        <Link
-          to="/admin/create-tournament"
-          className="text-sm text-fairway font-medium hover:text-fairway/80 transition-colors"
-        >
-          + New Tournament
-        </Link>
+        <div className="flex items-center gap-4">
+          {closedCount > 0 && (
+            <button
+              onClick={() => setShowClosed(s => !s)}
+              className="text-sm text-warm-400 hover:text-charcoal transition-colors"
+            >
+              {showClosed ? 'Hide closed' : `Show closed (${closedCount})`}
+            </button>
+          )}
+          <Link
+            to="/admin/create-tournament"
+            className="text-sm text-fairway font-medium hover:text-fairway/80 transition-colors"
+          >
+            + New Tournament
+          </Link>
+        </div>
       </div>
 
-      {tournaments.length === 0 ? (
+      {visible.length === 0 ? (
         <p className="text-sm text-warm-400 py-4">No tournaments on the board yet.</p>
       ) : (
         <div className="space-y-3">
-          {tournaments.map(t => {
+          {visible.map(t => {
             const lockDate = t.lock_time
               ? new Date(t.lock_time).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
               : null
@@ -107,6 +137,29 @@ function TournamentsTab() {
                     {copiedId === t.id ? 'Copied!' : 'Copy'}
                   </button>
                 </div>
+
+                {/* Score refresh */}
+                {t.slash_golf_tournament_id && ['open', 'locked'].includes(t.status) && (() => {
+                  const remaining = MANUAL_REFRESH_LIMIT - (t.manual_refresh_count ?? 0)
+                  return (
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-warm-400">
+                        {remaining}/{MANUAL_REFRESH_LIMIT} score refreshes left
+                      </span>
+                      <button
+                        onClick={() => refreshScores(t)}
+                        disabled={refreshing === t.id || remaining <= 0}
+                        className={`text-xs px-2.5 py-1 rounded border font-medium transition-colors ${
+                          remaining <= 0
+                            ? 'border-warm-200 text-warm-300 cursor-not-allowed'
+                            : 'border-fairway/40 text-fairway hover:bg-fairway/5 disabled:opacity-50'
+                        }`}
+                      >
+                        {refreshing === t.id ? 'Refreshing…' : 'Refresh Scores'}
+                      </button>
+                    </div>
+                  )
+                })()}
 
                 {/* Status controls */}
                 {t.status !== 'complete' && (

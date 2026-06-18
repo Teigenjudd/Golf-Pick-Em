@@ -1,13 +1,12 @@
 -- ── Poll-leaderboard cron schedule ───────────────────────────────────────────
 -- EDT = UTC-4 | Window: 7am–8pm ET (11:00–00:00 UTC)
--- Last auto-poll each day fires at 23:00 UTC (7pm ET).
--- 8pm ET slot = 00:00 UTC next day; add optional jobs below if needed.
+-- Polls every 20 minutes during the window on tournament days.
 --
 -- ACTIVATE (run the morning of the first round):
 
 select cron.schedule(
   'poll-thursday',
-  '0 11-23 * * 4',
+  '*/20 11-23 * * 4',
   $$
   select net.http_post(
     url     := 'https://ryvwayvaudnroewhpnpj.supabase.co/functions/v1/poll-leaderboard',
@@ -19,7 +18,7 @@ select cron.schedule(
 
 select cron.schedule(
   'poll-friday',
-  '0 11-23 * * 5',
+  '*/20 11-23 * * 5',
   $$
   select net.http_post(
     url     := 'https://ryvwayvaudnroewhpnpj.supabase.co/functions/v1/poll-leaderboard',
@@ -31,7 +30,7 @@ select cron.schedule(
 
 select cron.schedule(
   'poll-saturday',
-  '0,30 11-23 * * 6',
+  '*/20 11-23 * * 6',
   $$
   select net.http_post(
     url     := 'https://ryvwayvaudnroewhpnpj.supabase.co/functions/v1/poll-leaderboard',
@@ -43,7 +42,7 @@ select cron.schedule(
 
 select cron.schedule(
   'poll-sunday',
-  '0,15,30,45 11-23 * * 0',
+  '*/20 11-23 * * 0',
   $$
   select net.http_post(
     url     := 'https://ryvwayvaudnroewhpnpj.supabase.co/functions/v1/poll-leaderboard',

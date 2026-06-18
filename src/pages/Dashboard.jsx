@@ -7,12 +7,14 @@ export default function Dashboard() {
   const { user, profile, loading, signOut } = useAuth()
   const [myTournaments, setMyTournaments] = useState([])
   const [adminTournaments, setAdminTournaments] = useState([])
+  const [showClosed, setShowClosed] = useState(false)
+  const [showClosedAdmin, setShowClosedAdmin] = useState(false)
 
   useEffect(() => {
     if (!user) return
     supabase
       .from('picks')
-      .select('tournament_id, status, tournaments(id, name)')
+      .select('tournament_id, status, tournaments(id, name, status)')
       .eq('user_id', user.id)
       .then(({ data }) => {
         if (!data) return
@@ -26,6 +28,7 @@ export default function Dashboard() {
           Object.values(map).map(t => ({
             id: t.id,
             name: t.name,
+            tournamentStatus: t.status,
             pickStatus: t.statuses.every(s => s === 'confirmed') ? 'confirmed' : 'pending',
           }))
         )
@@ -80,39 +83,66 @@ export default function Dashboard() {
         </p>
 
         {/* My Picks */}
-        {myTournaments.length > 0 && (
-          <section className="mb-8">
-            <h2 className="font-display font-bold text-xs uppercase tracking-widest text-warm-400 mb-3">
-              My Picks
-            </h2>
-            <div className="bg-white border border-warm-200 rounded-lg divide-y divide-warm-200">
-              {myTournaments.map(t => (
-                <div key={t.id} className="flex items-center gap-3 px-4 py-3.5">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${
-                    t.pickStatus === 'confirmed' ? 'bg-fairway' : 'bg-gold'
-                  }`} />
-                  <Link
-                    to={`/tournament/${t.id}`}
-                    className="flex-1 text-sm font-medium text-charcoal hover:text-fairway transition-colors"
+        {myTournaments.length > 0 && (() => {
+          const visible = showClosed
+            ? myTournaments
+            : myTournaments.filter(t => t.tournamentStatus !== 'complete')
+          const closedCount = myTournaments.filter(t => t.tournamentStatus === 'complete').length
+
+          return (
+            <section className="mb-8">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-display font-bold text-xs uppercase tracking-widest text-warm-400">
+                  My Picks
+                </h2>
+                {closedCount > 0 && (
+                  <button
+                    onClick={() => setShowClosed(s => !s)}
+                    className="text-xs text-warm-400 hover:text-charcoal transition-colors"
                   >
-                    {t.name}
-                  </Link>
-                  <Link
-                    to={`/tournament/${t.id}/picks`}
-                    className="text-xs text-warm-400 hover:text-fairway transition-colors"
-                  >
-                    view picks →
-                  </Link>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${
-                    t.pickStatus === 'confirmed' ? 'bg-fairway/10 text-fairway' : 'bg-gold/20 text-gold'
-                  }`}>
-                    {t.pickStatus}
-                  </span>
+                    {showClosed ? 'Hide closed' : `Show closed (${closedCount})`}
+                  </button>
+                )}
+              </div>
+              {visible.length > 0 ? (
+                <div className="bg-white border border-warm-200 rounded-lg divide-y divide-warm-200">
+                  {visible.map(t => {
+                    const isComplete = t.tournamentStatus === 'complete'
+                    const dotColor = isComplete ? 'bg-warm-300' : t.pickStatus === 'confirmed' ? 'bg-fairway' : 'bg-gold'
+                    return (
+                      <div key={t.id} className={`flex items-center gap-3 px-4 py-3.5 ${isComplete ? 'opacity-60' : ''}`}>
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
+                        <Link to={`/tournament/${t.id}`} className="flex-1 text-sm font-medium text-charcoal hover:text-fairway transition-colors">{t.name}</Link>
+                        {!isComplete && t.tournamentStatus === 'open' && (
+                          <Link
+                            to={`/tournament/${t.id}/picks`}
+                            className="text-xs text-warm-400 hover:text-fairway transition-colors shrink-0"
+                          >
+                            edit picks →
+                          </Link>
+                        )}
+                        <Link
+                          to={`/tournament/${t.id}`}
+                          className="text-xs text-warm-400 hover:text-fairway transition-colors shrink-0"
+                        >
+                          leaderboard →
+                        </Link>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${
+                          isComplete ? 'bg-warm-200 text-warm-400' :
+                          t.pickStatus === 'confirmed' ? 'bg-fairway/10 text-fairway' : 'bg-gold/20 text-gold'
+                        }`}>
+                          {isComplete ? 'closed' : t.pickStatus}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+              ) : (
+                <p className="text-sm text-warm-400">No active tournaments.</p>
+              )}
+            </section>
+          )
+        })()}
 
         {/* Empty state for players with no picks */}
         {myTournaments.length === 0 && profile?.role !== 'admin' && (
@@ -123,16 +153,29 @@ export default function Dashboard() {
         )}
 
         {/* Admin */}
-        {profile?.role === 'admin' && (
+        {profile?.role === 'admin' && (() => {
+          const adminClosedCount = adminTournaments.filter(t => t.status === 'complete').length
+          const visibleAdmin = showClosedAdmin ? adminTournaments : adminTournaments.filter(t => t.status !== 'complete')
+          return (
           <section>
-            <h2 className="font-display font-bold text-xs uppercase tracking-widest text-warm-400 mb-3">
-              Admin
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-display font-bold text-xs uppercase tracking-widest text-warm-400">
+                Admin
+              </h2>
+              {adminClosedCount > 0 && (
+                <button
+                  onClick={() => setShowClosedAdmin(s => !s)}
+                  className="text-xs text-warm-400 hover:text-charcoal transition-colors"
+                >
+                  {showClosedAdmin ? 'Hide closed' : `Show closed (${adminClosedCount})`}
+                </button>
+              )}
+            </div>
             <div className="bg-white border border-warm-200 rounded-lg">
-              {adminTournaments.length > 0 && (
+              {visibleAdmin.length > 0 && (
                 <div className="divide-y divide-warm-200">
-                  {adminTournaments.map(t => (
-                    <div key={t.id} className="flex items-center gap-3 px-4 py-3.5">
+                  {visibleAdmin.map(t => (
+                    <div key={t.id} className={`flex items-center gap-3 px-4 py-3.5 ${t.status === 'complete' ? 'opacity-60' : ''}`}>
                       <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot[t.status] ?? 'bg-warm-300'}`} />
                       <Link
                         to={`/tournament/${t.id}`}
@@ -163,7 +206,8 @@ export default function Dashboard() {
               </div>
             </div>
           </section>
-        )}
+          )
+        })()}
       </div>
     </div>
   )

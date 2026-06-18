@@ -1,5 +1,9 @@
 # Golf Pick'Em — Project Reference
 
+## Working Style
+
+When given a substantial instruction or multi-step request, respond with a short summary (under 100 words) of what you understand and plan to do — then wait for approval or refinement before writing any code. Skip this for simple one-liner fixes where the intent is unambiguous.
+
 ## Design System
 
 **Stack:** React + Vite + Tailwind CSS v4 (`@tailwindcss/vite`). Theme tokens live in `src/index.css` via `@theme {}` — there is no `tailwind.config.js`.
