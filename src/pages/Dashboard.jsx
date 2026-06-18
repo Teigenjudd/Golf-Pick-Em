@@ -112,20 +112,21 @@ export default function Dashboard() {
                     return (
                       <div key={t.id} className={`flex items-center gap-3 px-4 py-3.5 ${isComplete ? 'opacity-60' : ''}`}>
                         <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
-                        <Link
-                          to={`/tournament/${t.id}`}
-                          className="flex-1 text-sm font-medium text-charcoal hover:text-fairway transition-colors"
-                        >
-                          {t.name}
-                        </Link>
-                        {!isComplete && (
+                        <span className="flex-1 text-sm font-medium text-charcoal">{t.name}</span>
+                        {!isComplete && t.tournamentStatus === 'open' && (
                           <Link
                             to={`/tournament/${t.id}/picks`}
-                            className="text-xs text-warm-400 hover:text-fairway transition-colors"
+                            className="text-xs text-warm-400 hover:text-fairway transition-colors shrink-0"
                           >
-                            view picks →
+                            edit picks →
                           </Link>
                         )}
+                        <Link
+                          to={`/tournament/${t.id}`}
+                          className="text-xs text-warm-400 hover:text-fairway transition-colors shrink-0"
+                        >
+                          leaderboard →
+                        </Link>
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${
                           isComplete ? 'bg-warm-200 text-warm-400' :
                           t.pickStatus === 'confirmed' ? 'bg-fairway/10 text-fairway' : 'bg-gold/20 text-gold'

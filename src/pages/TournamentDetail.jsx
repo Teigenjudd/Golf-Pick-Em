@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { computeScores, assignRanks, formatScore } from '../utils/scoring'
 
-const POLL_SCHEDULE = { 4: 60, 5: 60, 6: 30, 0: 15 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -47,8 +46,7 @@ function weatherDescription(code) {
 function getNextPollTime() {
   const now = new Date()
   const dow = now.getUTCDay()
-  const interval = POLL_SCHEDULE[dow]
-  if (interval === undefined) return null
+  if (![4, 5, 6, 0].includes(dow)) return null
   const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
   const windowStart = 11 * 60
   const windowEnd = 24 * 60
@@ -58,7 +56,7 @@ function getNextPollTime() {
     next.setUTCHours(11, 0, 0, 0)
     return next
   }
-  const nextMin = Math.ceil((nowMin + 1) / interval) * interval
+  const nextMin = Math.ceil((nowMin + 1) / 20) * 20
   if (nextMin >= windowEnd) return null
   const next = new Date(now)
   next.setUTCHours(Math.floor(nextMin / 60), nextMin % 60, 0, 0)
@@ -343,11 +341,6 @@ export default function TournamentDetail() {
   const isDraft = tournament.status === 'draft'
   const hasCache = fetchedAt !== null
 
-  const nextPoll = getNextPollTime()
-  const minutesUntilPoll = nextPoll
-    ? Math.max(1, Math.ceil((nextPoll - new Date()) / 60000))
-    : null
-
   const lastUpdatedLabel = fetchedAt
     ? (() => {
         const diffMin = Math.round((Date.now() - new Date(fetchedAt).getTime()) / 60000)
@@ -416,11 +409,17 @@ export default function TournamentDetail() {
                   {roundBadge}
                 </p>
               )}
-              {minutesUntilPoll ? (
-                <p className="text-cream/50 text-sm">Next update in {minutesUntilPoll} min</p>
-              ) : lastUpdatedLabel ? (
-                <p className="text-cream/50 text-sm">Updated {lastUpdatedLabel}</p>
-              ) : null}
+              {lastUpdatedLabel && (
+                <p className="text-cream/50 text-sm flex items-center gap-1">
+                  Updated {lastUpdatedLabel}
+                  <span
+                    title="Leaderboard updates every 20 minutes during tournament rounds"
+                    className="cursor-help text-cream/30 hover:text-cream/60 transition-colors text-xs leading-none"
+                  >
+                    ⓘ
+                  </span>
+                </p>
+              )}
               {refreshing && (
                 <p className="text-cream/40 text-xs">Refreshing…</p>
               )}
