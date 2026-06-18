@@ -112,7 +112,7 @@ export default function Dashboard() {
                     return (
                       <div key={t.id} className={`flex items-center gap-3 px-4 py-3.5 ${isComplete ? 'opacity-60' : ''}`}>
                         <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
-                        <span className="flex-1 text-sm font-medium text-charcoal">{t.name}</span>
+                        <Link to={`/tournament/${t.id}`} className="flex-1 text-sm font-medium text-charcoal hover:text-fairway transition-colors">{t.name}</Link>
                         {!isComplete && t.tournamentStatus === 'open' && (
                           <Link
                             to={`/tournament/${t.id}/picks`}

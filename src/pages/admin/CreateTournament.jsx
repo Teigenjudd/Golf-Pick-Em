@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   DndContext,
   DragOverlay,
@@ -187,12 +187,19 @@ export default function CreateTournament() {
     setError(null)
     setOddsWarning(false)
     try {
-      const [fieldData, oddsOutcomes, rankingsData, geoResult] = await Promise.all([
-        getTournamentField(selectedSlashId),
+      const fieldData = await getTournamentField(selectedSlashId)
+
+      const hostCourse = fieldData.courses?.find(c => c.host === 'Yes') ?? fieldData.courses?.[0]
+      if (hostCourse?.courseName && !courseName.trim()) setCourseName(hostCourse.courseName)
+
+      const loc = hostCourse?.location
+      const geoQuery = loc?.city && loc?.state ? `${loc.city}, ${loc.state}` : (hostCourse?.courseName || '')
+
+      const [oddsOutcomes, rankingsData, geoResult] = await Promise.all([
         sportKey ? getGolfOdds(sportKey).catch(() => []) : Promise.resolve([]),
         getRankings().catch(() => null),
-        courseName.trim()
-          ? fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(courseName.trim())}&count=1`)
+        geoQuery
+          ? fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(geoQuery)}&count=1`)
               .then(r => r.json()).then(d => d.results?.[0] ?? null).catch(() => null)
           : Promise.resolve(null),
       ])
@@ -311,6 +318,8 @@ export default function CreateTournament() {
       {/* Header */}
       <div className="bg-fairway px-6 py-5">
         <div className="max-w-4xl mx-auto flex items-center gap-4">
+          <Link to="/dashboard" className="text-cream/50 hover:text-cream transition-colors text-sm">← Dashboard</Link>
+          <span className="text-cream/20 select-none">|</span>
           <span className="font-display font-bold text-cream text-xl tracking-tight">Create Tournament</span>
           <span className="text-cream/40 text-sm">Step {step} of 2</span>
         </div>
@@ -336,18 +345,6 @@ export default function CreateTournament() {
               />
             </div>
 
-            <div>
-              <label className={labelClass}>
-                Course / Venue <span className="normal-case font-normal text-warm-400">(for weather widget)</span>
-              </label>
-              <input
-                type="text"
-                value={courseName}
-                onChange={e => setCourseName(e.target.value)}
-                placeholder="e.g. Shinnecock Hills"
-                className={inputClass}
-              />
-            </div>
 
             <div>
               <label className={labelClass}>Slash Golf Tournament</label>
