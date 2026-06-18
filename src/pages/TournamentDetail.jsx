@@ -71,7 +71,7 @@ function scoreColor(score, active = true) {
   return 'text-charcoal'
 }
 
-// ── Widget sub-components ─────────────────────────────────────────────────────
+// ── Widgets ───────────────────────────────────────────────────────────────────
 
 function WidgetHeader({ children }) {
   return (
@@ -213,43 +213,6 @@ function TierValueWidget({ picks, leaderboardData }) {
   )
 }
 
-function ConditionsWidget({ latitude, longitude }) {
-  const [weather, setWeather] = useState(null)
-
-  useEffect(() => {
-    if (!latitude || !longitude) return
-    fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph`
-    )
-      .then(r => r.json())
-      .then(d => {
-        const c = d.current
-        setWeather({
-          temp: Math.round(c.temperature_2m),
-          wind: Math.round(c.wind_speed_10m),
-          description: weatherDescription(c.weather_code),
-        })
-      })
-      .catch(() => {})
-  }, [latitude, longitude])
-
-  if (!latitude || !longitude || !weather) return null
-
-  return (
-    <div>
-      <WidgetHeader>Course Conditions</WidgetHeader>
-      <div className="bg-fairway rounded-lg px-5 py-5">
-        <p className="font-display font-bold text-4xl text-cream tracking-tight leading-none">
-          {weather.temp}°F
-        </p>
-        <p className="text-cream/60 text-sm mt-2">
-          {weather.description} · {weather.wind}mph wind
-        </p>
-      </div>
-    </div>
-  )
-}
-
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function TournamentDetail() {
@@ -266,6 +229,7 @@ export default function TournamentDetail() {
   const [error, setError] = useState(null)
   const [expanded, setExpanded] = useState(new Set())
   const [copied, setCopied] = useState(false)
+  const [weather, setWeather] = useState(null)
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
@@ -322,6 +286,23 @@ export default function TournamentDetail() {
   }, [id])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!tournament?.latitude || !tournament?.longitude) return
+    fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${tournament.latitude}&longitude=${tournament.longitude}&current=temperature_2m,wind_speed_10m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph`
+    )
+      .then(r => r.json())
+      .then(d => {
+        const c = d.current
+        setWeather({
+          temp: Math.round(c.temperature_2m),
+          wind: Math.round(c.wind_speed_10m),
+          description: weatherDescription(c.weather_code),
+        })
+      })
+      .catch(() => {})
+  }, [tournament?.latitude, tournament?.longitude])
 
   function toggleExpanded(userId) {
     setExpanded(prev => {
@@ -404,17 +385,31 @@ export default function TournamentDetail() {
               </button>
             )}
           </div>
+
           <div className="flex items-end justify-between mt-4 gap-6">
+            {/* Left: course name + weather inline */}
             <div>
               {subLabel && (
                 <p className="font-display font-bold text-xs uppercase tracking-widest text-gold mb-1">
                   {subLabel}
                 </p>
               )}
-              <h1 className="font-display font-bold text-3xl sm:text-4xl text-cream tracking-tight leading-tight">
-                {heroName}
-              </h1>
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <h1 className="font-display font-bold text-3xl sm:text-4xl text-cream tracking-tight leading-tight">
+                  {heroName}
+                </h1>
+                {weather && (
+                  <>
+                    <span className="text-cream/20 text-xl font-light select-none">|</span>
+                    <span className="text-cream/50 text-sm">
+                      {weather.temp}°F · {weather.description} · {weather.wind}mph
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
+
+            {/* Right: round + update info */}
             <div className="text-right shrink-0 pb-0.5 space-y-0.5">
               {roundBadge && (
                 <p className="font-display font-bold text-xs uppercase tracking-widest text-gold">
@@ -434,163 +429,155 @@ export default function TournamentDetail() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-        {/* ── Two-column layout ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
+        {/* ── Pick'em Standings — full width ── */}
+        <div>
+          <h2 className="font-display font-bold text-xs uppercase tracking-widest text-warm-500 mb-2">
+            Pick'em Standings
+          </h2>
+          <div className="bg-white border border-warm-200 rounded-lg overflow-hidden">
+            {isDraft ? (
+              <div className="p-12 text-center">
+                <p className="text-sm text-warm-400">This tournament hasn't opened yet.</p>
+              </div>
+            ) : !hasCache ? (
+              <div className="p-12 text-center">
+                <p className="text-sm text-warm-500">Leaderboard opens once the first tee times go off.</p>
+                <p className="text-xs text-warm-400 mt-1.5">Check back once the round is underway.</p>
+              </div>
+            ) : standings.length === 0 ? (
+              <div className="p-12 text-center">
+                <p className="text-sm text-warm-400">No cards in yet.</p>
+              </div>
+            ) : (
+              <div>
+                {standings.map(entry => {
+                  const isExpanded = expanded.has(entry.user_id)
+                  const isMe = entry.user_id === user?.id
+                  const totalColor = entry.total_score === null
+                    ? 'text-warm-400'
+                    : entry.total_score < 0 ? 'text-birdie' : 'text-charcoal'
+                  const countingCount = entry.picks.filter(p => p.used_in_total).length
 
-          {/* Left: Pick'em Standings */}
-          <div>
-            <h2 className="font-display font-bold text-xs uppercase tracking-widest text-warm-500 mb-2">
-              Pick'em Standings
-            </h2>
-            <div className="bg-white border border-warm-200 rounded-lg overflow-hidden">
-
-              {/* Content states */}
-              {isDraft ? (
-                <div className="p-12 text-center">
-                  <p className="text-sm text-warm-400">This tournament hasn't opened yet.</p>
-                </div>
-              ) : !hasCache ? (
-                <div className="p-12 text-center">
-                  <p className="text-sm text-warm-500">Leaderboard opens once the first tee times go off.</p>
-                  <p className="text-xs text-warm-400 mt-1.5">Check back once the round is underway.</p>
-                </div>
-              ) : standings.length === 0 ? (
-                <div className="p-12 text-center">
-                  <p className="text-sm text-warm-400">No cards in yet.</p>
-                </div>
-              ) : (
-                <div>
-                  {standings.map(entry => {
-                    const isExpanded = expanded.has(entry.user_id)
-                    const isMe = entry.user_id === user?.id
-                    const totalColor = entry.total_score === null
-                      ? 'text-warm-400'
-                      : entry.total_score < 0 ? 'text-birdie' : 'text-charcoal'
-                    const countingCount = entry.picks.filter(p => p.used_in_total).length
-
-                    return (
-                      <div
-                        key={entry.user_id}
-                        className={`border-b border-warm-200 last:border-0 ${isMe ? 'bg-warm-100/60' : ''}`}
+                  return (
+                    <div
+                      key={entry.user_id}
+                      className={`border-b border-warm-200 last:border-0 ${isMe ? 'border-l-[3px] border-l-gold' : ''}`}
+                    >
+                      <button
+                        onClick={() => toggleExpanded(entry.user_id)}
+                        className={`w-full flex items-center gap-4 px-5 py-4 hover:bg-warm-100 transition-colors text-left ${isMe ? 'bg-warm-100/40' : ''}`}
                       >
-                        {/* Main row */}
-                        <button
-                          onClick={() => toggleExpanded(entry.user_id)}
-                          className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-warm-100 transition-colors text-left"
-                        >
-                          {/* Rank badge */}
-                          <span className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-display font-bold text-sm tabular-nums leading-none ${
-                            entry.rank === 1 ? 'bg-gold/20 text-gold' : 'bg-warm-200 text-warm-600'
-                          }`}>
-                            {entry.rank ?? '—'}
-                          </span>
+                        {/* Rank badge — 40px */}
+                        <span className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-display font-bold text-base tabular-nums leading-none ${
+                          entry.rank === 1 ? 'bg-gold/20 text-gold' : 'bg-warm-200 text-warm-600'
+                        }`}>
+                          {entry.rank ?? '—'}
+                        </span>
 
-                          {/* Name + subtitle */}
-                          <div className="flex-1 min-w-0 text-left">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium text-charcoal leading-snug">
-                                {entry.display_name}
+                        {/* Name + subtitle */}
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-base font-medium text-charcoal leading-snug">
+                              {entry.display_name}
+                            </span>
+                            {isMe && (
+                              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gold/20 text-gold uppercase tracking-wide shrink-0">
+                                you
                               </span>
-                              {isMe && (
-                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gold/20 text-gold uppercase tracking-wide shrink-0">
-                                  you
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-warm-400 mt-0.5">
-                              {countingCount > 0
-                                ? `${countingCount} of ${tournament.pick_count} counting`
-                                : `${tournament.pick_count} picks`}
-                              {!isExpanded && (
-                                <span className="text-warm-300"> · tap to expand</span>
-                              )}
-                            </p>
+                            )}
                           </div>
+                          <p className="text-xs text-warm-400 mt-0.5">
+                            {countingCount > 0
+                              ? `${countingCount} of ${tournament.pick_count} counting`
+                              : `${tournament.pick_count} picks`}
+                            {!isExpanded && (
+                              <span className="text-warm-300"> · tap to expand</span>
+                            )}
+                          </p>
+                        </div>
 
-                          {/* Score */}
-                          <span className={`font-display font-bold tabular-nums text-xl shrink-0 ${totalColor}`}>
-                            {entry.total_score === null ? '—' : formatScore(entry.total_score)}
-                          </span>
+                        {/* Score */}
+                        <span className={`font-display font-bold tabular-nums text-2xl shrink-0 ${totalColor}`}>
+                          {entry.total_score === null ? '—' : formatScore(entry.total_score)}
+                        </span>
 
-                          {/* Chevron */}
-                          <svg
-                            className={`w-4 h-4 text-warm-300 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                            fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        </button>
+                        {/* Chevron */}
+                        <svg
+                          className={`w-4 h-4 text-warm-300 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
 
-                        {/* Scorecard expand — gold left bar is the signature element */}
-                        {isExpanded && (
-                          <div className="flex border-t border-warm-200">
-                            <div className="w-[3px] bg-gold shrink-0" />
-                            <div className="flex-1 bg-warm-100 px-5 py-3">
-                              <div className="space-y-2">
-                                {entry.picks.map((pick, i) => {
-                                  const inactive = pick.withdrawn || pick.cut
-                                  const pickColor = scoreColor(pick.score, !inactive && pick.used_in_total)
-                                  return (
-                                    <div key={i} className="flex items-center gap-3 text-sm">
-                                      <span className="w-5 h-5 rounded-full bg-fairway/80 flex items-center justify-center shrink-0 text-[10px] font-display font-bold text-cream leading-none">
-                                        {i + 1}
-                                      </span>
-                                      <span className={`flex-1 leading-snug ${
-                                        inactive ? 'line-through text-warm-400' :
-                                        pick.used_in_total ? 'text-charcoal' : 'text-warm-400'
-                                      }`}>
-                                        {pick.player_name}
-                                      </span>
-                                      {pick.withdrawn && (
-                                        <span className="text-[10px] font-bold text-birdie bg-birdie/10 px-1.5 py-0.5 rounded uppercase tracking-wide">WD</span>
-                                      )}
-                                      {pick.cut && (
-                                        <span className="text-[10px] font-bold text-warm-500 bg-warm-200 px-1.5 py-0.5 rounded uppercase tracking-wide">CUT</span>
-                                      )}
-                                      {!inactive && pick.thru === 'F' && (
-                                        <span className="text-xs text-warm-400">F</span>
-                                      )}
-                                      {!inactive && pick.thru && pick.thru !== 'F' && pick.thru !== '' && (
-                                        <span className="text-xs text-warm-400">thru {pick.thru}</span>
-                                      )}
-                                      <span className={`font-display font-bold tabular-nums text-sm w-8 text-right ${pickColor}`}>
-                                        {pick.score === null ? '—' : formatScore(pick.score)}
-                                      </span>
-                                    </div>
-                                  )
-                                })}
-                              </div>
+                      {/* Scorecard expand — gold left bar is the signature element */}
+                      {isExpanded && (
+                        <div className="flex border-t border-warm-200">
+                          <div className="w-[3px] bg-gold shrink-0" />
+                          <div className="flex-1 bg-warm-100 px-5 py-3">
+                            <div className="space-y-2">
+                              {entry.picks.map((pick, i) => {
+                                const inactive = pick.withdrawn || pick.cut
+                                const pickColor = scoreColor(pick.score, !inactive && pick.used_in_total)
+                                return (
+                                  <div key={i} className="flex items-center gap-3 text-sm">
+                                    <span className="w-5 h-5 rounded-full bg-fairway/80 flex items-center justify-center shrink-0 text-[10px] font-display font-bold text-cream leading-none">
+                                      {i + 1}
+                                    </span>
+                                    <span className={`flex-1 leading-snug ${
+                                      inactive ? 'line-through text-warm-400' :
+                                      pick.used_in_total ? 'text-charcoal' : 'text-warm-400'
+                                    }`}>
+                                      {pick.player_name}
+                                    </span>
+                                    {pick.withdrawn && (
+                                      <span className="text-[10px] font-bold text-birdie bg-birdie/10 px-1.5 py-0.5 rounded uppercase tracking-wide">WD</span>
+                                    )}
+                                    {pick.cut && (
+                                      <span className="text-[10px] font-bold text-warm-500 bg-warm-200 px-1.5 py-0.5 rounded uppercase tracking-wide">CUT</span>
+                                    )}
+                                    {!inactive && pick.thru === 'F' && (
+                                      <span className="text-xs text-warm-400">F</span>
+                                    )}
+                                    {!inactive && pick.thru && pick.thru !== 'F' && pick.thru !== '' && (
+                                      <span className="text-xs text-warm-400">thru {pick.thru}</span>
+                                    )}
+                                    <span className={`font-display font-bold tabular-nums text-sm w-8 text-right ${pickColor}`}>
+                                      {pick.score === null ? '—' : formatScore(pick.score)}
+                                    </span>
+                                  </div>
+                                )
+                              })}
+                            </div>
 
-                              {/* Total row */}
-                              <div className="flex items-center gap-3 pt-2.5 mt-2.5 border-t border-warm-200">
-                                <span className="w-5 shrink-0" />
-                                <span className="flex-1 font-display font-bold text-xs uppercase tracking-widest text-warm-400">
-                                  Total
-                                </span>
-                                <span className={`font-display font-bold tabular-nums text-sm w-8 text-right ${totalColor}`}>
-                                  {entry.total_score === null ? '—' : formatScore(entry.total_score)}
-                                </span>
-                              </div>
+                            {/* Total row */}
+                            <div className="flex items-center gap-3 pt-2.5 mt-2.5 border-t border-warm-200">
+                              <span className="w-5 shrink-0" />
+                              <span className="flex-1 font-display font-bold text-xs uppercase tracking-widest text-warm-400">
+                                Total
+                              </span>
+                              <span className={`font-display font-bold tabular-nums text-sm w-8 text-right ${totalColor}`}>
+                                {entry.total_score === null ? '—' : formatScore(entry.total_score)}
+                              </span>
                             </div>
                           </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
+        </div>
 
-          {/* Right: Sidebar widgets */}
-          <div className="space-y-5">
-            <PGALeadersWidget leaderboardData={leaderboardData} />
-            <MostPopularWidget picks={rawPicks} />
-            <TierValueWidget picks={rawPicks} leaderboardData={leaderboardData} />
-            <ConditionsWidget latitude={tournament.latitude} longitude={tournament.longitude} />
-          </div>
+        {/* ── Three-column widget row ── */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <PGALeadersWidget leaderboardData={leaderboardData} />
+          <MostPopularWidget picks={rawPicks} />
+          <TierValueWidget picks={rawPicks} leaderboardData={leaderboardData} />
         </div>
       </div>
     </div>
