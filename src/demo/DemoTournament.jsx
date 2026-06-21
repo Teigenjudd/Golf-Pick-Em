@@ -3,12 +3,14 @@ import { useDemo } from './DemoContext'
 import { demoTournament, demoParticipants, demoLeaderboardData } from './demoData'
 import { computeScores, assignRanks } from '../utils/scoring'
 import Standings from '../components/leaderboard/Standings'
-import { PGALeadersWidget, MostPopularWidget, TierValueWidget } from '../components/leaderboard/Widgets'
+import { PGALeadersWidget, MostPopularWidget, TierValueWidget, PrizePoolWidget } from '../components/leaderboard/Widgets'
 
 export default function DemoTournament() {
   const { submitted, myPickRows } = useDemo()
 
   const picks = [...demoParticipants, ...myPickRows]
+  const participantCount = new Set(picks.map(p => p.user_id)).size
+  const hasPrize = demoTournament.stake_amount && demoTournament.payout_structure?.length
   const standings = assignRanks(computeScores({
     picks,
     leaderboardData: demoLeaderboardData,
@@ -83,8 +85,15 @@ export default function DemoTournament() {
           </div>
         </div>
 
-        {/* ── Three-column widget row ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* ── Widget row ── */}
+        <div className={`grid gap-4 ${hasPrize ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
+          {hasPrize && (
+            <PrizePoolWidget
+              stakeAmount={demoTournament.stake_amount}
+              participantCount={participantCount}
+              payoutStructure={demoTournament.payout_structure}
+            />
+          )}
           <PGALeadersWidget leaderboardData={demoLeaderboardData} />
           <MostPopularWidget picks={picks} />
           <TierValueWidget picks={picks} leaderboardData={demoLeaderboardData} />

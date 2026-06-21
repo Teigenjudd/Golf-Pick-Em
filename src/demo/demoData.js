@@ -10,7 +10,9 @@ export const demoTournament = {
   "status": "open",
   "pick_count": 8,
   "scores_to_keep": 5,
-  "lock_time": null
+  "lock_time": null,
+  "stake_amount": 25,
+  "payout_structure": [60, 30, 10]
 }
 
 export const demoTiers = [

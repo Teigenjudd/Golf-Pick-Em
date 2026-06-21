@@ -1,4 +1,5 @@
 import { formatScore } from '../../utils/scoring'
+import { ordinal, formatMoney } from '../../utils/format'
 
 // Shared leaderboard widgets, used by the live TournamentDetail page and the demo.
 // Presentational only — all data comes in via props.
@@ -101,6 +102,38 @@ export function MostPopularWidget({ picks }) {
                 style={{ width: `${Math.round((p.count / participants) * 100)}%` }}
               />
             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function PrizePoolWidget({ stakeAmount, participantCount, payoutStructure }) {
+  if (!stakeAmount || !payoutStructure?.length || !participantCount) return null
+
+  const total = Math.round(stakeAmount * participantCount)
+  // Whole-dollar payouts; rounding remainder goes to 1st so the parts sum to total.
+  const payouts = payoutStructure.map(pct => Math.round((total * pct) / 100))
+  const diff = total - payouts.reduce((a, b) => a + b, 0)
+  if (payouts.length) payouts[0] += diff
+
+  return (
+    <div>
+      <WidgetHeader>Prize Pool</WidgetHeader>
+      <div className="bg-white border border-warm-200 rounded-lg overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-warm-200 bg-warm-100 flex items-baseline justify-between">
+          <span className="font-display font-bold tabular-nums text-lg text-fairway">{formatMoney(total)}</span>
+          <span className="text-xs text-warm-400">{participantCount} × {formatMoney(stakeAmount)}</span>
+        </div>
+        {payouts.map((amount, i) => (
+          <div
+            key={i}
+            className={`flex items-center px-4 py-2.5 text-sm ${i < payouts.length - 1 ? 'border-b border-warm-200' : ''}`}
+          >
+            <span className="w-12 text-xs text-warm-400 shrink-0">{ordinal(i + 1)}</span>
+            <span className="flex-1" />
+            <span className="font-display font-bold tabular-nums text-charcoal">{formatMoney(amount)}</span>
           </div>
         ))}
       </div>

@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext'
 import { getTournaments, getTournamentField, getRankings } from '../../lib/slashGolf'
 import { getGolfOdds, GOLF_SPORT_KEYS } from '../../lib/oddsApi'
 import { buildTiers } from '../../utils/tierBuilder'
+import { ordinal } from '../../utils/format'
 
 function unwrapNumber(val) {
   if (val == null) return null
@@ -115,6 +116,8 @@ export default function CreateTournament() {
   const [pickCount, setPickCount] = useState(8)
   const [scoresToKeep, setScoresToKeep] = useState(5)
   const [lockTime, setLockTime] = useState('')
+  const [stakeAmount, setStakeAmount] = useState('')
+  const [payouts, setPayouts] = useState([]) // array of percent strings, one per placement
   const [courseName, setCourseName] = useState('')
   const [geoCoords, setGeoCoords] = useState({ lat: null, lon: null })
   const [loadingTournaments, setLoadingTournaments] = useState(true)
@@ -182,6 +185,13 @@ export default function CreateTournament() {
     if (!name || !selectedSlashId) {
       setError('Please fill in all required fields.')
       return
+    }
+    if (Number(stakeAmount) > 0) {
+      const nums = payouts.map(Number)
+      if (!nums.length || nums.some(n => !(n > 0)) || nums.reduce((a, b) => a + b, 0) !== 100) {
+        setError('Payout percentages must add up to exactly 100%.')
+        return
+      }
     }
     setBuildingTiers(true)
     setError(null)
@@ -259,6 +269,11 @@ export default function CreateTournament() {
     })
   }
 
+  function addPayout() { setPayouts(p => [...p, '']) }
+  function removePayout(i) { setPayouts(p => p.filter((_, idx) => idx !== i)) }
+  function updatePayout(i, val) { setPayouts(p => p.map((x, idx) => (idx === i ? val : x))) }
+  const payoutSum = payouts.reduce((s, p) => s + (parseFloat(p) || 0), 0)
+
   async function handleCreate() {
     setSaving(true)
     setError(null)
@@ -272,6 +287,8 @@ export default function CreateTournament() {
           slash_golf_tournament_id: selectedSlashId,
           pick_count: pickCount,
           scores_to_keep: scoresToKeep,
+          stake_amount: Number(stakeAmount) > 0 ? Number(stakeAmount) : null,
+          payout_structure: Number(stakeAmount) > 0 ? payouts.map(Number) : null,
           lock_time: lockTime ? new Date(lockTime).toISOString() : null,
           latitude: geoCoords.lat,
           longitude: geoCoords.lon,
@@ -415,6 +432,66 @@ export default function CreateTournament() {
                 className={inputClass}
               />
             </div>
+
+            {/* Prize pool (optional) */}
+            <div>
+              <label className={labelClass}>
+                Stake per Player <span className="normal-case font-normal text-warm-400">(optional — $)</span>
+              </label>
+              <input
+                type="number"
+                min={0}
+                step="1"
+                value={stakeAmount}
+                onChange={e => {
+                  setStakeAmount(e.target.value)
+                  if (Number(e.target.value) > 0 && payouts.length === 0) setPayouts([''])
+                }}
+                placeholder="e.g. 25"
+                className={inputClass}
+              />
+            </div>
+
+            {Number(stakeAmount) > 0 && (
+              <div className="rounded-lg border border-warm-200 bg-warm-100/50 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-warm-500 uppercase tracking-wider">Payout Structure</p>
+                  <span className={`text-xs font-medium ${payoutSum === 100 ? 'text-fairway' : 'text-birdie'}`}>
+                    {payoutSum}% {payoutSum === 100 ? '✓' : 'of 100%'}
+                  </span>
+                </div>
+                {payouts.map((pct, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-sm text-charcoal w-14 shrink-0">{ordinal(i + 1)}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={pct}
+                      onChange={e => updatePayout(i, e.target.value)}
+                      placeholder="%"
+                      className="flex-1 px-3 py-2 border border-warm-300 rounded-lg text-sm text-charcoal bg-white focus:outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway transition-colors"
+                    />
+                    <span className="text-warm-400 text-sm w-4">%</span>
+                    <button
+                      type="button"
+                      onClick={() => removePayout(i)}
+                      className="text-warm-400 hover:text-birdie transition-colors text-sm px-1.5"
+                      aria-label={`Remove ${ordinal(i + 1)} place`}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addPayout}
+                  className="text-sm text-fairway font-medium hover:text-fairway/80 transition-colors"
+                >
+                  + Add placement
+                </button>
+              </div>
+            )}
 
             {oddsWarning ? (
               <div className="rounded-lg border border-gold/30 bg-gold/5 p-4 space-y-3">

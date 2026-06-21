@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { computeScores, assignRanks } from '../utils/scoring'
 import Standings from '../components/leaderboard/Standings'
-import { PGALeadersWidget, MostPopularWidget, TierValueWidget } from '../components/leaderboard/Widgets'
+import { PGALeadersWidget, MostPopularWidget, TierValueWidget, PrizePoolWidget } from '../components/leaderboard/Widgets'
 
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -26,26 +26,6 @@ function weatherDescription(code) {
   if (code <= 77) return 'Snow'
   if (code <= 82) return 'Showers'
   return 'Thunderstorm'
-}
-
-function getNextPollTime() {
-  const now = new Date()
-  const dow = now.getUTCDay()
-  if (![4, 5, 6, 0].includes(dow)) return null
-  const nowMin = now.getUTCHours() * 60 + now.getUTCMinutes()
-  const windowStart = 11 * 60
-  const windowEnd = 24 * 60
-  if (nowMin >= windowEnd) return null
-  if (nowMin < windowStart) {
-    const next = new Date(now)
-    next.setUTCHours(11, 0, 0, 0)
-    return next
-  }
-  const nextMin = Math.ceil((nowMin + 1) / 20) * 20
-  if (nextMin >= windowEnd) return null
-  const next = new Date(now)
-  next.setUTCHours(Math.floor(nextMin / 60), nextMin % 60, 0, 0)
-  return next
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -74,7 +54,7 @@ export default function TournamentDetail() {
     ] = await Promise.all([
       supabase
         .from('tournaments')
-        .select('id, name, pga_name, course_name, status, scores_to_keep, pick_count, join_code, lock_time, latitude, longitude')
+        .select('id, name, pga_name, course_name, status, scores_to_keep, pick_count, join_code, lock_time, latitude, longitude, stake_amount, payout_structure')
         .eq('id', id)
         .single(),
       supabase
@@ -187,6 +167,9 @@ export default function TournamentDetail() {
   const heroName = tournament.course_name ?? tournament.name
   const subLabel = tournament.pga_name ?? (tournament.course_name ? tournament.name : null)
 
+  const participantCount = new Set(rawPicks.map(p => p.user_id)).size
+  const hasPrize = tournament.stake_amount && tournament.payout_structure?.length
+
   return (
     <div className="min-h-screen bg-cream">
 
@@ -287,8 +270,15 @@ export default function TournamentDetail() {
           </div>
         </div>
 
-        {/* ── Three-column widget row ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* ── Widget row ── */}
+        <div className={`grid gap-4 ${hasPrize ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
+          {hasPrize && (
+            <PrizePoolWidget
+              stakeAmount={tournament.stake_amount}
+              participantCount={participantCount}
+              payoutStructure={tournament.payout_structure}
+            />
+          )}
           <PGALeadersWidget leaderboardData={leaderboardData} />
           <MostPopularWidget picks={rawPicks} />
           <TierValueWidget picks={rawPicks} leaderboardData={leaderboardData} />
