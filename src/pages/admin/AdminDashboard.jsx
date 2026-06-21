@@ -223,10 +223,18 @@ function ParticipantsTab() {
 
   async function loadParticipants(tournamentId) {
     setLoadingParticipants(true)
-    const { data } = await supabase
-      .from('picks')
-      .select('user_id, player_name, tiers(tier_number, label), profiles(display_name, email)')
-      .eq('tournament_id', tournamentId)
+    // Email is column-restricted on profiles, so pull it from the admin RPC and
+    // merge it in by user_id rather than embedding it on the picks query.
+    const [{ data }, { data: users }] = await Promise.all([
+      supabase
+        .from('picks')
+        .select('user_id, player_name, tiers(tier_number, label), profiles(display_name)')
+        .eq('tournament_id', tournamentId),
+      supabase.rpc('admin_list_users'),
+    ])
+
+    const emailById = {}
+    ;(users ?? []).forEach(u => { emailById[u.id] = u.email })
 
     const map = {}
     ;(data ?? []).forEach(pick => {
@@ -235,7 +243,7 @@ function ParticipantsTab() {
         map[uid] = {
           user_id: uid,
           display_name: pick.profiles?.display_name ?? 'Participant',
-          email: pick.profiles?.email ?? '',
+          email: emailById[uid] ?? '',
           picks: [],
         }
       }
@@ -340,10 +348,8 @@ function UsersTab() {
   const [updating, setUpdating] = useState(null)
 
   const load = useCallback(async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, display_name, email, role, created_at')
-      .order('created_at', { ascending: false })
+    // Email is column-restricted on profiles; admins read it via this RPC.
+    const { data } = await supabase.rpc('admin_list_users')
     setUsers(data ?? [])
     setLoading(false)
   }, [])
