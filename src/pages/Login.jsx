@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 export default function Login() {
@@ -73,6 +74,13 @@ export default function Login() {
             </form>
           )}
         </div>
+
+        <p className="text-center text-xs text-warm-400 mt-6">
+          Just looking around?{' '}
+          <Link to="/demo" className="text-fairway hover:text-fairway/80 font-medium transition-colors">
+            Try the demo →
+          </Link>
+        </p>
       </div>
     </div>
   )

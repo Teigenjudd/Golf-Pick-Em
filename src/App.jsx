@@ -9,6 +9,11 @@ import Picks from './pages/Picks'
 import CreateTournament from './pages/admin/CreateTournament'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import TournamentDetail from './pages/TournamentDetail'
+import { DemoProvider } from './demo/DemoContext'
+import DemoLayout from './demo/DemoLayout'
+import DemoLanding from './demo/DemoLanding'
+import DemoTournament from './demo/DemoTournament'
+import DemoPicks from './demo/DemoPicks'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -32,6 +37,14 @@ function App() {
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+
+          {/* Public demo — no auth, sample data (DemoProvider persists picks across /demo/*) */}
+          <Route path="/demo" element={<DemoProvider><DemoLayout /></DemoProvider>}>
+            <Route index element={<DemoLanding />} />
+            <Route path="tournament" element={<DemoTournament />} />
+            <Route path="picks" element={<DemoPicks />} />
+          </Route>
+
           <Route path="/pending" element={<Pending />} />
           <Route path="/join/:code" element={<Join />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
