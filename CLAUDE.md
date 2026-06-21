@@ -69,20 +69,18 @@ Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` he
 ## Architecture Summary
 
 - **Brand:** App is called Poold, domain is getpoold.app (deployed on Netlify).
-- **Auth:** Supabase magic link (`signInWithOtp`). Callback at `/auth/callback` checks `profile.status === 'approved'` or `role === 'admin'`. Profiles auto-approve on creation (status: `'approved'` by default via trigger). No admin approval workflow for new users. Join code + magic link is the access gate.
+- **Auth:** Supabase magic link (`signInWithOtp`). `AuthCallback.jsx` redirects to `/dashboard` or `/join/:code` — no status gate. `ProtectedRoute` checks `user` exists; `AdminRoute` checks `profile.role === 'admin'`. Profiles auto-approve on creation via DB trigger. Join code + magic link is the access gate.
 - **Picks:** Auto-confirmed on submit (`status: 'confirmed'`). Re-submit deletes existing picks and re-inserts.
-- **Leaderboard:** Cached in `leaderboard_cache` table. Poll via `poll-leaderboard` edge function (pg_cron on tournament weekends, or admin "Refresh Now" button — 3/tournament limit).
-- **Manual refresh:** Admin "Refresh Now" button on TournamentDetail calls `poll-leaderboard` edge function directly. `tournaments.manual_refresh_count` tracks usage, capped at 3 per tournament.
+- **Leaderboard:** Cached in `leaderboard_cache` table. Poll via `poll-leaderboard` edge function (pg_cron on tournament weekends, or admin "Refresh Now" button — 3/tournament limit via `tournaments.manual_refresh_count`).
 - **Scoring:** `src/utils/scoring.js`. Scores are relative-to-par strings (`"-12"`, `"E"`, `"+4"`, `"-"`). `parseInt` handles signed strings; `"E"` → 0; `"-"`/null → null (not started). WD and CUT both penalized +20 and remain in scoring pool. Best N of M scores count.
 - **APIs:**
-  - Slash Golf via RapidAPI — field (player list) + live leaderboard data
-  - The Odds API — outright winner markets for majors only
-  - Open-Meteo — current weather conditions, no key required
-  - Nominatim/OpenStreetMap — geocoding at tournament creation, no key required
-- **Weather:** `lat`/`lng` stored on `tournaments` table, fetched via Nominatim at creation time, Open-Meteo forecast called client-side on leaderboard page load. Omitted silently if `lat`/`lng` is null.
-- **Cron schedule:** 4 separate pg_cron jobs (`poll-thursday`/`friday` at 60min, `poll-saturday` at 30min, `poll-sunday` at 15min), all scoped to 7am–8pm ET window. SQL lives in `supabase/cron-schedule.sql`. Run manually before tournament weekend, unschedule after.
-- **Cron SQL:** `supabase/cron-schedule.sql` — run manually before/after each tournament weekend.
-- **Security TODO:** Slash Golf and Odds API keys are currently called client-side (`VITE_` prefix, exposed in browser). Should be moved to edge functions before public launch.
+  - Slash Golf via RapidAPI — proxied through `slash-golf-proxy` edge function (field + live leaderboard). API key stored as Supabase secret, never exposed to browser.
+  - The Odds API — called client-side (`VITE_ODDS_API_KEY`). Outright winner markets for majors only.
+  - Open-Meteo — weather forecast, called client-side on TournamentDetail load. No key required.
+  - Nominatim/OpenStreetMap — geocoding at tournament creation time only. No key required.
+- **Weather:** `latitude`/`longitude` stored on `tournaments` table, fetched via Nominatim at creation. Open-Meteo forecast called client-side on TournamentDetail load. Omitted silently if `latitude`/`longitude` is null.
+- **Cron schedule:** 4 pg_cron jobs (`poll-thursday` through `poll-sunday`), each polling every 20 minutes (`*/20 11-23`) during the 7am–8pm ET window. SQL lives in `supabase/cron-schedule.sql`. Run manually before tournament weekend, unschedule after.
+- **Security TODO:** The Odds API key is client-side (`VITE_ODDS_API_KEY`, exposed in browser). Should be moved to an edge function before public launch.
 
 ## Routes
 
@@ -100,7 +98,7 @@ Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` he
 
 ## Leaderboard Page Layout (TournamentDetail.jsx)
 
-- **Fairway header:** tournament name, course, status badge. Weather inline next to course name: `"78°F · Clear · 8mph"`. Omitted silently if `lat`/`lng` is null on the tournament row.
+- **Fairway header:** tournament name, course, status badge. Weather inline next to course name: `"78°F · Clear · 8mph"`. Omitted silently if `latitude`/`longitude` is null on the tournament row.
 - **Full-width Pick'em Standings:** main hero section with scorecard-expand interaction (gold left-bar, tier circles, tabular scores, TOTAL row).
 - **Widget row (3-column below standings):**
   - PGA Leaders — top 5 players from leaderboard cache
