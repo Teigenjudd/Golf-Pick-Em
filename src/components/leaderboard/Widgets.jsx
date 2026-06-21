@@ -132,7 +132,7 @@ export function PrizePoolWidget({ stakeAmount, participantCount, payoutStructure
             className={`flex items-center px-4 py-2.5 text-sm ${i < payouts.length - 1 ? 'border-b border-warm-200' : ''}`}
           >
             <span className="w-12 text-xs text-warm-400 shrink-0">{ordinal(i + 1)}</span>
-            <span className="flex-1" />
+            <span className="flex-1 text-xs text-warm-400 tabular-nums">{payoutStructure[i]}%</span>
             <span className="font-display font-bold tabular-nums text-charcoal">{formatMoney(amount)}</span>
           </div>
         ))}
