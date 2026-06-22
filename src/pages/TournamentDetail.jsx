@@ -2,20 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { computeScores, assignRanks } from '../utils/scoring'
+import { computeScores, assignRanks, unwrapNumber } from '../utils/scoring'
 import Standings from '../components/leaderboard/Standings'
 import { PGALeadersWidget, MostPopularWidget, TierValueWidget, PrizePoolWidget } from '../components/leaderboard/Widgets'
 
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function unwrapNumber(val) {
-  if (val == null) return null
-  if (typeof val === 'number') return val
-  if (val.$numberInt !== undefined) return parseInt(val.$numberInt, 10)
-  if (val.$numberDouble !== undefined) return parseFloat(val.$numberDouble)
-  return null
-}
 
 function weatherDescription(code) {
   if (code === 0) return 'Clear'

@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import AuthCallback from './pages/AuthCallback'
-import Pending from './pages/Pending'
 import Dashboard from './pages/Dashboard'
 import Join from './pages/Join'
 import Picks from './pages/Picks'
@@ -37,6 +36,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/join/:code" element={<Join />} />
 
           {/* Public demo — no auth, sample data (DemoProvider persists picks across /demo/*) */}
           <Route path="/demo" element={<DemoProvider><DemoLayout /></DemoProvider>}>
@@ -45,8 +45,6 @@ function App() {
             <Route path="picks" element={<DemoPicks />} />
           </Route>
 
-          <Route path="/pending" element={<Pending />} />
-          <Route path="/join/:code" element={<Join />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/create-tournament" element={<AdminRoute><CreateTournament /></AdminRoute>} />

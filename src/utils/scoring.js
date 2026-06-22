@@ -1,13 +1,16 @@
+// Slash Golf data helpers (exported — shared by the leaderboard widgets,
+// TournamentDetail, and CreateTournament; keep a single copy here).
+
 // Parses the Slash Golf `total` string to a number.
 // "-10" → -10, "+3" → 3, "E" → 0, "-" / "" / null → null (not yet scored)
-function parseScore(total) {
+export function parseScore(total) {
   if (!total || total === '-' || total === '') return null
   if (total === 'E') return 0
   const n = parseInt(total, 10)
   return isNaN(n) ? null : n
 }
 
-function normalizeName(name) {
+export function normalizeName(name) {
   return name
     .toLowerCase()
     .normalize('NFD')
@@ -15,6 +18,17 @@ function normalizeName(name) {
     .replace(/[^a-z\s]/g, '')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+// Unwraps MongoDB Extended JSON numbers from Slash Golf responses.
+// { $numberInt: "3" } → 3, { $numberDouble: "1.5" } → 1.5, plain number → itself,
+// anything else → null.
+export function unwrapNumber(val) {
+  if (val == null) return null
+  if (typeof val === 'number') return val
+  if (val.$numberInt !== undefined) return parseInt(val.$numberInt, 10)
+  if (val.$numberDouble !== undefined) return parseFloat(val.$numberDouble)
+  return null
 }
 
 // picks: rows from Supabase — { user_id, player_id, player_name, profiles: { display_name } }
