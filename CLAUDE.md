@@ -55,7 +55,7 @@ On the leaderboard (TournamentDetail), each row expands via a `flex` container w
 
 ### Page Header Pattern
 
-Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` header band with `text-cream` content. Auth/utility pages (Login, Join, Pending) use a centered layout on `bg-cream` with a large `font-display font-bold text-fairway` wordmark.
+Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` header band with `text-cream` content. Auth/utility pages (Login, Join) use a centered layout on `bg-cream` with a large `font-display font-bold text-fairway` wordmark.
 
 ### Copy Guidelines
 
@@ -70,7 +70,10 @@ Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` he
 
 - **Brand:** App is called Poold, domain is getpoold.app (deployed on Netlify).
 - **Auth:** Supabase magic link (`signInWithOtp`). `AuthCallback.jsx` redirects to `/dashboard` or `/join/:code` — no status gate. `ProtectedRoute` checks `user` exists; `AdminRoute` checks `profile.role === 'admin'`. Profiles auto-approve on creation via DB trigger. Join code + magic link is the access gate.
-- **Picks:** Auto-confirmed on submit (`status: 'confirmed'`). Re-submit deletes existing picks and re-inserts.
+- **Picks:** Auto-confirmed on submit (`status: 'confirmed'`). Re-submit deletes existing picks and re-inserts. RLS enforces integrity (one pick per tier via a unique constraint; the tier must belong to the tournament and the player must exist in that tier) and privacy (you only see other participants' picks after lock/lock_time).
+- **Prize pool (optional):** `tournaments.stake_amount` (numeric) + `payout_structure` (jsonb — ordered % per placement, enforced to sum to 100 at creation). The leaderboard renders a `PrizePoolWidget`: total = `stake × participants`, distributed by placement in whole dollars (rounding remainder folded into 1st). Omitted when no stake is set.
+- **Demo:** Public, no-auth showcase at `/demo` (routes outside `ProtectedRoute`). Runs entirely off a static fixture (`src/demo/demoData.js`) — a snapshot of public golf data with fabricated participants; it never imports `supabase` or touches the DB. `DemoProvider` holds the visitor's picks in memory only.
+- **Shared UI:** Leaderboard widgets + scorecard-expand standings live in `src/components/leaderboard/`; the tier/player pick grid in `src/components/picks/TierPicker.jsx` — consumed by both the live pages and the demo (change once, both update). Slash Golf data helpers (`parseScore`, `normalizeName`, `unwrapNumber`) are exported from `src/utils/scoring.js`; money/ordinal formatting in `src/utils/format.js`.
 - **Leaderboard:** Cached in `leaderboard_cache` table. Poll via `poll-leaderboard` edge function (pg_cron on tournament weekends, or admin "Refresh Now" button — 3/tournament limit via `tournaments.manual_refresh_count`).
 - **Scoring:** `src/utils/scoring.js`. Scores are relative-to-par strings (`"-12"`, `"E"`, `"+4"`, `"-"`). `parseInt` handles signed strings; `"E"` → 0; `"-"`/null → null (not started). WD and CUT both penalized +20 and remain in scoring pool. Best N of M scores count.
 - **APIs:**
@@ -80,7 +83,7 @@ Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` he
   - Nominatim/OpenStreetMap — geocoding at tournament creation time only. No key required.
 - **Weather:** `latitude`/`longitude` stored on `tournaments` table, fetched via Nominatim at creation. Open-Meteo forecast called client-side on TournamentDetail load. Omitted silently if `latitude`/`longitude` is null.
 - **Cron schedule:** 4 pg_cron jobs (`poll-thursday` through `poll-sunday`), each polling every 20 minutes (`*/20 11-23`) during the 7am–8pm ET window. SQL lives in `supabase/cron-schedule.sql`. Run manually before tournament weekend, unschedule after.
-- **Security TODO:** The Odds API key is client-side (`VITE_ODDS_API_KEY`, exposed in browser). Should be moved to an edge function before public launch.
+- **Security:** Audit items C1–C4 are fixed (pick-integrity + pre-lock-privacy RLS, email column-locked with admin access via the `admin_list_users()` RPC, cron secret rotated out of source). **Still open:** the Odds API key is client-side (`VITE_ODDS_API_KEY`, exposed in browser) and should move to an edge function before public launch. Full remaining backlog (medium/low) lives in `docs/AUDIT.md`.
 
 ## Routes
 
@@ -88,8 +91,10 @@ Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` he
 |---|---|---|
 | `/` | Login.jsx | Public |
 | `/auth/callback` | AuthCallback.jsx | Public |
-| `/pending` | Pending.jsx | Public |
 | `/join/:code` | Join.jsx | Public |
+| `/demo` | DemoLanding.jsx (in DemoLayout) | Public |
+| `/demo/tournament` | DemoTournament.jsx | Public |
+| `/demo/picks` | DemoPicks.jsx | Public |
 | `/dashboard` | Dashboard.jsx | Protected |
 | `/tournament/:id` | TournamentDetail.jsx | Protected |
 | `/tournament/:id/picks` | Picks.jsx | Protected |
@@ -100,7 +105,8 @@ Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` he
 
 - **Fairway header:** tournament name, course, status badge. Weather inline next to course name: `"78°F · Clear · 8mph"`. Omitted silently if `latitude`/`longitude` is null on the tournament row.
 - **Full-width Pick'em Standings:** main hero section with scorecard-expand interaction (gold left-bar, tier circles, tabular scores, TOTAL row).
-- **Widget row (3-column below standings):**
+- **Widget row (below standings):** 3 columns normally, 4 when a prize pool is set. Components live in `src/components/leaderboard/Widgets.jsx`.
+  - Prize Pool — total + per-placement payout (only when `stake_amount` is set; shown first)
   - PGA Leaders — top 5 players from leaderboard cache
   - Most Popular Picks — bar chart of confirmed picks by player
   - Tier Value — best score per tier
