@@ -1,4 +1,19 @@
-# Golf Pick'Em — Project Reference
+# Poold — Project Reference
+
+## Brand
+
+**Name:** Poold
+**Domain:** getpoold.app
+**Tagline:** "Make it interesting."
+**Descriptor:** "Drop your picks. Jump in the pool. Make it interesting."
+
+**Voice:** Casual, confident, social, competitive. Sunday afternoon energy. Group chat popping off. Everyone's got something on the line.
+
+**NOT:** Sportsbook. ESPN. Corporate fantasy app. Anything that takes itself too seriously.
+
+**Theme system:** Two registers — *general* (auth, dashboard, admin — brand-level, sport-agnostic) and *sport-specific* (pool detail + picks page — theme swaps per sport type). Currently golf only. Future sports get their own theme applied only on those two pages.
+
+**Page inventory:** Full page-by-page breakdown of data, layout, and functionality lives in `docs/PAGES.md`.
 
 ## Working Style
 
