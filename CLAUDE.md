@@ -13,7 +13,7 @@
 
 **Theme system:** Two registers — *general* (auth, dashboard, admin — brand-level, sport-agnostic) and *sport-specific* (pool detail + picks page — theme swaps per sport type). Currently golf only. Future sports get their own theme applied only on those two pages.
 
-**Page inventory:** Full page-by-page breakdown of data, layout, and functionality lives in `docs/PAGES.md`.
+**Page inventory:** Full page-by-page breakdown of data, layout, and functionality lives in `docs/PAGES.md`. **Keep it in sync:** any time a page's data, layout, functionality, or design notes change, update the corresponding section in `docs/PAGES.md` as part of the same PR.
 
 ## Working Style
 
