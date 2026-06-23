@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>*{box-sizing:border-box}html,body{margin:0;padding:0;min-height:100vh;background:#F8F0E4;-webkit-font-smoothing:antialiased}</style>
+</helmet>
+
+<div style="min-height:100vh;background:#F8F0E4;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px">
+  <div style="width:100%;max-width:360px">
+
+    <div style="text-align:center;margin-bottom:36px">
+      <div style="font-family:'Barlow Condensed';font-weight:800;font-size:60px;color:#C14A18;letter-spacing:.08em;line-height:1">POOLD</div>
+      <div style="font-family:'Barlow Condensed';font-style:italic;font-weight:600;font-size:16px;color:#A08870;margin-top:6px">Make it interesting.</div>
+    </div>
+
+    <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:16px;padding:28px 24px;box-shadow:0 4px 24px rgba(28,22,16,.07)">
+
+      <sc-if value="{{ showForm }}" hint-placeholder-val="{{ true }}">
+        <div style="font-family:Inter;font-size:13px;color:#A08870;text-align:center;margin-bottom:22px;line-height:1.55">Sign in with your email.<br>No password — we'll send a magic link.</div>
+        <div style="margin-bottom:14px">
+          <div style="font-family:Inter;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#A08870;margin-bottom:7px">Email address</div>
+          <input value="{{ email }}" onChange="{{ onEmailChange }}" type="email" placeholder="you@example.com" style="width:100%;padding:13px 15px;border:1.5px solid #EAD8C4;border-radius:11px;font-family:Inter;font-size:15px;color:#1C1610;background:#FFFAF6;outline:none;-webkit-appearance:none" />
+        </div>
+        <button onClick="{{ onSubmit }}" style="width:100%;background:#C14A18;color:#FFF;font-family:Inter;font-weight:700;font-size:15px;padding:14px;border-radius:11px;border:none;cursor:pointer">Send Magic Link</button>
+        <div style="text-align:center;margin-top:14px">
+          <a href="./03-join.dc.html" style="font-family:Inter;font-size:12.5px;color:#A08870;text-decoration:none">Got an invite code? <span style="color:#C14A18;font-weight:600">Join a pool →</span></a>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ showSent }}" hint-placeholder-val="{{ false }}">
+        <div style="text-align:center;padding:8px 0">
+          <div style="width:52px;height:52px;background:rgba(193,74,24,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C14A18" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <div style="font-family:'Barlow Condensed';font-weight:800;font-size:26px;color:#1C1610;margin-bottom:7px">Check your email</div>
+          <div style="font-family:Inter;font-size:13.5px;color:#A08870;line-height:1.55">We sent a sign-in link to<br><strong style="color:#1C1610">{{ email }}</strong></div>
+          <div style="font-family:Inter;font-size:12px;color:#C8B8A4;margin-top:8px">Click the link — no password needed.</div>
+          <button onClick="{{ onReset }}" style="margin-top:18px;font-family:Inter;font-size:12px;color:#A08870;background:none;border:none;cursor:pointer;text-decoration:underline">Use a different email</button>
+        </div>
+      </sc-if>
+
+    </div>
+
+    <div style="text-align:center;margin-top:20px">
+      <a href="./02-dashboard.dc.html" style="font-family:Inter;font-size:12.5px;color:#A08870;text-decoration:none">Just looking? <span style="color:#C14A18;font-weight:600">Try the demo →</span></a>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { email: '', sent: false };
+  renderVals() {
+    return {
+      email: this.state.email,
+      showForm: !this.state.sent,
+      showSent: this.state.sent,
+      onEmailChange: e => this.setState({ email: e.target.value }),
+      onSubmit: () => { if ((this.state.email || '').includes('@')) this.setState({ sent: true }); },
+      onReset: () => this.setState({ sent: false, email: '' }),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,800;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#F4EFE4;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#F4EFE4;padding-bottom:96px">
+
+  <!-- GOLF HEADER -->
+  <div style="background:linear-gradient(165deg,#1B4332 0%,#0F241B 100%);padding:16px 20px 24px">
+    <a href="./04-tournament.dc.html" style="font-family:Inter;font-size:14px;font-weight:500;color:rgba(248,245,238,.65);text-decoration:none">← Leaderboard</a>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:16px">
+      <div style="width:44px;height:50px;background:#1F6F47;border:2px solid #E6C66B;border-radius:10px 10px 22px 22px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <span style="font-family:'Barlow Condensed';font-weight:800;font-size:16px;color:#F8F5EE;line-height:.8">US</span>
+        <span style="font-family:'Barlow Condensed';font-weight:700;font-size:7px;letter-spacing:.08em;color:#E6C66B">OPEN</span>
+      </div>
+      <div>
+        <div style="font-family:'Barlow Condensed';font-weight:700;font-size:10px;letter-spacing:.18em;color:#C9A368;margin-bottom:2px">2026 US OPEN POOL</div>
+        <div style="font-family:'Barlow Condensed';font-weight:800;font-size:28px;color:#F8F5EE;line-height:.95">Make your picks</div>
+        <div style="font-family:Inter;font-size:12px;color:rgba(248,245,238,.5);margin-top:5px">Pick one from each tier · Best 5 of 8 count</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <sc-if value="{{ showForm }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:560px;margin:0 auto;padding:20px 18px">
+
+      <sc-for list="{{ tiers }}" as="tier" hint-placeholder-count="4">
+        <div style="background:#FFFDF8;border:1px solid #E4DDD0;border-radius:14px;overflow:hidden;margin-bottom:12px">
+          <!-- tier header -->
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 15px;border-bottom:1px solid #EFE8DA;background:{{ tier.headerBg }}">
+            <span style="width:22px;height:22px;border-radius:50%;background:#1B4332;display:flex;align-items:center;justify-content:center;flex:none">
+              <span style="font-family:'Barlow Condensed';font-weight:700;font-size:11px;color:#F8F5EE">{{ tier.num }}</span>
+            </span>
+            <span style="font-family:'Barlow Condensed';font-weight:700;font-size:14px;letter-spacing:.04em;color:#2D2D2A;flex:1">{{ tier.label }}</span>
+            <sc-if value="{{ tier.hasSelection }}" hint-placeholder-val="{{ false }}">
+              <span style="font-family:Inter;font-size:11.5px;font-weight:600;color:#1B4332">{{ tier.selectedName }} ✓</span>
+            </sc-if>
+          </div>
+          <!-- player grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px">
+            <sc-for list="{{ tier.players }}" as="player" hint-placeholder-count="4">
+              <button onClick="{{ player.onSelect }}" style="text-align:left;padding:11px 13px;border-radius:10px;border:1.5px solid {{ player.border }};background:{{ player.bg }};transition:all .12s">
+                <div style="font-family:Inter;font-weight:600;font-size:13.5px;color:{{ player.nameColor }};line-height:1.2;margin-bottom:3px">{{ player.name }}</div>
+                <div style="font-family:Inter;font-size:11.5px;color:{{ player.oddsColor }}">{{ player.odds }}</div>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+
+    </div>
+  </sc-if>
+
+  <!-- SUCCESS STATE -->
+  <sc-if value="{{ showSuccess }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:center;justify-content:center;min-height:60vh;padding:40px 20px">
+      <div style="max-width:360px;width:100%;background:#FFFDF8;border:1px solid #E4DDD0;border-radius:16px;padding:32px 28px;text-align:center;box-shadow:0 12px 36px -20px rgba(20,48,38,.3)">
+        <div style="width:56px;height:56px;background:rgba(27,67,50,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1B4332" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <div style="font-family:'Barlow Condensed';font-weight:800;font-size:30px;color:#1B4332;line-height:1;margin-bottom:6px">Picks submitted</div>
+        <div style="font-family:Inter;font-size:13.5px;color:#9E9488;line-height:1.55;margin-bottom:24px">Your card is in. You can update your picks any time before the round locks.</div>
+        <a href="./04-tournament.dc.html" style="display:block;background:#1B4332;color:#F8F5EE;border-radius:12px;padding:14px;text-align:center;font-family:Inter;font-weight:700;font-size:14px;text-decoration:none;margin-bottom:10px">View leaderboard →</a>
+        <a href="./02-dashboard.dc.html" style="font-family:Inter;font-size:12.5px;color:#9E9488;text-decoration:none">Back to dashboard</a>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- sticky submit bar -->
+  <sc-if value="{{ showForm }}" hint-placeholder-val="{{ true }}">
+    <div style="position:fixed;bottom:0;left:0;right:0;background:#F4EFE4;border-top:1px solid #E4DDD0;padding:12px 18px 20px;z-index:10">
+      <div style="max-width:560px;margin:0 auto;display:flex;align-items:center;gap:12px">
+        <div style="flex:1">
+          <div style="font-family:Inter;font-size:12px;color:#9E9488">{{ picksCount }} of 4 tiers selected</div>
+        </div>
+        <button onClick="{{ onSubmit }}" style="background:{{ submitBg }};color:#F8F5EE;font-family:Inter;font-weight:700;font-size:14px;padding:13px 28px;border-radius:12px;border:none;opacity:{{ submitOpacity }};transition:all .15s">{{ submitLabel }}</button>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { selections: {}, submitted: false };
+
+  tiersData = [
+    { id:'t1', num:1, label:'Tier 1 · Favorites', players:[
+      {id:'scottie',name:'Scottie Scheffler',odds:'-400'},
+      {id:'rory',name:'Rory McIlroy',odds:'+350'},
+      {id:'rahm',name:'Jon Rahm',odds:'+600'},
+      {id:'brooks',name:'Brooks Koepka',odds:'+800'},
+    ]},
+    { id:'t2', num:2, label:'Tier 2 · Contenders', players:[
+      {id:'xander',name:'Xander Schauffele',odds:'+1200'},
+      {id:'matt',name:'Matt Fitzpatrick',odds:'+1400'},
+      {id:'hideki',name:'Hideki Matsuyama',odds:'+1600'},
+      {id:'sam',name:'Sam Burns',odds:'+1800'},
+    ]},
+    { id:'t3', num:3, label:'Tier 3 · Value', players:[
+      {id:'cantlay',name:'Patrick Cantlay',odds:'+2500'},
+      {id:'lowry',name:'Shane Lowry',odds:'+2800'},
+      {id:'ludvig',name:'Ludvig Åberg',odds:'+3000'},
+      {id:'tom',name:'Tom Kim',odds:'+3500'},
+    ]},
+    { id:'t4', num:4, label:'Tier 4 · Long Shots', players:[
+      {id:'novak',name:'Andrew Novak',odds:'+5000'},
+      {id:'griffin',name:'Ben Griffin',odds:'+6000'},
+      {id:'rose',name:'Justin Rose',odds:'+8000'},
+      {id:'clark',name:'Wyndham Clark',odds:'+10000'},
+    ]},
+  ];
+
+  renderVals() {
+    const { selections, submitted } = this.state;
+    const picksCount = Object.keys(selections).length;
+    const allSelected = picksCount === this.tiersData.length;
+
+    const tiers = this.tiersData.map(tier => {
+      const sel = selections[tier.id];
+      return {
+        id: tier.id, num: tier.num, label: tier.label,
+        hasSelection: !!sel,
+        selectedName: sel ? sel.name : '',
+        headerBg: sel ? 'rgba(27,67,50,.06)' : 'transparent',
+        players: tier.players.map(p => {
+          const isSel = sel && sel.id === p.id;
+          return {
+            id: p.id, name: p.name, odds: p.odds,
+            bg: isSel ? '#1B4332' : '#FFFDF8',
+            border: isSel ? '#1B4332' : '#E4DDD0',
+            nameColor: isSel ? '#F8F5EE' : '#2D2D2A',
+            oddsColor: isSel ? 'rgba(248,245,238,.55)' : '#9E9488',
+            onSelect: () => this.setState(s => ({ selections: { ...s.selections, [tier.id]: { id: p.id, name: p.name } } })),
+          };
+        }),
+      };
+    });
+
+    return {
+      showForm: !submitted,
+      showSuccess: submitted,
+      tiers,
+      picksCount,
+      submitBg: allSelected ? '#1B4332' : '#9E9488',
+      submitOpacity: allSelected ? '1' : '0.55',
+      submitLabel: allSelected ? 'Submit Picks →' : `${picksCount} of 4 selected`,
+      onSubmit: () => { if (allSelected) this.setState({ submitted: true }); },
+    };
+  }
+}
+</script>
+</body>
+</html>

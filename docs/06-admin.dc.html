@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#F8F0E4;-webkit-font-smoothing:antialiased}
+  select,input,button{font-family:Inter,system-ui,sans-serif}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#F8F0E4;padding-bottom:48px">
+
+  <!-- sticky nav -->
+  <div style="background:#FFFFFF;border-bottom:1px solid #EAD8C4;padding:0 18px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10">
+    <div style="display:flex;align-items:center;gap:14px">
+      <a href="./02-dashboard.dc.html" style="font-family:Inter;font-size:13px;color:#A08870;text-decoration:none">← Dashboard</a>
+      <span style="color:#EAD8C4;font-size:16px">|</span>
+      <span style="font-family:'Barlow Condensed';font-weight:800;font-size:22px;color:#C14A18;letter-spacing:.06em">POOLD</span>
+      <span style="font-family:'Barlow Condensed';font-weight:700;font-size:16px;color:#1C1610;letter-spacing:.04em">Admin</span>
+    </div>
+    <a href="./01-login.dc.html" style="font-family:Inter;font-size:12px;color:#C8B8A4;text-decoration:none">Sign out</a>
+  </div>
+
+  <div style="max-width:620px;margin:0 auto;padding:22px 18px">
+
+    <!-- tab switcher -->
+    <div style="display:flex;gap:2px;background:#EAD8C4;border-radius:10px;padding:3px;margin-bottom:22px">
+      <button onClick="{{ onTab1 }}" style="flex:1;font-size:13.5px;font-weight:500;padding:8px;border-radius:8px;border:none;cursor:pointer;background:{{ tab1Bg }};color:{{ tab1Color }}">Tournaments</button>
+      <button onClick="{{ onTab2 }}" style="flex:1;font-size:13.5px;font-weight:500;padding:8px;border-radius:8px;border:none;cursor:pointer;background:{{ tab2Bg }};color:{{ tab2Color }}">Participants</button>
+      <button onClick="{{ onTab3 }}" style="flex:1;font-size:13.5px;font-weight:500;padding:8px;border-radius:8px;border:none;cursor:pointer;background:{{ tab3Bg }};color:{{ tab3Color }}">Users</button>
+    </div>
+
+    <!-- ── TOURNAMENTS ── -->
+    <sc-if value="{{ showTournaments }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <span style="font-family:Inter;font-size:13px;color:#A08870">3 tournaments</span>
+        <a href="./07-create-tournament.dc.html" style="font-family:Inter;font-size:13px;font-weight:600;color:#C14A18;text-decoration:none">+ New Tournament</a>
+      </div>
+      <sc-for list="{{ tournaments }}" as="t" hint-placeholder-count="3">
+        <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:14px;padding:16px;margin-bottom:10px">
+          <!-- header row -->
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:11px">
+            <div>
+              <div style="font-family:Inter;font-weight:600;font-size:14.5px;color:#1C1610">{{ t.name }}</div>
+              <div style="font-family:Inter;font-size:11.5px;color:#A08870;margin-top:2px">Locks {{ t.lockTime }}</div>
+            </div>
+            <span style="font-family:Inter;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:{{ t.badgeBg }};color:{{ t.badgeColor }};white-space:nowrap;flex:none">{{ t.status }}</span>
+          </div>
+          <!-- join link -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:11px">
+            <div style="flex:1;background:#F8F0E4;border:1px solid #EAD8C4;border-radius:7px;padding:7px 10px;font-family:Inter;font-size:11px;color:#A08870;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">poold.app/join/{{ t.joinCode }}</div>
+            <button onClick="{{ t.onCopy }}" style="font-size:11.5px;font-weight:600;padding:7px 12px;border-radius:7px;border:1px solid {{ t.copyBorder }};background:{{ t.copyBg }};color:{{ t.copyColor }};white-space:nowrap;cursor:pointer;flex:none">{{ t.copyLabel }}</button>
+          </div>
+          <!-- score refresh -->
+          <sc-if value="{{ t.showRefresh }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px">
+              <span style="font-family:Inter;font-size:11.5px;color:#A08870">{{ t.refreshLeft }}/3 score refreshes left</span>
+              <button style="font-size:11.5px;font-weight:600;padding:5px 12px;border-radius:7px;border:1px solid rgba(27,67,50,.3);color:#1B4332;background:transparent;cursor:pointer">Refresh Scores</button>
+            </div>
+          </sc-if>
+          <!-- action buttons -->
+          <sc-if value="{{ t.showActions }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;align-items:center;gap:8px">
+              <sc-if value="{{ t.showLock }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ t.onLock }}" style="font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid rgba(201,163,104,.5);color:#B8924F;background:transparent;cursor:pointer">Lock</button>
+              </sc-if>
+              <sc-if value="{{ t.showReopen }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ t.onReopen }}" style="font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid rgba(27,67,50,.35);color:#1B4332;background:transparent;cursor:pointer">Re-open</button>
+              </sc-if>
+              <button onClick="{{ t.onClose }}" style="font-size:12px;padding:6px 14px;border-radius:8px;border:1px solid #EAD8C4;color:#A08870;background:transparent;cursor:pointer">Close Tournament</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </sc-if>
+
+    <!-- ── PARTICIPANTS ── -->
+    <sc-if value="{{ showParticipants }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-bottom:16px">
+        <select value="{{ selectedTId }}" onChange="{{ onSelectTournament }}" style="width:100%;padding:11px 14px;border:1.5px solid #EAD8C4;border-radius:11px;font-size:14px;color:#1C1610;background:#FFFFFF;outline:none;-webkit-appearance:none;appearance:none">
+          <option value="">Select a tournament</option>
+          <option value="t1">2026 US Open Pool</option>
+          <option value="t2">2026 Masters Pool</option>
+          <option value="t3">CFB Saturday Showdown</option>
+        </select>
+      </div>
+      <sc-if value="{{ showNoTournament }}" hint-placeholder-val="{{ true }}">
+        <div style="font-family:Inter;font-size:13px;color:#A08870;padding:16px 0">Select a tournament to view participants.</div>
+      </sc-if>
+      <sc-if value="{{ showEmptyParticipants }}" hint-placeholder-val="{{ false }}">
+        <div style="font-family:Inter;font-size:13px;color:#A08870;padding:16px 0">No cards in yet.</div>
+      </sc-if>
+      <sc-for list="{{ participants }}" as="p" hint-placeholder-count="3">
+        <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:13px;padding:14px 16px;margin-bottom:9px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:11px">
+            <div>
+              <div style="font-family:Inter;font-weight:600;font-size:14px;color:#1C1610">{{ p.name }}</div>
+              <div style="font-family:Inter;font-size:12px;color:#A08870;margin-top:1px">{{ p.email }}</div>
+            </div>
+            <button style="font-size:11.5px;padding:5px 11px;border-radius:7px;border:1px solid rgba(193,74,24,.3);color:#C14A18;background:transparent;cursor:pointer;flex:none">Remove</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <sc-for list="{{ p.picks }}" as="pick" hint-placeholder-count="4">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-family:Inter;font-size:11px;color:#A08870;width:50px;flex:none">{{ pick.tier }}</span>
+                <span style="font-family:Inter;font-size:13px;color:#1C1610">{{ pick.player }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </sc-if>
+
+    <!-- ── USERS ── -->
+    <sc-if value="{{ showUsers }}" hint-placeholder-val="{{ false }}">
+      <div style="font-family:Inter;font-size:13px;color:#A08870;margin-bottom:12px">{{ userCount }} users</div>
+      <sc-for list="{{ users }}" as="u" hint-placeholder-count="4">
+        <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:13px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+          <div style="flex:1;min-width:0">
+            <div style="font-family:Inter;font-weight:600;font-size:14px;color:#1C1610">{{ u.name }}</div>
+            <div style="font-family:Inter;font-size:12px;color:#A08870;margin-top:1px">{{ u.email }}</div>
+          </div>
+          <span style="font-family:Inter;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:{{ u.roleBg }};color:{{ u.roleColor }};flex:none">{{ u.role }}</span>
+          <sc-if value="{{ u.showToggle }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ u.onToggle }}" style="font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid #EAD8C4;color:#A08870;background:transparent;cursor:pointer;flex:none;white-space:nowrap">{{ u.toggleLabel }}</button>
+          </sc-if>
+        </div>
+      </sc-for>
+    </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { activeTab: 'Tournaments', statuses: { t1:'open', t2:'locked', t3:'complete' }, copiedId: null, selectedTId: '', userRoles: {} };
+
+  rawT = [
+    { id:'t1', name:'2026 US Open Pool',       lockTime:'Thu Jun 12, 7:00 AM', joinCode:'US-OPEN-26',  refreshLeft:2 },
+    { id:'t2', name:'2026 Masters Pool',        lockTime:'Thu Apr 10, 7:00 AM', joinCode:'MASTERS-26',  refreshLeft:1 },
+    { id:'t3', name:'CFB Saturday Showdown',    lockTime:'Sat Sept 5, 11:00 AM',joinCode:'CFB-WK1-25', refreshLeft:0 },
+  ];
+
+  allP = {
+    t1:[
+      { id:'jd', name:'JD (You)',  email:'jd@example.com',      picks:[{tier:'T1',player:'Scottie Scheffler'},{tier:'T2',player:'Xander Schauffele'},{tier:'T3',player:'Patrick Cantlay'},{tier:'T4',player:'Andrew Novak'}] },
+      { id:'p1', name:'player_1',  email:'player1@example.com', picks:[{tier:'T1',player:'Rory McIlroy'},{tier:'T2',player:'Sam Burns'},{tier:'T3',player:'Tom Kim'},{tier:'T4',player:'Ben Griffin'}] },
+      { id:'p2', name:'player_2',  email:'player2@example.com', picks:[{tier:'T1',player:'Jon Rahm'},{tier:'T2',player:'Hideki Matsuyama'},{tier:'T3',player:'Shane Lowry'},{tier:'T4',player:'Wyndham Clark'}] },
+      { id:'p3', name:'player_3',  email:'player3@example.com', picks:[{tier:'T1',player:'Brooks Koepka'},{tier:'T2',player:'Matt Fitzpatrick'},{tier:'T3',player:'Ludvig Åberg'},{tier:'T4',player:'Justin Rose'}] },
+    ],
+    t2:[
+      { id:'jd', name:'JD (You)',  email:'jd@example.com',      picks:[{tier:'T1',player:'Scottie Scheffler'},{tier:'T2',player:'Matt Fitzpatrick'},{tier:'T3',player:'Shane Lowry'},{tier:'T4',player:'Justin Rose'}] },
+      { id:'p1', name:'player_1',  email:'player1@example.com', picks:[{tier:'T1',player:'Jon Rahm'},{tier:'T2',player:'Rory McIlroy'},{tier:'T3',player:'Tom Kim'},{tier:'T4',player:'Wyndham Clark'}] },
+    ],
+    t3:[],
+  };
+
+  rawU = [
+    { id:'jd', name:'JD',       email:'jd@example.com',      isMe:true,  base:'admin'  },
+    { id:'p1', name:'player_1', email:'player1@example.com', isMe:false, base:'player' },
+    { id:'p2', name:'player_2', email:'player2@example.com', isMe:false, base:'player' },
+    { id:'p3', name:'player_3', email:'player3@example.com', isMe:false, base:'player' },
+    { id:'p4', name:'player_4', email:'player4@example.com', isMe:false, base:'player' },
+  ];
+
+  badge(s){ if(s==='open') return {bg:'rgba(27,67,50,.1)',c:'#1B4332'}; if(s==='locked') return {bg:'rgba(201,163,104,.18)',c:'#B8924F'}; return {bg:'#EBE3D4',c:'#9E9488'}; }
+
+  renderVals(){
+    const { activeTab: at, statuses, copiedId, selectedTId, userRoles } = this.state;
+
+    const tournaments = this.rawT.map(t => {
+      const s = statuses[t.id] ?? 'open';
+      const b = this.badge(s);
+      const cp = copiedId === t.id;
+      return { ...t, status:s, badgeBg:b.bg, badgeColor:b.c,
+        showRefresh: ['open','locked'].includes(s) && t.refreshLeft > 0,
+        showActions: s !== 'complete', showLock: s==='open', showReopen: s==='locked',
+        copyLabel: cp ? 'Copied!' : 'Copy',
+        copyBg: cp ? 'rgba(27,67,50,.08)' : '#FFFFFF',
+        copyBorder: cp ? 'rgba(27,67,50,.3)' : '#EAD8C4',
+        copyColor: cp ? '#1B4332' : '#A08870',
+        onCopy: () => { this.setState({ copiedId:t.id }); setTimeout(()=>this.setState(ss=>ss.copiedId===t.id?{copiedId:null}:ss),2000); },
+        onLock:   ()=>this.setState(ss=>({statuses:{...ss.statuses,[t.id]:'locked'}})),
+        onReopen: ()=>this.setState(ss=>({statuses:{...ss.statuses,[t.id]:'open'}})),
+        onClose:  ()=>this.setState(ss=>({statuses:{...ss.statuses,[t.id]:'complete'}})),
+      };
+    });
+
+    const participants = this.allP[selectedTId] ?? [];
+    const users = this.rawU.map(u => {
+      const role = u.isMe ? 'admin' : (userRoles[u.id] ?? u.base);
+      return { ...u, role,
+        roleBg: role==='admin' ? 'rgba(27,67,50,.1)' : '#EBE3D4',
+        roleColor: role==='admin' ? '#1B4332' : '#9E9488',
+        showToggle: !u.isMe,
+        toggleLabel: role==='admin' ? 'Make Player' : 'Make Admin',
+        onToggle: ()=>this.setState(ss=>({ userRoles:{...ss.userRoles,[u.id]:ss.userRoles[u.id]==='admin'?'player':'admin'} })),
+      };
+    });
+
+    const tabBg = tab => at===tab ? '#FFFFFF' : 'transparent';
+    const tabC  = tab => at===tab ? '#1C1610' : '#7A6858';
+    return {
+      showTournaments: at==='Tournaments', showParticipants: at==='Participants', showUsers: at==='Users',
+      tab1Bg:tabBg('Tournaments'), tab2Bg:tabBg('Participants'), tab3Bg:tabBg('Users'),
+      tab1Color:tabC('Tournaments'), tab2Color:tabC('Participants'), tab3Color:tabC('Users'),
+      onTab1:()=>this.setState({activeTab:'Tournaments'}),
+      onTab2:()=>this.setState({activeTab:'Participants'}),
+      onTab3:()=>this.setState({activeTab:'Users'}),
+      tournaments, selectedTId: selectedTId||'',
+      onSelectTournament: e=>this.setState({selectedTId:e.target.value}),
+      showNoTournament: !selectedTId,
+      showEmptyParticipants: !!(selectedTId && participants.length===0),
+      participants, users, userCount: this.rawU.length,
+    };
+  }
+}
+</script>
+</body>
+</html>

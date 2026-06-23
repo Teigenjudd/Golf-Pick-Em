@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#F8F0E4;-webkit-font-smoothing:antialiased}
+  input,select,button{font-family:Inter,system-ui,sans-serif}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#F8F0E4;padding-bottom:48px">
+
+  <!-- nav -->
+  <div style="background:#FFFFFF;border-bottom:1px solid #EAD8C4;padding:0 18px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10">
+    <div style="display:flex;align-items:center;gap:14px">
+      <a href="./06-admin.dc.html" style="font-family:Inter;font-size:13px;color:#A08870;text-decoration:none">← Admin</a>
+      <span style="color:#EAD8C4;font-size:16px">|</span>
+      <span style="font-family:'Barlow Condensed';font-weight:800;font-size:22px;color:#C14A18;letter-spacing:.06em">POOLD</span>
+      <span style="font-family:'Barlow Condensed';font-weight:700;font-size:16px;color:#1C1610;letter-spacing:.04em">Create Tournament</span>
+    </div>
+    <!-- step indicator -->
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:20px;height:20px;border-radius:50%;background:#C14A18;display:flex;align-items:center;justify-content:center">
+        <span style="font-family:'Barlow Condensed';font-weight:700;font-size:11px;color:#FFF">{{ step }}</span>
+      </div>
+      <span style="font-family:Inter;font-size:12px;color:#A08870">of 2</span>
+    </div>
+  </div>
+
+  <!-- progress bar -->
+  <div style="height:3px;background:#EAD8C4">
+    <div style="height:100%;background:#C14A18;border-radius:0 2px 2px 0;transition:width .3s;width:{{ progressWidth }}"></div>
+  </div>
+
+  <!-- ── STEP 1 ── -->
+  <sc-if value="{{ showStep1 }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:520px;margin:0 auto;padding:24px 18px">
+
+      <div style="font-family:'Barlow Condensed';font-weight:800;font-size:30px;color:#1C1610;line-height:1;margin-bottom:24px">Set it up.</div>
+
+      <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:18px">
+
+        <!-- pool name -->
+        <div>
+          <div style="font-family:Inter;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#A08870;margin-bottom:7px">Pool Name</div>
+          <input value="{{ poolName }}" onChange="{{ onNameChange }}" type="text" placeholder="e.g. 2026 US Open Pool" style="width:100%;padding:12px 14px;border:1.5px solid #EAD8C4;border-radius:11px;font-size:14px;color:#1C1610;background:#FFFAF6;outline:none" />
+        </div>
+
+        <!-- tournament select -->
+        <div>
+          <div style="font-family:Inter;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#A08870;margin-bottom:7px">Tournament</div>
+          <select style="width:100%;padding:12px 14px;border:1.5px solid #EAD8C4;border-radius:11px;font-size:14px;color:#1C1610;background:#FFFAF6;outline:none;-webkit-appearance:none;appearance:none">
+            <option value="us-open-26">2026 US Open · Jun 12–15</option>
+            <option value="open-26">2026 The Open · Jul 17–20</option>
+            <option value="pga-26">2026 PGA Championship · May 21–24</option>
+            <option value="masters-27">2027 Masters · Apr 9–12</option>
+          </select>
+        </div>
+
+        <!-- odds market -->
+        <div>
+          <div style="font-family:Inter;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#A08870;margin-bottom:7px">Odds Market <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#C8B8A4">(optional — majors only)</span></div>
+          <select style="width:100%;padding:12px 14px;border:1.5px solid #EAD8C4;border-radius:11px;font-size:14px;color:#1C1610;background:#FFFAF6;outline:none;-webkit-appearance:none;appearance:none">
+            <option value="">None (use OWGR rankings)</option>
+            <option value="golf_us_open">US Open</option>
+            <option value="golf_the_open">The Open Championship</option>
+            <option value="golf_pga_championship">PGA Championship</option>
+            <option value="golf_masters">The Masters</option>
+          </select>
+        </div>
+
+        <!-- picks / scores row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <div style="font-family:Inter;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#A08870;margin-bottom:7px">Picks per Player</div>
+            <input type="number" value="8" min="1" max="20" style="width:100%;padding:12px 14px;border:1.5px solid #EAD8C4;border-radius:11px;font-size:14px;color:#1C1610;background:#FFFAF6;outline:none" />
+          </div>
+          <div>
+            <div style="font-family:Inter;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#A08870;margin-bottom:7px">Scores to Keep</div>
+            <input type="number" value="5" min="1" max="20" style="width:100%;padding:12px 14px;border:1.5px solid #EAD8C4;border-radius:11px;font-size:14px;color:#1C1610;background:#FFFAF6;outline:none" />
+          </div>
+        </div>
+
+        <!-- lock time -->
+        <div>
+          <div style="font-family:Inter;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#A08870;margin-bottom:7px">Lock Time</div>
+          <input type="datetime-local" style="width:100%;padding:12px 14px;border:1.5px solid #EAD8C4;border-radius:11px;font-size:14px;color:#1C1610;background:#FFFAF6;outline:none" />
+        </div>
+
+        <!-- stake -->
+        <div>
+          <div style="font-family:Inter;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#A08870;margin-bottom:7px">Stake per Player <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#C8B8A4">(optional $)</span></div>
+          <input value="{{ stake }}" onChange="{{ onStakeChange }}" type="number" min="0" placeholder="e.g. 20" style="width:100%;padding:12px 14px;border:1.5px solid #EAD8C4;border-radius:11px;font-size:14px;color:#1C1610;background:#FFFAF6;outline:none" />
+        </div>
+
+        <!-- payout structure (when stake set) -->
+        <sc-if value="{{ showPayouts }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#F8F0E4;border:1px solid #EAD8C4;border-radius:12px;padding:14px 16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-family:Inter;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#A08870">Payout Structure</div>
+              <div style="font-family:Inter;font-size:12px;font-weight:600;color:#1B4332">100% ✓</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-family:Inter;font-size:13px;color:#1C1610;width:36px;flex:none">1st</span>
+                <div style="flex:1;background:#FFFFFF;border:1.5px solid #EAD8C4;border-radius:9px;padding:9px 12px;font-family:Inter;font-size:14px;color:#1C1610">80</div>
+                <span style="font-family:Inter;font-size:13px;color:#A08870">%</span>
+                <span style="color:#C8B8A4;cursor:pointer">✕</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-family:Inter;font-size:13px;color:#1C1610;width:36px;flex:none">2nd</span>
+                <div style="flex:1;background:#FFFFFF;border:1.5px solid #EAD8C4;border-radius:9px;padding:9px 12px;font-family:Inter;font-size:14px;color:#1C1610">20</div>
+                <span style="font-family:Inter;font-size:13px;color:#A08870">%</span>
+                <span style="color:#C8B8A4;cursor:pointer">✕</span>
+              </div>
+              <button style="font-family:Inter;font-size:13px;font-weight:600;color:#C14A18;background:none;border:none;cursor:pointer;text-align:left;padding:0;margin-top:2px">+ Add placement</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- next button -->
+        <button onClick="{{ onNext }}" style="width:100%;background:{{ nextBg }};color:#FFF;font-weight:700;font-size:15px;padding:14px;border-radius:11px;border:none;cursor:pointer;transition:all .15s">Fetch field &amp; odds →</button>
+
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ── STEP 2 ── -->
+  <sc-if value="{{ showStep2 }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:760px;margin:0 auto;padding:24px 18px">
+
+      <div style="font-family:'Barlow Condensed';font-weight:800;font-size:30px;color:#1C1610;line-height:1;margin-bottom:6px">Set the tiers.</div>
+      <div style="font-family:Inter;font-size:13px;color:#A08870;margin-bottom:22px">Drag players between tiers to adjust. Field auto-built from OWGR + odds.</div>
+
+      <!-- tier grid 2×2 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px">
+
+        <!-- T1 -->
+        <div style="border:2px solid #EAD8C4;border-radius:13px;overflow:hidden">
+          <div style="background:#FFFFFF;border-bottom:1px solid #EAD8C4;padding:10px 14px;display:flex;align-items:center;gap:9px">
+            <span style="width:20px;height:20px;border-radius:50%;background:#1B4332;display:flex;align-items:center;justify-content:center;flex:none"><span style="font-family:'Barlow Condensed';font-weight:700;font-size:10px;color:#F8F5EE">1</span></span>
+            <span style="font-family:'Barlow Condensed';font-weight:700;font-size:13px;letter-spacing:.04em;color:#1C1610;flex:1">Favorites</span>
+            <span style="font-family:Inter;font-size:11px;color:#A08870">5</span>
+          </div>
+          <div style="background:#F8F0E4;padding:9px;display:flex;flex-direction:column;gap:5px">
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Scottie Scheffler</span><span style="font-family:Inter;font-size:11px;color:#A08870">-400</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Rory McIlroy</span><span style="font-family:Inter;font-size:11px;color:#A08870">+350</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Jon Rahm</span><span style="font-family:Inter;font-size:11px;color:#A08870">+600</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Brooks Koepka</span><span style="font-family:Inter;font-size:11px;color:#A08870">+800</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Xander Schauffele</span><span style="font-family:Inter;font-size:11px;color:#A08870">+1000</span></div>
+          </div>
+        </div>
+
+        <!-- T2 -->
+        <div style="border:2px solid #EAD8C4;border-radius:13px;overflow:hidden">
+          <div style="background:#FFFFFF;border-bottom:1px solid #EAD8C4;padding:10px 14px;display:flex;align-items:center;gap:9px">
+            <span style="width:20px;height:20px;border-radius:50%;background:#1B4332;display:flex;align-items:center;justify-content:center;flex:none"><span style="font-family:'Barlow Condensed';font-weight:700;font-size:10px;color:#F8F5EE">2</span></span>
+            <span style="font-family:'Barlow Condensed';font-weight:700;font-size:13px;letter-spacing:.04em;color:#1C1610;flex:1">Contenders</span>
+            <span style="font-family:Inter;font-size:11px;color:#A08870">5</span>
+          </div>
+          <div style="background:#F8F0E4;padding:9px;display:flex;flex-direction:column;gap:5px">
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Matt Fitzpatrick</span><span style="font-family:Inter;font-size:11px;color:#A08870">+1200</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Hideki Matsuyama</span><span style="font-family:Inter;font-size:11px;color:#A08870">+1400</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Sam Burns</span><span style="font-family:Inter;font-size:11px;color:#A08870">+1600</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Patrick Cantlay</span><span style="font-family:Inter;font-size:11px;color:#A08870">+1800</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Collin Morikawa</span><span style="font-family:Inter;font-size:11px;color:#A08870">+2000</span></div>
+          </div>
+        </div>
+
+        <!-- T3 -->
+        <div style="border:2px solid #EAD8C4;border-radius:13px;overflow:hidden">
+          <div style="background:#FFFFFF;border-bottom:1px solid #EAD8C4;padding:10px 14px;display:flex;align-items:center;gap:9px">
+            <span style="width:20px;height:20px;border-radius:50%;background:#1B4332;display:flex;align-items:center;justify-content:center;flex:none"><span style="font-family:'Barlow Condensed';font-weight:700;font-size:10px;color:#F8F5EE">3</span></span>
+            <span style="font-family:'Barlow Condensed';font-weight:700;font-size:13px;letter-spacing:.04em;color:#1C1610;flex:1">Value</span>
+            <span style="font-family:Inter;font-size:11px;color:#A08870">5</span>
+          </div>
+          <div style="background:#F8F0E4;padding:9px;display:flex;flex-direction:column;gap:5px">
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Shane Lowry</span><span style="font-family:Inter;font-size:11px;color:#A08870">+2500</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Ludvig Åberg</span><span style="font-family:Inter;font-size:11px;color:#A08870">+2800</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Tom Kim</span><span style="font-family:Inter;font-size:11px;color:#A08870">+3000</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Justin Rose</span><span style="font-family:Inter;font-size:11px;color:#A08870">+3500</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Robert MacIntyre</span><span style="font-family:Inter;font-size:11px;color:#A08870">+4000</span></div>
+          </div>
+        </div>
+
+        <!-- T4 -->
+        <div style="border:2px solid #EAD8C4;border-radius:13px;overflow:hidden">
+          <div style="background:#FFFFFF;border-bottom:1px solid #EAD8C4;padding:10px 14px;display:flex;align-items:center;gap:9px">
+            <span style="width:20px;height:20px;border-radius:50%;background:#1B4332;display:flex;align-items:center;justify-content:center;flex:none"><span style="font-family:'Barlow Condensed';font-weight:700;font-size:10px;color:#F8F5EE">4</span></span>
+            <span style="font-family:'Barlow Condensed';font-weight:700;font-size:13px;letter-spacing:.04em;color:#1C1610;flex:1">Long Shots</span>
+            <span style="font-family:Inter;font-size:11px;color:#A08870">5</span>
+          </div>
+          <div style="background:#F8F0E4;padding:9px;display:flex;flex-direction:column;gap:5px">
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Andrew Novak</span><span style="font-family:Inter;font-size:11px;color:#A08870">+5000</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Ben Griffin</span><span style="font-family:Inter;font-size:11px;color:#A08870">+6000</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Wyndham Clark</span><span style="font-family:Inter;font-size:11px;color:#A08870">+8000</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Brian Harman</span><span style="font-family:Inter;font-size:11px;color:#A08870">+10000</span></div>
+            <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:8px;padding:8px 11px;display:flex;align-items:center;justify-content:space-between;cursor:grab"><span style="font-family:Inter;font-size:13px;color:#1C1610">Alex Noren</span><span style="font-family:Inter;font-size:11px;color:#A08870">+12000</span></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- back + create -->
+      <div style="display:flex;gap:10px">
+        <button onClick="{{ onBack }}" style="padding:13px 22px;border:1.5px solid #EAD8C4;border-radius:11px;font-size:14px;color:#A08870;background:transparent;cursor:pointer">← Back</button>
+        <button style="flex:1;background:#1B4332;color:#F8F5EE;font-weight:700;font-size:15px;padding:13px;border-radius:11px;border:none;cursor:pointer">Create Tournament</button>
+      </div>
+
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { step: 1, poolName: '', stake: '' };
+
+  renderVals() {
+    const { step, poolName, stake } = this.state;
+    const hasStake = parseFloat(stake) > 0;
+    const hasName = (poolName || '').trim().length > 0;
+    return {
+      step,
+      showStep1: step === 1,
+      showStep2: step === 2,
+      progressWidth: step === 1 ? '50%' : '100%',
+      poolName,
+      stake,
+      showPayouts: hasStake,
+      nextBg: hasName ? '#C14A18' : '#C8B8A4',
+      onNameChange: e => this.setState({ poolName: e.target.value }),
+      onStakeChange: e => this.setState({ stake: e.target.value }),
+      onNext: () => { if ((poolName || '').trim()) this.setState({ step: 2 }); },
+      onBack: () => this.setState({ step: 1 }),
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#F4EFE4;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+
+<div style="min-height:100vh;background:#F4EFE4;padding-bottom:32px">
+
+  <!-- GOLF HEADER -->
+  <div style="background:linear-gradient(165deg,#1B4332 0%,#0F241B 100%);padding:0 0 24px">
+    <!-- top bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 0">
+      <a href="./02-dashboard.dc.html" style="font-family:Inter;font-size:14px;font-weight:500;color:rgba(248,245,238,.65);text-decoration:none">← Dashboard</a>
+      <button style="background:rgba(201,163,104,.16);border:1px solid rgba(201,163,104,.45);color:#E8CE9A;font-weight:600;font-size:13px;padding:8px 14px;border-radius:10px;border-style:solid">Share results</button>
+    </div>
+    <!-- hero -->
+    <div style="padding:20px 20px 0;display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:52px;height:60px;background:#1F6F47;border:2px solid #E6C66B;border-radius:13px 13px 26px 26px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 8px 18px -8px rgba(0,0,0,.4)">
+          <span style="font-family:'Barlow Condensed';font-weight:800;font-size:19px;color:#F8F5EE;line-height:.8">US</span>
+          <span style="font-family:'Barlow Condensed';font-weight:700;font-size:8px;letter-spacing:.08em;color:#E6C66B">OPEN</span>
+        </div>
+        <div>
+          <div style="font-family:'Barlow Condensed';font-weight:700;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#C9A368;margin-bottom:2px">2026 US Open Pool</div>
+          <div style="font-family:'Barlow Condensed';font-weight:800;font-size:38px;color:#F8F5EE;line-height:.9;letter-spacing:-.01em">Shinnecock Hills</div>
+          <div style="font-family:Inter;font-size:12.5px;color:rgba(248,245,238,.5);margin-top:6px">72°F · Clear · 9mph &nbsp;·&nbsp; Best 5 of 8 · 7 players</div>
+        </div>
+      </div>
+      <div style="text-align:right;padding-bottom:2px">
+        <div style="font-family:'Barlow Condensed';font-weight:700;font-size:11px;letter-spacing:.16em;color:#C9A368">ROUND 3 · IN PROGRESS</div>
+        <div style="font-family:Inter;font-size:12px;color:rgba(248,245,238,.45);margin-top:3px">Updated 4m ago</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:640px;margin:0 auto;padding:22px 18px">
+
+    <!-- picks status banner -->
+    <div style="background:#FFFFFF;border:1px solid #EAD8C4;border-radius:12px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:9px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1B4332" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span style="font-family:Inter;font-size:13px;color:#1C1610">Your card is in.</span>
+      </div>
+      <a href="./05-picks.dc.html" style="font-family:Inter;font-size:12.5px;font-weight:600;color:#C14A18;text-decoration:none">Edit picks →</a>
+    </div>
+
+    <!-- standings -->
+    <div style="font-family:'Barlow Condensed';font-weight:700;font-size:10px;letter-spacing:.22em;color:#9E9488;margin-bottom:10px">PICK'EM STANDINGS</div>
+
+    <div style="background:#FFFDF8;border:1px solid #E4DDD0;border-radius:16px;overflow:hidden;box-shadow:0 12px 36px -24px rgba(20,48,38,.35)">
+      <sc-for list="{{ standings }}" as="row" hint-placeholder-count="5">
+        <div style="border-bottom:1px solid #EFE8DA">
+          <button onClick="{{ row.toggle }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 18px;background:transparent;border:none;cursor:pointer;text-align:left" style-hover="background:#FAF6EE">
+            <span style="width:36px;height:36px;border-radius:50%;background:{{ row.rankBg }};display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed';font-weight:700;font-size:16px;color:{{ row.rankColor }};flex:none;font-variant-numeric:tabular-nums">{{ row.rank }}</span>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                <span style="font-family:Inter;font-weight:600;font-size:15px;color:#2D2D2A">{{ row.name }}</span>
+                <sc-if value="{{ row.isMe }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-family:'Barlow Condensed';font-weight:700;font-size:10px;letter-spacing:.08em;color:#15130F;background:#C9A368;padding:2px 7px;border-radius:999px">YOU</span>
+                </sc-if>
+              </div>
+              <div style="font-family:Inter;font-size:12px;color:#9E9488;margin-top:1px">5 of 8 counting</div>
+            </div>
+            <span style="font-family:'Barlow Condensed';font-weight:800;font-size:26px;font-variant-numeric:tabular-nums;color:{{ row.scoreColor }}">{{ row.scoreText }}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C9BFB0" stroke-width="2" stroke-linecap="round" style="flex:none;transition:transform .18s;transform:rotate({{ row.chevron }})"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <sc-if value="{{ row.open }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;border-top:1px solid #EFE8DA">
+              <div style="width:3px;background:#C9A368;flex:none"></div>
+              <div style="flex:1;background:#F8F3EC;padding:12px 16px">
+                <sc-for list="{{ row.picks }}" as="pick" hint-placeholder-count="5">
+                  <div style="display:flex;align-items:center;gap:10px;padding:4px 0">
+                    <span style="width:19px;height:19px;border-radius:50%;background:rgba(27,67,50,.85);color:#F8F5EE;font-family:'Barlow Condensed';font-weight:700;font-size:10px;display:flex;align-items:center;justify-content:center;flex:none">{{ pick.n }}</span>
+                    <span style="flex:1;font-family:Inter;font-size:13.5px;color:#2D2D2A;text-decoration:{{ pick.strike }}">{{ pick.name }}</span>
+                    <sc-if value="{{ pick.showCut }}" hint-placeholder-val="{{ false }}"><span style="font-family:'Barlow Condensed';font-weight:700;font-size:8px;color:#736A5F;background:#E4DDD0;padding:2px 5px;border-radius:3px">CUT</span></sc-if>
+                    <span style="font-family:'Barlow Condensed';font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;color:{{ pick.scoreColor }};min-width:28px;text-align:right">{{ pick.score }}</span>
+                  </div>
+                </sc-for>
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0 2px;margin-top:5px;border-top:1px solid #E4DDD0">
+                  <span style="width:19px;flex:none"></span>
+                  <span style="flex:1;font-family:'Barlow Condensed';font-weight:700;font-size:9px;letter-spacing:.16em;color:#9E9488">TOTAL · BEST 5</span>
+                  <span style="font-family:'Barlow Condensed';font-weight:800;font-size:14px;font-variant-numeric:tabular-nums;color:{{ row.scoreColor }};min-width:28px;text-align:right">{{ row.scoreText }}</span>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <!-- widgets -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+
+      <!-- prize pool -->
+      <div style="background:#FFFDF8;border:1px solid #E4DDD0;border-radius:14px;padding:16px">
+        <div style="font-family:'Barlow Condensed';font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#9E9488;margin-bottom:10px">The money</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:9px;border-bottom:1px dashed #D5CBB8">
+          <span style="font-family:Inter;font-size:12px;color:#736A5F">Pool · 7 × $20</span>
+          <span style="font-family:'Barlow Condensed';font-weight:700;font-size:17px;color:#2D2D2A">$140</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0 7px">
+          <span style="font-family:Inter;font-size:12px;color:#2D2D2A"><strong>1st</strong> · 80%</span>
+          <span style="font-family:'Barlow Condensed';font-weight:800;font-size:17px;color:#1B4332">$112</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:Inter;font-size:12px;color:#2D2D2A"><strong>2nd</strong> · 20%</span>
+          <span style="font-family:'Barlow Condensed';font-weight:800;font-size:17px;color:#1B4332">$28</span>
+        </div>
+      </div>
+
+      <!-- PGA leaders -->
+      <div style="background:#FFFDF8;border:1px solid #E4DDD0;border-radius:14px;padding:16px">
+        <div style="font-family:'Barlow Condensed';font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#9E9488;margin-bottom:10px">PGA leaders</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F0EBE1">
+          <span style="font-family:Inter;font-size:13px;color:#2D2D2A;flex:none;width:18px;font-weight:700;color:#C9A368">1</span>
+          <span style="flex:1;font-family:Inter;font-size:13px;color:#2D2D2A">W. Clark</span>
+          <span style="font-family:'Barlow Condensed';font-weight:700;color:#B23A2D;font-variant-numeric:tabular-nums">-4</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F0EBE1">
+          <span style="font-family:Inter;font-size:13px;color:#9E9488;flex:none;width:18px">2</span>
+          <span style="flex:1;font-family:Inter;font-size:13px;color:#2D2D2A">S. Burns</span>
+          <span style="font-family:'Barlow Condensed';font-weight:700;color:#B23A2D;font-variant-numeric:tabular-nums">-3</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #F0EBE1">
+          <span style="font-family:Inter;font-size:13px;color:#9E9488;flex:none;width:18px">3</span>
+          <span style="flex:1;font-family:Inter;font-size:13px;color:#2D2D2A">T. Kim</span>
+          <span style="font-family:'Barlow Condensed';font-weight:700;color:#B23A2D;font-variant-numeric:tabular-nums">-1</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0">
+          <span style="font-family:Inter;font-size:13px;color:#9E9488;flex:none;width:18px">T4</span>
+          <span style="flex:1;font-family:Inter;font-size:13px;color:#2D2D2A">S. Scheffler</span>
+          <span style="font-family:'Barlow Condensed';font-weight:700;color:#2D2D2A;font-variant-numeric:tabular-nums">E</span>
+        </div>
+      </div>
+
+      <!-- most popular -->
+      <div style="background:#FFFDF8;border:1px solid #E4DDD0;border-radius:14px;padding:16px;grid-column:span 2">
+        <div style="font-family:'Barlow Condensed';font-weight:700;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#9E9488;margin-bottom:12px">Most popular picks</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-family:Inter;font-size:12.5px;color:#2D2D2A;width:120px;flex:none">Rory McIlroy</span>
+            <div style="flex:1;background:#EFE8DA;border-radius:3px;height:6px;overflow:hidden"><div style="width:86%;height:100%;background:#1B4332;border-radius:3px"></div></div>
+            <span style="font-family:Inter;font-size:11px;color:#9E9488;width:28px;text-align:right">6/7</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-family:Inter;font-size:12.5px;color:#2D2D2A;width:120px;flex:none">S. Scheffler</span>
+            <div style="flex:1;background:#EFE8DA;border-radius:3px;height:6px;overflow:hidden"><div style="width:71%;height:100%;background:#1B4332;border-radius:3px"></div></div>
+            <span style="font-family:Inter;font-size:11px;color:#9E9488;width:28px;text-align:right">5/7</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-family:Inter;font-size:12.5px;color:#2D2D2A;width:120px;flex:none">M. Fitzpatrick</span>
+            <div style="flex:1;background:#EFE8DA;border-radius:3px;height:6px;overflow:hidden"><div style="width:57%;height:100%;background:#1B4332;border-radius:3px"></div></div>
+            <span style="font-family:Inter;font-size:11px;color:#9E9488;width:28px;text-align:right">4/7</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-family:Inter;font-size:12.5px;color:#2D2D2A;width:120px;flex:none">P. Cantlay</span>
+            <div style="flex:1;background:#EFE8DA;border-radius:3px;height:6px;overflow:hidden"><div style="width:43%;height:100%;background:#1B4332;border-radius:3px"></div></div>
+            <span style="font-family:Inter;font-size:11px;color:#9E9488;width:28px;text-align:right">3/7</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { expanded: {} };
+
+  raw = [
+    { id:'p1', name:'player_1', total:'+5', isMe:false,
+      picks:[{n:1,name:'Wyndham Clark',s:'-4',cut:false},{n:2,name:'Sam Burns',s:'-3',cut:false},{n:3,name:'Tom Kim',s:'-1',cut:false},{n:4,name:'Scottie Scheffler',s:'E',cut:false},{n:5,name:'Justin Rose',s:'+9',cut:false}] },
+    { id:'p4', name:'player_4', total:'+14', isMe:false,
+      picks:[{n:1,name:'Sam Burns',s:'-3',cut:false},{n:2,name:'Rory McIlroy',s:'+2',cut:false},{n:3,name:'Matt Fitzpatrick',s:'+4',cut:false},{n:4,name:'Patrick Cantlay',s:'+5',cut:false},{n:5,name:'Alex Noren',s:'+6',cut:false}] },
+    { id:'me', name:'JD', total:'+18', isMe:true,
+      picks:[{n:1,name:'Scottie Scheffler',s:'E',cut:false},{n:2,name:'Rory McIlroy',s:'+3',cut:false},{n:3,name:'Matt Fitzpatrick',s:'+4',cut:false},{n:4,name:'Patrick Cantlay',s:'+5',cut:false},{n:5,name:'Chris Kirk',s:'+6',cut:true}] },
+    { id:'p7', name:'player_7', total:'+22', isMe:false,
+      picks:[{n:1,name:'Hideki Matsuyama',s:'+2',cut:false},{n:2,name:'Matt Fitzpatrick',s:'+4',cut:false},{n:3,name:'Patrick Cantlay',s:'+5',cut:false},{n:4,name:'Shane Lowry',s:'+5',cut:false},{n:5,name:'Xander Schauffele',s:'+6',cut:false}] },
+    { id:'p3', name:'player_3', total:'+26', isMe:false,
+      picks:[{n:1,name:'Rory McIlroy',s:'+4',cut:false},{n:2,name:'Xander Schauffele',s:'+5',cut:false},{n:3,name:'Patrick Cantlay',s:'+6',cut:false},{n:4,name:'Shane Lowry',s:'+5',cut:false},{n:5,name:'Brian Harman',s:'+6',cut:false}] },
+  ];
+
+  sc(s) {
+    if (!s || s === 'E') return '#2D2D2A';
+    return s.startsWith('-') ? '#B23A2D' : '#2D2D2A';
+  }
+
+  renderVals() {
+    const standings = this.raw.map((p, i) => ({
+      id: p.id, rank: i + 1, name: p.name, isMe: p.isMe,
+      scoreText: p.total, scoreColor: this.sc(p.total),
+      rankBg: i === 0 ? 'rgba(201,163,104,.2)' : '#EBE3D4',
+      rankColor: i === 0 ? '#C9A368' : '#736A5F',
+      open: !!this.state.expanded[p.id],
+      chevron: this.state.expanded[p.id] ? '180deg' : '0deg',
+      toggle: () => this.setState(s => ({ expanded: { ...s.expanded, [p.id]: !s.expanded[p.id] } })),
+      picks: p.picks.map(pk => ({
+        n: pk.n, name: pk.name, score: pk.s,
+        scoreColor: pk.cut ? '#9E9488' : this.sc(pk.s),
+        showCut: pk.cut,
+        strike: pk.cut ? 'line-through' : 'none',
+      })),
+    }));
+    return { standings };
+  }
+}
+</script>
+</body>
+</html>
