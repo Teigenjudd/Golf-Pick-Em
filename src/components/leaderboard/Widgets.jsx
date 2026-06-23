@@ -1,25 +1,8 @@
-import { formatScore } from '../../utils/scoring'
+import { formatScore, parseScore, normalizeName } from '../../utils/scoring'
 import { ordinal, formatMoney } from '../../utils/format'
 
 // Shared leaderboard widgets, used by the live TournamentDetail page and the demo.
 // Presentational only — all data comes in via props.
-
-function parseScore(total) {
-  if (!total || total === '-' || total === '') return null
-  if (total === 'E') return 0
-  const n = parseInt(total, 10)
-  return isNaN(n) ? null : n
-}
-
-function normalizeName(name) {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
 
 export function WidgetHeader({ children }) {
   return (

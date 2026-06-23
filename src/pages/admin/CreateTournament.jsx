@@ -16,28 +16,11 @@ import { getTournaments, getTournamentField, getRankings } from '../../lib/slash
 import { getGolfOdds, GOLF_SPORT_KEYS } from '../../lib/oddsApi'
 import { buildTiers } from '../../utils/tierBuilder'
 import { ordinal } from '../../utils/format'
-
-function unwrapNumber(val) {
-  if (val == null) return null
-  if (typeof val === 'number') return val
-  if (val.$numberInt !== undefined) return parseInt(val.$numberInt, 10)
-  if (val.$numberDouble !== undefined) return parseFloat(val.$numberDouble)
-  return val
-}
+import { normalizeName, unwrapNumber } from '../../utils/scoring'
 
 function formatOdds(odds) {
   if (odds == null) return 'N/A'
   return odds > 0 ? `+${odds}` : `${odds}`
-}
-
-function normalizeName(name) {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
 }
 
 function generateJoinCode() {
