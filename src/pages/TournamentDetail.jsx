@@ -6,9 +6,6 @@ import { computeScores, assignRanks, unwrapNumber } from '../utils/scoring'
 import Standings from '../components/leaderboard/Standings'
 import { PGALeadersWidget, MostPopularWidget, TierValueWidget, PrizePoolWidget } from '../components/leaderboard/Widgets'
 
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 function weatherDescription(code) {
   if (code === 0) return 'Clear'
   if (code <= 3) return 'Partly cloudy'
@@ -19,8 +16,6 @@ function weatherDescription(code) {
   if (code <= 82) return 'Showers'
   return 'Thunderstorm'
 }
-
-// ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function TournamentDetail() {
   const { id } = useParams()
@@ -118,7 +113,7 @@ export default function TournamentDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-cream">
+      <div className="min-h-screen flex items-center justify-center bg-[#F4EFE4]">
         <p className="text-warm-400 text-sm">Loading…</p>
       </div>
     )
@@ -126,11 +121,11 @@ export default function TournamentDetail() {
 
   if (error || !tournament) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-cream">
+      <div className="min-h-screen flex items-center justify-center bg-[#F4EFE4]">
         <div className="text-center">
           <p className="text-charcoal font-medium mb-2">Tournament not found</p>
-          <Link to="/dashboard" className="text-sm text-fairway hover:text-fairway/80 font-medium transition-colors">
-            Go to dashboard
+          <Link to="/dashboard" className="text-sm text-brand font-medium no-underline">
+            ← Go to dashboard
           </Link>
         </div>
       </div>
@@ -139,7 +134,9 @@ export default function TournamentDetail() {
 
   const isAdmin = profile?.role === 'admin'
   const isDraft = tournament.status === 'draft'
+  const isLocked = tournament.status === 'locked' || (tournament.lock_time && new Date(tournament.lock_time) <= new Date())
   const hasCache = fetchedAt !== null
+  const userHasPicks = rawPicks.some(p => p.user_id === user?.id)
 
   const lastUpdatedLabel = fetchedAt
     ? (() => {
@@ -153,128 +150,179 @@ export default function TournamentDetail() {
   const roundNum = unwrapNumber(leaderboardData?.roundId)
   const lbStatus = leaderboardData?.status ?? ''
   const roundBadge = roundNum
-    ? `Round ${roundNum}${lbStatus === 'In Progress' ? ' · In Progress' : lbStatus === 'Official' ? ' · Final' : ''}`
+    ? `R${roundNum}${lbStatus === 'In Progress' ? ' · In Progress' : lbStatus === 'Official' ? ' · Final' : ''}`
     : null
 
   const heroName = tournament.course_name ?? tournament.name
   const subLabel = tournament.pga_name ?? (tournament.course_name ? tournament.name : null)
-
   const participantCount = new Set(rawPicks.map(p => p.user_id)).size
   const hasPrize = tournament.stake_amount && tournament.payout_structure?.length
 
+  const weatherStr = weather
+    ? `${weather.temp}°F · ${weather.description} · ${weather.wind}mph`
+    : null
+
+  const metaParts = [
+    weatherStr,
+    tournament.scores_to_keep && tournament.pick_count
+      ? `Best ${tournament.scores_to_keep} of ${tournament.pick_count}`
+      : null,
+    participantCount ? `${participantCount} players` : null,
+  ].filter(Boolean)
+
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="min-h-screen bg-[#F4EFE4] pb-8">
 
-      {/* ── Header ── */}
-      <div className="bg-fairway px-6 pt-6 pb-8">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between">
-            <Link to="/dashboard" className="text-cream/40 hover:text-cream/70 text-sm transition-colors">
-              ← Dashboard
-            </Link>
-            {isAdmin && (
-              <button
-                onClick={copyJoinLink}
-                className="text-xs text-cream/40 hover:text-cream/70 border border-cream/20 hover:border-cream/40 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                {copied ? 'Link copied!' : 'Share invite'}
-              </button>
-            )}
-          </div>
+      {/* ── Golf gradient header ── */}
+      <div style={{ background: 'linear-gradient(165deg,#1B4332 0%,#0F241B 100%)', paddingBottom: 24 }}>
 
-          <div className="flex items-end justify-between mt-4 gap-6">
-            {/* Left: course name + weather inline */}
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-5 pt-4">
+          <Link
+            to="/dashboard"
+            className="text-[14px] font-medium no-underline"
+            style={{ color: 'rgba(248,245,238,.65)' }}
+          >
+            ← Dashboard
+          </Link>
+          {isAdmin && (
+            <button
+              onClick={copyJoinLink}
+              className="text-[13px] font-semibold px-[14px] py-2 rounded-[10px] cursor-pointer border-none"
+              style={{
+                background: 'rgba(201,163,104,.16)',
+                border: '1px solid rgba(201,163,104,.45)',
+                color: '#E8CE9A',
+              }}
+            >
+              {copied ? 'Copied!' : 'Share invite'}
+            </button>
+          )}
+        </div>
+
+        {/* Hero */}
+        <div className="flex items-end justify-between gap-4 flex-wrap px-5 pt-5">
+          <div className="flex items-center gap-[14px]">
+            {/* Sport badge — tombstone shape */}
+            <div
+              className="flex-none flex flex-col items-center justify-center"
+              style={{
+                width: 52, height: 60,
+                background: '#1F6F47',
+                border: '2px solid #E6C66B',
+                borderRadius: '13px 13px 26px 26px',
+                boxShadow: '0 8px 18px -8px rgba(0,0,0,.4)',
+              }}
+            >
+              <span className="font-display font-extrabold text-[19px] text-cream leading-[.8]">GO</span>
+              <span className="font-display font-bold text-[8px] text-gold tracking-[.08em]">GOLF</span>
+            </div>
+
             <div>
               {subLabel && (
-                <p className="font-display font-bold text-xs uppercase tracking-widest text-gold mb-1">
+                <div className="font-display font-bold text-[11px] uppercase tracking-[.2em] text-gold mb-0.5">
                   {subLabel}
-                </p>
+                </div>
               )}
-              <div className="flex items-baseline gap-3 flex-wrap">
-                <h1 className="font-display font-bold text-3xl sm:text-4xl text-cream tracking-tight leading-tight">
-                  {heroName}
-                </h1>
-                {weather && (
-                  <>
-                    <span className="text-cream/20 text-xl font-light select-none">|</span>
-                    <span className="text-cream/50 text-sm">
-                      {weather.temp}°F · {weather.description} · {weather.wind}mph
-                    </span>
-                  </>
-                )}
-              </div>
+              <h1 className="font-display font-extrabold text-[38px] text-cream leading-[.9] tracking-tight">
+                {heroName}
+              </h1>
+              {metaParts.length > 0 && (
+                <div className="text-[12.5px] mt-1.5" style={{ color: 'rgba(248,245,238,.5)' }}>
+                  {metaParts.join(' · ')}
+                </div>
+              )}
             </div>
+          </div>
 
-            {/* Right: round + update info */}
-            <div className="text-right shrink-0 pb-0.5 space-y-0.5">
-              {roundBadge && (
-                <p className="font-display font-bold text-xs uppercase tracking-widest text-gold">
-                  {roundBadge}
-                </p>
-              )}
-              {lastUpdatedLabel && (
-                <p className="text-cream/50 text-sm flex items-center gap-1">
-                  Updated {lastUpdatedLabel}
-                  <span
-                    title="Leaderboard updates every 20 minutes during tournament rounds"
-                    className="cursor-help text-cream/30 hover:text-cream/60 transition-colors text-xs leading-none"
-                  >
-                    ⓘ
-                  </span>
-                </p>
-              )}
-              {refreshing && (
-                <p className="text-cream/40 text-xs">Refreshing…</p>
-              )}
-            </div>
+          <div className="text-right pb-0.5">
+            {roundBadge && (
+              <div className="font-display font-bold text-[11px] uppercase tracking-[.16em] text-gold">
+                {roundBadge}
+              </div>
+            )}
+            {lastUpdatedLabel && (
+              <div className="text-[12px] mt-[3px]" style={{ color: 'rgba(248,245,238,.45)' }}>
+                Updated {lastUpdatedLabel}{refreshing ? ' · Refreshing…' : ''}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {/* ── Content ── */}
+      <div className="max-w-[640px] mx-auto px-[18px] pt-[22px]">
 
-        {/* ── Pick'em Standings — full width ── */}
-        <div>
-          <h2 className="font-display font-bold text-xs uppercase tracking-widest text-warm-500 mb-2">
-            Pick'em Standings
-          </h2>
-          <div className="bg-white border border-warm-200 rounded-lg overflow-hidden">
-            {isDraft ? (
-              <div className="p-12 text-center">
-                <p className="text-sm text-warm-400">This tournament hasn't opened yet.</p>
-              </div>
-            ) : !hasCache ? (
-              <div className="p-12 text-center">
-                <p className="text-sm text-warm-500">Leaderboard opens once the first tee times go off.</p>
-                <p className="text-xs text-warm-400 mt-1.5">Check back once the round is underway.</p>
-              </div>
-            ) : standings.length === 0 ? (
-              <div className="p-12 text-center">
-                <p className="text-sm text-warm-400">No cards in yet.</p>
-              </div>
-            ) : (
-              <Standings
-                standings={standings}
-                currentUserId={user?.id}
-                pickCount={tournament.pick_count}
-              />
+        {/* Picks status banner */}
+        {!isDraft && (
+          <div className="bg-white border border-[#E4DDD0] rounded-[12px] px-[14px] py-[11px] flex items-center justify-between mb-[18px]">
+            <div className="flex items-center gap-[9px]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1B4332" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span className="text-[13px] text-[#1C1610]">
+                {userHasPicks
+                  ? isLocked ? 'Your picks are locked in.' : 'Your card is in.'
+                  : isLocked ? 'Picks are locked for this tournament.' : "You haven't submitted picks yet."}
+              </span>
+            </div>
+            {!isLocked && (
+              <Link
+                to={`/tournament/${id}/picks`}
+                className="text-[12.5px] font-semibold text-brand no-underline"
+              >
+                {userHasPicks ? 'Edit picks →' : 'Make picks →'}
+              </Link>
             )}
+          </div>
+        )}
+
+        {/* Standings section label */}
+        <div className="font-display font-bold text-[10px] uppercase tracking-[.22em] text-warm-400 mb-[10px]">
+          Pick&apos;em Standings
+        </div>
+
+        {/* Standings card */}
+        <div
+          className="bg-[#FFFDF8] border border-[#E4DDD0] rounded-2xl overflow-hidden mb-4"
+          style={{ boxShadow: '0 12px 36px -24px rgba(20,48,38,.35)' }}
+        >
+          {isDraft ? (
+            <div className="p-12 text-center">
+              <p className="text-[13px] text-warm-400">This tournament hasn&apos;t opened yet.</p>
+            </div>
+          ) : !hasCache ? (
+            <div className="p-12 text-center">
+              <p className="text-[13px] text-warm-500">Leaderboard opens once the first tee times go off.</p>
+              <p className="text-[12px] text-warm-400 mt-1.5">Check back once the round is underway.</p>
+            </div>
+          ) : standings.length === 0 ? (
+            <div className="p-12 text-center">
+              <p className="text-[13px] text-warm-400">No cards in yet.</p>
+            </div>
+          ) : (
+            <Standings
+              standings={standings}
+              currentUserId={user?.id}
+              pickCount={tournament.pick_count}
+            />
+          )}
+        </div>
+
+        {/* Widget grid — 2 columns, most popular + tier value span full width */}
+        <div className="grid grid-cols-2 gap-3">
+          {hasPrize && <PrizePoolWidget stakeAmount={tournament.stake_amount} participantCount={participantCount} payoutStructure={tournament.payout_structure} />}
+          <div className={hasPrize ? '' : 'col-span-2'}>
+            <PGALeadersWidget leaderboardData={leaderboardData} />
+          </div>
+          <div className="col-span-2">
+            <MostPopularWidget picks={rawPicks} />
+          </div>
+          <div className="col-span-2">
+            <TierValueWidget picks={rawPicks} leaderboardData={leaderboardData} />
           </div>
         </div>
 
-        {/* ── Widget row ── */}
-        <div className={`grid gap-4 ${hasPrize ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 md:grid-cols-3'}`}>
-          {hasPrize && (
-            <PrizePoolWidget
-              stakeAmount={tournament.stake_amount}
-              participantCount={participantCount}
-              payoutStructure={tournament.payout_structure}
-            />
-          )}
-          <PGALeadersWidget leaderboardData={leaderboardData} />
-          <MostPopularWidget picks={rawPicks} />
-          <TierValueWidget picks={rawPicks} leaderboardData={leaderboardData} />
-        </div>
       </div>
     </div>
   )

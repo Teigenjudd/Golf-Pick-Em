@@ -50,7 +50,7 @@ export default function Join() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-cream">
+      <div className="min-h-screen flex items-center justify-center bg-sand">
         <p className="text-warm-400 text-sm">Loading…</p>
       </div>
     )
@@ -59,59 +59,57 @@ export default function Join() {
   /* ── Unauthenticated: show magic link form ── */
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-cream px-6">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-8">
-            <h1 className="font-display font-bold text-5xl text-fairway tracking-tight">PICK'EM</h1>
-            <p className="text-warm-400 text-sm mt-1">PGA Golf · Friends Edition</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-sand px-5 py-10">
+        <div className="w-full max-w-[360px]">
+
+          <div className="text-center mb-7">
+            <div className="font-display font-extrabold text-[54px] text-brand tracking-[.08em] leading-none">POOLD</div>
+            <div className="font-display italic font-semibold text-[15px] text-warm-400 mt-[5px]">Make it interesting.</div>
           </div>
 
-          <div className="bg-white border border-warm-200 rounded-lg p-8">
-            <p className="text-sm text-warm-400 mb-5">
-              Sign in to join with code{' '}
-              <span className="font-mono font-semibold text-charcoal">{code}</span>
-            </p>
+          <div className="bg-white border border-[#EAD8C4] rounded-2xl px-6 py-7 shadow-[0_4px_24px_rgba(28,22,16,.07)]">
+            <div className="text-[13px] text-warm-400 mb-1">Sign in to join with code</div>
+            <div className="font-display font-extrabold text-[22px] text-[#1C1610] tracking-[.06em] mb-5">{code}</div>
 
             {sent ? (
               <div className="text-center">
-                <div className="w-12 h-12 rounded-full bg-fairway/10 flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-fairway" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                <div className="w-11 h-11 rounded-full bg-brand/10 flex items-center justify-center mx-auto mb-3">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C14A18" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
-                <p className="font-medium text-charcoal">Check your email</p>
-                <p className="text-sm text-warm-400 mt-1">{email}</p>
-                <p className="text-xs text-warm-400 mt-3 leading-relaxed">
-                  We sent a sign-in link — clicking it will drop you right into the tournament.
-                </p>
+                <div className="font-display font-extrabold text-[22px] text-[#1C1610]">Check your email</div>
+                <div className="text-[13px] text-warm-400 mt-1.5 leading-[1.5]">
+                  Clicking the link will drop you right into the pool.
+                </div>
               </div>
             ) : (
-              <form onSubmit={handleEmailSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-warm-500 uppercase tracking-wider mb-1.5">
-                    Email Address
-                  </label>
+              <form onSubmit={handleEmailSubmit}>
+                <div className="mb-[14px]">
+                  <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-warm-400 mb-[7px]">
+                    Email address
+                  </div>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full px-3 py-2.5 border border-warm-300 rounded-lg text-sm text-charcoal bg-white placeholder:text-warm-300 focus:outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway transition-colors"
+                    className="w-full px-[15px] py-[13px] border-[1.5px] border-[#EAD8C4] rounded-[11px] text-[15px] text-[#1C1610] bg-[#FFFAF6] outline-none placeholder:text-warm-300"
                   />
                 </div>
-                {emailError && <p className="text-sm text-birdie">{emailError}</p>}
+                {emailError && <p className="text-sm text-birdie mb-3">{emailError}</p>}
                 <button
                   type="submit"
                   disabled={sending}
-                  className="w-full bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm"
+                  className="w-full bg-brand text-white font-bold text-[15px] py-[14px] rounded-[11px] border-none cursor-pointer disabled:opacity-50"
                 >
                   {sending ? 'Sending…' : 'Send Magic Link'}
                 </button>
               </form>
             )}
           </div>
+
         </div>
       </div>
     )
@@ -119,7 +117,7 @@ export default function Join() {
 
   if (tournamentLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-cream">
+      <div className="min-h-screen flex items-center justify-center bg-sand">
         <p className="text-warm-400 text-sm">Looking up tournament…</p>
       </div>
     )
@@ -127,15 +125,20 @@ export default function Join() {
 
   if (tournamentError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-cream">
-        <div className="text-center">
-          <p className="text-charcoal font-medium mb-2">Invalid join code</p>
-          <p className="text-sm text-warm-400 mb-4">
-            The code <span className="font-mono font-semibold text-charcoal">{code}</span> doesn't match any active tournament.
-          </p>
-          <Link to="/dashboard" className="text-sm text-fairway hover:text-fairway/80 font-medium transition-colors">
-            Go to dashboard
-          </Link>
+      <div className="min-h-screen flex items-center justify-center bg-sand px-5">
+        <div className="w-full max-w-[360px]">
+          <div className="text-center mb-7">
+            <div className="font-display font-extrabold text-[54px] text-brand tracking-[.08em] leading-none">POOLD</div>
+          </div>
+          <div className="bg-white border border-[#EAD8C4] rounded-2xl px-6 py-7 text-center shadow-[0_4px_24px_rgba(28,22,16,.07)]">
+            <div className="font-display font-extrabold text-[22px] text-[#1C1610] mb-2">Invalid code</div>
+            <p className="text-[13px] text-warm-400 leading-[1.5] mb-6">
+              The code <span className="font-semibold text-[#1C1610]">{code}</span> doesn&apos;t match any active tournament.
+            </p>
+            <Link to="/dashboard" className="text-[12.5px] text-warm-400 no-underline">
+              <span className="text-brand font-semibold">Go to dashboard →</span>
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -147,43 +150,63 @@ export default function Join() {
     tournament.status === 'locked' ||
     (tournament.lock_time && new Date(tournament.lock_time) <= new Date())
 
-  /* ── Authenticated: tournament card ── */
+  /* ── Authenticated: tournament invite card ── */
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-cream px-6">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="font-display font-bold text-5xl text-fairway tracking-tight">PICK'EM</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-sand px-5 py-10">
+      <div className="w-full max-w-[360px]">
+
+        <div className="text-center mb-7">
+          <div className="font-display font-extrabold text-[54px] text-brand tracking-[.08em] leading-none">POOLD</div>
         </div>
 
-        <div className="bg-white border border-warm-200 rounded-lg p-8 text-center">
-          <p className="text-xs font-semibold text-gold uppercase tracking-widest mb-2">You're invited</p>
-          <h2 className="font-display font-bold text-2xl text-charcoal tracking-tight mb-1">
+        <div className="bg-white border border-[#EAD8C4] rounded-2xl px-6 py-7 text-center shadow-[0_4px_24px_rgba(28,22,16,.07)]">
+          <div className="font-display font-bold text-[11px] uppercase tracking-[.2em] text-gold mb-1.5">
+            You&apos;re invited
+          </div>
+          <div className="font-display font-extrabold text-[30px] text-[#1C1610] leading-none mb-1">
             {tournament.name}
-          </h2>
-          <p className="text-sm text-warm-400 mb-6">
+          </div>
+          <div className="text-[13px] text-warm-400 mb-6 leading-[1.5]">
             Pick {tournament.pick_count} player{tournament.pick_count !== 1 ? 's' : ''}, one from each tier
-          </p>
+          </div>
+
+          {/* Golf badge preview strip */}
+          <div className="rounded-[12px] px-4 py-3.5 flex items-center gap-3 mb-5" style={{ background: 'linear-gradient(105deg,#1B4332,#0D1F18)' }}>
+            <div
+              className="flex-none flex flex-col items-center justify-center"
+              style={{ width: 36, height: 42, background: '#1F6F47', border: '2px solid #E6C66B', borderRadius: '8px 8px 18px 18px' }}
+            >
+              <span className="font-display font-extrabold text-[13px] text-cream leading-[.85]">GO</span>
+              <span className="font-display font-bold text-[6.5px] text-gold tracking-[.04em]">GOLF</span>
+            </div>
+            <div className="flex-1 text-left">
+              <div className="font-display font-bold text-[9px] uppercase tracking-[.14em] text-gold">
+                {isLocked ? 'PICKS LOCKED' : 'PICKS OPEN'}
+              </div>
+              <div className="font-display font-extrabold text-[17px] text-cream leading-[1.1]">
+                {tournament.name}
+              </div>
+            </div>
+          </div>
 
           {isLocked ? (
-            <div className="rounded-lg bg-warm-100 border border-warm-200 p-4 text-sm text-warm-500">
+            <div className="rounded-[12px] bg-warm-100 border border-warm-200 px-4 py-3 text-[13px] text-warm-500 mb-3">
               Picks are locked for this tournament.
             </div>
           ) : (
             <button
               onClick={() => navigate(`/tournament/${tournament.id}/picks`)}
-              className="w-full bg-fairway hover:bg-fairway/90 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm"
+              className="block w-full bg-brand text-white font-bold text-[15px] py-[14px] rounded-[12px] border-none cursor-pointer mb-3"
             >
               Make Your Picks →
             </button>
           )}
 
-          <Link
-            to="/dashboard"
-            className="block mt-4 text-xs text-warm-400 hover:text-warm-500 transition-colors"
-          >
+          <Link to="/dashboard" className="text-[12.5px] text-warm-400 no-underline">
             Go to dashboard
           </Link>
         </div>
+
       </div>
     </div>
   )

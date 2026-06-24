@@ -1,11 +1,6 @@
 import { useState } from 'react'
 import { formatScore } from '../../utils/scoring'
 
-// Shared Pick'em standings list with the scorecard-expand interaction.
-// Used by the live TournamentDetail page and the demo. Presentational only:
-// `standings` is the output of computeScores+assignRanks, `currentUserId`
-// highlights the viewer's row, `pickCount` labels the counting line.
-
 function scoreColor(score, active = true) {
   if (score === null || !active) return 'text-warm-300'
   if (score < 0) return 'text-birdie'
@@ -34,90 +29,90 @@ export default function Standings({ standings, currentUserId, pickCount }) {
         const countingCount = entry.picks.filter(p => p.used_in_total).length
 
         return (
-          <div
-            key={entry.user_id}
-            className={`border-b border-warm-200 last:border-0 ${isMe ? 'border-l-[3px] border-l-gold' : ''}`}
-          >
+          <div key={entry.user_id} className="border-b border-[#EFE8DA] last:border-0">
             <button
               onClick={() => toggleExpanded(entry.user_id)}
-              className={`w-full flex items-center gap-4 px-5 py-4 hover:bg-warm-100 transition-colors text-left ${isMe ? 'bg-warm-100/40' : ''}`}
+              className="w-full flex items-center gap-3 px-[18px] py-[14px] hover:bg-[#FAF6EE] transition-colors text-left cursor-pointer border-none bg-transparent"
             >
-              {/* Rank badge — 40px */}
-              <span className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-display font-bold text-base tabular-nums leading-none ${
-                entry.rank === 1 ? 'bg-gold/20 text-gold' : 'bg-warm-200 text-warm-600'
-              }`}>
+              {/* Rank circle */}
+              <span
+                className="w-9 h-9 rounded-full flex items-center justify-center flex-none font-display font-bold text-base tabular-nums leading-none"
+                style={{
+                  background: entry.rank === 1 ? 'rgba(201,163,104,.2)' : '#EBE3D4',
+                  color: entry.rank === 1 ? '#C9A368' : '#736A5F',
+                }}
+              >
                 {entry.rank ?? '—'}
               </span>
 
               {/* Name + subtitle */}
               <div className="flex-1 min-w-0 text-left">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-base font-medium text-charcoal leading-snug">
+                <div className="flex items-center gap-[7px] flex-wrap">
+                  <span className="font-semibold text-[15px] text-charcoal leading-snug">
                     {entry.display_name}
                   </span>
                   {isMe && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gold/20 text-gold uppercase tracking-wide shrink-0">
-                      you
+                    <span className="font-display font-bold text-[10px] tracking-[.08em] bg-gold px-[7px] py-[2px] rounded-full uppercase" style={{ color: '#15130F' }}>
+                      YOU
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-warm-400 mt-0.5">
+                <p className="text-[12px] text-warm-400 mt-[1px]">
                   {countingCount > 0
                     ? `${countingCount} of ${pickCount} counting`
                     : `${pickCount} picks`}
-                  {!isExpanded && (
-                    <span className="text-warm-300"> · tap to expand</span>
-                  )}
                 </p>
               </div>
 
               {/* Score */}
-              <span className={`font-display font-bold tabular-nums text-2xl shrink-0 ${totalColor}`}>
+              <span className={`font-display font-extrabold tabular-nums text-[26px] flex-none ${totalColor}`}>
                 {entry.total_score === null ? '—' : formatScore(entry.total_score)}
               </span>
 
               {/* Chevron */}
               <svg
-                className={`w-4 h-4 text-warm-300 shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                className="flex-none transition-transform duration-[180ms]"
+                style={{
+                  width: 14, height: 14,
+                  transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                }}
+                fill="none" viewBox="0 0 24 24"
+                stroke="#C9BFB0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
 
-            {/* Scorecard expand — gold left bar is the signature element */}
+            {/* Scorecard expand — gold left bar signature element */}
             {isExpanded && (
-              <div className="flex border-t border-warm-200">
-                <div className="w-[3px] bg-gold shrink-0" />
-                <div className="flex-1 bg-warm-100 px-5 py-3">
-                  <div className="space-y-2">
+              <div className="flex border-t border-[#EFE8DA]">
+                <div className="w-[3px] bg-gold flex-none" />
+                <div className="flex-1 px-4 py-3" style={{ background: '#F8F3EC' }}>
+                  <div className="space-y-[4px]">
                     {entry.picks.map((pick, i) => {
                       const inactive = pick.withdrawn || pick.cut
                       const pickColor = scoreColor(pick.score, !inactive && pick.used_in_total)
                       return (
-                        <div key={i} className="flex items-center gap-3 text-sm">
-                          <span className="w-5 h-5 rounded-full bg-fairway/80 flex items-center justify-center shrink-0 text-[10px] font-display font-bold text-cream leading-none">
+                        <div key={i} className="flex items-center gap-[10px] py-[4px]">
+                          <span
+                            className="w-[19px] h-[19px] rounded-full flex items-center justify-center flex-none font-display font-bold text-[10px] text-cream leading-none"
+                            style={{ background: 'rgba(27,67,50,.85)' }}
+                          >
                             {i + 1}
                           </span>
-                          <span className={`flex-1 leading-snug ${
+                          <span className={`flex-1 text-[13.5px] leading-snug ${
                             inactive ? 'line-through text-warm-400' :
                             pick.used_in_total ? 'text-charcoal' : 'text-warm-400'
                           }`}>
                             {pick.player_name}
                           </span>
                           {pick.withdrawn && (
-                            <span className="text-[10px] font-bold text-birdie bg-birdie/10 px-1.5 py-0.5 rounded uppercase tracking-wide">WD</span>
+                            <span className="font-display font-bold text-[8px] text-birdie bg-birdie/10 px-[5px] py-[2px] rounded uppercase tracking-wide">WD</span>
                           )}
                           {pick.cut && (
-                            <span className="text-[10px] font-bold text-warm-500 bg-warm-200 px-1.5 py-0.5 rounded uppercase tracking-wide">CUT</span>
+                            <span className="font-display font-bold text-[8px] text-warm-500 bg-[#E4DDD0] px-[5px] py-[2px] rounded-[3px] uppercase">CUT</span>
                           )}
-                          {!inactive && pick.thru === 'F' && (
-                            <span className="text-xs text-warm-400">F</span>
-                          )}
-                          {!inactive && pick.thru && pick.thru !== 'F' && pick.thru !== '' && (
-                            <span className="text-xs text-warm-400">thru {pick.thru}</span>
-                          )}
-                          <span className={`font-display font-bold tabular-nums text-sm w-8 text-right ${pickColor}`}>
+                          <span className={`font-display font-bold tabular-nums text-[14px] w-[28px] text-right ${pickColor}`}>
                             {pick.score === null ? '—' : formatScore(pick.score)}
                           </span>
                         </div>
@@ -126,12 +121,12 @@ export default function Standings({ standings, currentUserId, pickCount }) {
                   </div>
 
                   {/* Total row */}
-                  <div className="flex items-center gap-3 pt-2.5 mt-2.5 border-t border-warm-200">
-                    <span className="w-5 shrink-0" />
-                    <span className="flex-1 font-display font-bold text-xs uppercase tracking-widest text-warm-400">
-                      Total
+                  <div className="flex items-center gap-[10px] pt-2 mt-[5px] border-t border-[#E4DDD0]">
+                    <span className="w-[19px] flex-none" />
+                    <span className="flex-1 font-display font-bold text-[9px] uppercase tracking-[.16em] text-warm-400">
+                      Total · Best {pickCount}
                     </span>
-                    <span className={`font-display font-bold tabular-nums text-sm w-8 text-right ${totalColor}`}>
+                    <span className={`font-display font-bold tabular-nums text-[14px] w-[28px] text-right ${totalColor}`}>
                       {entry.total_score === null ? '—' : formatScore(entry.total_score)}
                     </span>
                   </div>
