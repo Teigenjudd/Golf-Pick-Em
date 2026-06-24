@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import TierPicker from '../components/picks/TierPicker'
-import SportBadge from '../components/SportBadge'
+import PicksHeader from '../components/pool/PicksHeader'
+import PicksSubmitBar from '../components/pool/PicksSubmitBar'
 
 export default function Picks() {
   const { id } = useParams()
-  const navigate = useNavigate()
   const { user } = useAuth()
 
   const [tournament, setTournament] = useState(null)
@@ -169,7 +169,6 @@ export default function Picks() {
     )
   }
 
-  const poolLabel = tournament.pga_name ?? tournament.name
   const subtitle = [
     'Pick one from each tier',
     tournament.scores_to_keep && tournament.pick_count
@@ -180,34 +179,12 @@ export default function Picks() {
   return (
     <div className="min-h-screen bg-[#F4EFE4] pb-24">
 
-      {/* Golf gradient header */}
-      <div style={{ background: 'linear-gradient(165deg,#1B4332 0%,#0F241B 100%)', padding: '16px 20px 24px' }}>
-        <Link
-          to={`/tournament/${id}`}
-          className="no-underline"
-          style={{ fontFamily: 'Inter', fontSize: 14, fontWeight: 500, color: 'rgba(248,245,238,.65)' }}
-        >
-          ← Leaderboard
-        </Link>
-
-        <div className="flex items-center gap-3 mt-4">
-          <SportBadge config={badge} size="pick" />
-          <div>
-            <div
-              className="font-display font-bold uppercase mb-[2px]"
-              style={{ fontSize: 10, letterSpacing: '.18em', color: '#C9A368' }}
-            >
-              {tournament.name}
-            </div>
-            <div className="font-display font-extrabold text-cream leading-[.95]" style={{ fontSize: 28 }}>
-              Make your picks
-            </div>
-            <div className="mt-[5px]" style={{ fontFamily: 'Inter', fontSize: 12, color: 'rgba(248,245,238,.5)' }}>
-              {subtitle}
-            </div>
-          </div>
-        </div>
-      </div>
+      <PicksHeader
+        backTo={`/tournament/${id}`}
+        badgeConfig={badge}
+        eyebrow={tournament.name}
+        subtitle={subtitle}
+      />
 
       {/* Content */}
       <div className="max-w-[560px] mx-auto px-[18px] pt-5">
@@ -266,28 +243,13 @@ export default function Picks() {
 
       {/* Sticky submit bar */}
       {!isLocked && (
-        <div
-          className="fixed bottom-0 left-0 right-0 z-10"
-          style={{ background: '#F4EFE4', borderTop: '1px solid #E4DDD0', padding: '12px 18px 20px' }}
-        >
-          <div className="max-w-[560px] mx-auto flex items-center gap-3">
-            <div className="flex-1 text-[12px] text-warm-400">
-              {selectedCount} of {tiers.length} tiers selected
-            </div>
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || !allSelected}
-              className="font-bold text-[14px] text-cream px-7 py-[13px] rounded-[12px] border-none transition-all duration-[150ms]"
-              style={{
-                background: allSelected ? '#1B4332' : '#9E9488',
-                opacity: submitting ? 0.6 : 1,
-                cursor: allSelected ? 'pointer' : 'default',
-              }}
-            >
-              {submitting ? 'Submitting…' : allSelected ? (hasExistingPicks ? 'Update Picks →' : 'Submit Picks →') : `${selectedCount} of ${tiers.length} selected`}
-            </button>
-          </div>
-        </div>
+        <PicksSubmitBar
+          selectedCount={selectedCount}
+          totalCount={tiers.length}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+          hasExistingPicks={hasExistingPicks}
+        />
       )}
 
     </div>

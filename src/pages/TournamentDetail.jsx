@@ -4,8 +4,9 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { computeScores, assignRanks, unwrapNumber } from '../utils/scoring'
 import Standings from '../components/leaderboard/Standings'
-import { PGALeadersWidget, MostPopularWidget, TierValueWidget, PrizePoolWidget } from '../components/leaderboard/Widgets'
-import SportBadge from '../components/SportBadge'
+import PoolHeader from '../components/pool/PoolHeader'
+import StandingsCard from '../components/pool/StandingsCard'
+import WidgetGrid from '../components/pool/WidgetGrid'
 
 function weatherDescription(code) {
   if (code === 0) return 'Clear'
@@ -168,7 +169,6 @@ export default function TournamentDetail() {
   const heroName = tournament.course_name ?? tournament.name
   const subLabel = tournament.pga_name ?? (tournament.course_name ? tournament.name : null)
   const participantCount = new Set(rawPicks.map(p => p.user_id)).size
-  const hasPrize = tournament.stake_amount && tournament.payout_structure?.length
 
   const weatherStr = weather
     ? `${weather.temp}°F · ${weather.description} · ${weather.wind}mph`
@@ -185,69 +185,28 @@ export default function TournamentDetail() {
   return (
     <div className="min-h-screen bg-[#F4EFE4] pb-8">
 
-      {/* ── Golf gradient header ── */}
-      <div style={{ background: 'linear-gradient(165deg,#1B4332 0%,#0F241B 100%)', paddingBottom: 24 }}>
-
-        {/* Top bar */}
-        <div className="flex items-center justify-between px-5 pt-4">
-          <Link
-            to="/dashboard"
-            className="text-[14px] font-medium no-underline"
-            style={{ color: 'rgba(248,245,238,.65)' }}
+      <PoolHeader
+        backTo="/dashboard"
+        badgeConfig={badge}
+        subLabel={subLabel}
+        heroName={heroName}
+        metaParts={metaParts}
+        roundBadge={roundBadge}
+        updatedLabel={lastUpdatedLabel ? `Updated ${lastUpdatedLabel}${refreshing ? ' · Refreshing…' : ''}` : null}
+        action={isAdmin && (
+          <button
+            onClick={copyJoinLink}
+            className="text-[13px] font-semibold px-[14px] py-2 rounded-[10px] cursor-pointer border-none"
+            style={{
+              background: 'rgba(201,163,104,.16)',
+              border: '1px solid rgba(201,163,104,.45)',
+              color: '#E8CE9A',
+            }}
           >
-            ← Dashboard
-          </Link>
-          {isAdmin && (
-            <button
-              onClick={copyJoinLink}
-              className="text-[13px] font-semibold px-[14px] py-2 rounded-[10px] cursor-pointer border-none"
-              style={{
-                background: 'rgba(201,163,104,.16)',
-                border: '1px solid rgba(201,163,104,.45)',
-                color: '#E8CE9A',
-              }}
-            >
-              {copied ? 'Copied!' : 'Share invite'}
-            </button>
-          )}
-        </div>
-
-        {/* Hero */}
-        <div className="flex items-end justify-between gap-4 flex-wrap px-5 pt-5">
-          <div className="flex items-center gap-[14px]">
-            <SportBadge config={badge} size="lg" />
-
-            <div>
-              {subLabel && (
-                <div className="font-display font-bold text-[11px] uppercase tracking-[.2em] text-gold mb-0.5">
-                  {subLabel}
-                </div>
-              )}
-              <h1 className="font-display font-extrabold text-[38px] text-cream leading-[.9] tracking-tight">
-                {heroName}
-              </h1>
-              {metaParts.length > 0 && (
-                <div className="text-[12.5px] mt-1.5" style={{ color: 'rgba(248,245,238,.5)' }}>
-                  {metaParts.join(' · ')}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="text-right pb-0.5">
-            {roundBadge && (
-              <div className="font-display font-bold text-[11px] uppercase tracking-[.16em] text-gold">
-                {roundBadge}
-              </div>
-            )}
-            {lastUpdatedLabel && (
-              <div className="text-[12px] mt-[3px]" style={{ color: 'rgba(248,245,238,.45)' }}>
-                Updated {lastUpdatedLabel}{refreshing ? ' · Refreshing…' : ''}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+            {copied ? 'Copied!' : 'Share invite'}
+          </button>
+        )}
+      />
 
       {/* ── Content ── */}
       <div className="max-w-[640px] mx-auto px-[18px] pt-[22px]">
@@ -276,16 +235,8 @@ export default function TournamentDetail() {
           </div>
         )}
 
-        {/* Standings section label */}
-        <div className="font-display font-bold text-[10px] uppercase tracking-[.22em] text-warm-400 mb-[10px]">
-          Pick&apos;em Standings
-        </div>
-
-        {/* Standings card */}
-        <div
-          className="bg-[#FFFDF8] border border-[#E4DDD0] rounded-2xl overflow-hidden mb-4"
-          style={{ boxShadow: '0 12px 36px -24px rgba(20,48,38,.35)' }}
-        >
+        {/* Standings */}
+        <StandingsCard>
           {isDraft ? (
             <div className="p-12 text-center">
               <p className="text-[13px] text-warm-400">This tournament hasn&apos;t opened yet.</p>
@@ -306,21 +257,16 @@ export default function TournamentDetail() {
               pickCount={tournament.pick_count}
             />
           )}
-        </div>
+        </StandingsCard>
 
-        {/* Widget grid — 2 columns, most popular + tier value span full width */}
-        <div className="grid grid-cols-2 gap-3">
-          {hasPrize && <PrizePoolWidget stakeAmount={tournament.stake_amount} participantCount={participantCount} payoutStructure={tournament.payout_structure} />}
-          <div className={hasPrize ? '' : 'col-span-2'}>
-            <PGALeadersWidget leaderboardData={leaderboardData} />
-          </div>
-          <div className="col-span-2">
-            <MostPopularWidget picks={rawPicks} />
-          </div>
-          <div className="col-span-2">
-            <TierValueWidget picks={rawPicks} leaderboardData={leaderboardData} />
-          </div>
-        </div>
+        {/* Widget grid */}
+        <WidgetGrid
+          leaderboardData={leaderboardData}
+          picks={rawPicks}
+          stakeAmount={tournament.stake_amount}
+          participantCount={participantCount}
+          payoutStructure={tournament.payout_structure}
+        />
 
       </div>
     </div>

@@ -335,8 +335,8 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 - `demoLeaderboardData` — frozen PGA leaderboard snapshot
 
 **What must be on this page:**
-- Same layout as TournamentDetail
-- Pick CTA banner if visitor hasn't picked yet, or "Your card is in" + edit link if they have
+- Same layout as TournamentDetail — renders through the shared `PoolHeader` / `StandingsCard` / `WidgetGrid` shells, so it tracks TournamentDetail automatically
+- Pick CTA banner if visitor hasn't picked yet, or "Your card is in" + edit link if they have (banner is page-specific, not part of the shell)
 - Full standings with visitor highlighted as "You"
 - All four widgets (or three if no prize pool)
 
@@ -353,13 +353,27 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 - `demoTiers` — static tiers with players and odds
 
 **What must be on this page:**
-- Same layout as Picks
+- Same layout as Picks — renders through the shared `PicksHeader` / `PicksSubmitBar` shells, so it tracks Picks automatically
 - TierPicker with demo players
 - Submit drops visitor into the demo standings as "You"
 
 ---
 
 ## Shared Components
+
+### Pool page shells — `src/components/pool/`
+
+The full chrome of the leaderboard and picks pages is shared so the live pages and the
+demo can't drift apart. Pages supply their own data source (Supabase vs `src/demo/`
+fixture); the shells are identical. **When restyling a pool/picks page, edit the shell.**
+
+| Shell | Props | Used by |
+|---|---|---|
+| `PoolHeader` | `backTo`, `backLabel`, `badgeConfig`, `subLabel`, `heroName`, `metaParts[]`, `roundBadge`, `updatedLabel`, `action` | TournamentDetail, DemoTournament |
+| `PicksHeader` | `backTo`, `backLabel`, `badgeConfig`, `eyebrow`, `title`, `subtitle` | Picks, DemoPicks |
+| `PicksSubmitBar` | `selectedCount`, `totalCount`, `onSubmit`, `submitting`, `hasExistingPicks` | Picks, DemoPicks |
+| `StandingsCard` | `children` (standings table or empty state) | TournamentDetail, DemoTournament |
+| `WidgetGrid` | `leaderboardData`, `picks`, `stakeAmount`, `participantCount`, `payoutStructure` | TournamentDetail, DemoTournament |
 
 ### `Standings` — `src/components/leaderboard/Standings.jsx`
 
