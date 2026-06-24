@@ -25,49 +25,58 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-cream px-6">
-      <div className="w-full max-w-sm">
-        {/* Wordmark */}
-        <div className="text-center mb-8">
-          <h1 className="font-display font-bold text-5xl text-fairway tracking-tight">PICK'EM</h1>
-          <p className="text-warm-400 text-sm mt-1">PGA Golf · Friends Edition</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-sand px-5 py-10">
+      <div className="w-full max-w-[360px]">
+
+        <div className="text-center mb-9">
+          <div className="font-display font-extrabold text-[60px] text-brand tracking-[.08em] leading-none">POOLD</div>
+          <div className="font-display italic font-semibold text-base text-warm-400 mt-1.5">Make it interesting.</div>
         </div>
 
-        <div className="bg-white border border-warm-200 rounded-lg p-8">
+        <div className="bg-white border border-[#EAD8C4] rounded-2xl px-6 py-7 shadow-[0_4px_24px_rgba(28,22,16,.07)]">
           {sent ? (
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-fairway/10 flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-fairway" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            <div className="text-center py-2">
+              <div className="w-[52px] h-[52px] rounded-full bg-brand/10 flex items-center justify-center mx-auto mb-4">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C14A18" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
-              <p className="font-medium text-charcoal">Check your email</p>
-              <p className="text-sm text-warm-400 mt-1">{email}</p>
-              <p className="text-xs text-warm-400 mt-3 leading-relaxed">
-                We sent a sign-in link — no password needed.
-              </p>
+              <div className="font-display font-extrabold text-[26px] text-[#1C1610] mb-1.5">Check your email</div>
+              <div className="text-[13.5px] text-warm-400 leading-[1.55]">
+                We sent a sign-in link to<br />
+                <strong className="text-[#1C1610]">{email}</strong>
+              </div>
+              <div className="text-[12px] text-[#C8B8A4] mt-2">Click the link — no password needed.</div>
+              <button
+                onClick={() => { setSent(false); setEmail('') }}
+                className="mt-[18px] text-[12px] text-warm-400 bg-transparent border-none cursor-pointer underline"
+              >
+                Use a different email
+              </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-warm-500 uppercase tracking-wider mb-1.5">
-                  Email Address
-                </label>
+            <form onSubmit={handleSubmit}>
+              <p className="text-[13px] text-warm-400 text-center mb-[22px] leading-[1.55]">
+                Sign in with your email.<br />No password — we&apos;ll send a magic link.
+              </p>
+              <div className="mb-[14px]">
+                <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-warm-400 mb-[7px]">
+                  Email address
+                </div>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full px-3 py-2.5 border border-warm-300 rounded-lg text-sm text-charcoal bg-white placeholder:text-warm-300 focus:outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway transition-colors"
+                  className="w-full px-[15px] py-[13px] border-[1.5px] border-[#EAD8C4] rounded-[11px] text-[15px] text-[#1C1610] bg-[#FFFAF6] outline-none placeholder:text-warm-300"
                 />
               </div>
-              {error && <p className="text-sm text-birdie">{error}</p>}
+              {error && <p className="text-sm text-birdie mb-3">{error}</p>}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm"
+                className="w-full bg-brand text-white font-bold text-[15px] py-[14px] rounded-[11px] border-none cursor-pointer disabled:opacity-50"
               >
                 {loading ? 'Sending…' : 'Send Magic Link'}
               </button>
@@ -75,12 +84,13 @@ export default function Login() {
           )}
         </div>
 
-        <p className="text-center text-xs text-warm-400 mt-6">
-          Just looking around?{' '}
-          <Link to="/demo" className="text-fairway hover:text-fairway/80 font-medium transition-colors">
-            Try the demo →
+        <div className="text-center mt-5">
+          <Link to="/demo" className="text-[12.5px] text-warm-400 no-underline">
+            Just looking?{' '}
+            <span className="text-brand font-semibold">Try the demo →</span>
           </Link>
-        </p>
+        </div>
+
       </div>
     </div>
   )

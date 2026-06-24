@@ -2,6 +2,7 @@
 
 @theme {
   /* Brand palette */
+  --color-brand:    #C14A18;
   --color-fairway:  #1B4332;
   --color-cream:    #F8F5EE;
   --color-gold:     #C9A368;
@@ -9,6 +10,7 @@
   --color-charcoal: #2D2D2A;
 
   /* Warm neutrals */
+  --color-sand:     #F8F0E4;
   --color-warm-100: #F0EBE1;
   --color-warm-200: #E4DDD0;
   --color-warm-300: #C9BFB0;
@@ -21,9 +23,14 @@
   --font-body:    "Inter", system-ui, sans-serif;
 }
 
+@keyframes liveDot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .28; }
+}
+
 body {
   margin: 0;
-  background-color: var(--color-cream);
+  background-color: var(--color-sand);
   color: var(--color-charcoal);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;

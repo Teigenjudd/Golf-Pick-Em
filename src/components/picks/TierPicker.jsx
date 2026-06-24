@@ -1,8 +1,3 @@
-// Shared tier/player selection grid, used by the live Picks page and the demo.
-// Presentational only: `tiers` is the tier list (each with tier_players),
-// `selections` is keyed by tier.id → { player_id, player_name }, and
-// `onSelect(tier, player)` reports a choice.
-
 function formatOdds(odds) {
   if (odds == null) return null
   return odds > 0 ? `+${odds}` : `${odds}`
@@ -10,28 +5,34 @@ function formatOdds(odds) {
 
 export default function TierPicker({ tiers, selections, onSelect }) {
   return (
-    <div className="space-y-4">
+    <div>
       {tiers.map(tier => {
         const selected = selections[tier.id]
         return (
-          <div key={tier.id} className="bg-white border border-warm-200 rounded-lg overflow-hidden">
+          <div
+            key={tier.id}
+            className="bg-[#FFFDF8] border border-[#E4DDD0] rounded-[14px] overflow-hidden mb-3"
+          >
             {/* Tier header */}
-            <div className="flex items-center gap-3 px-4 py-3 border-b border-warm-200 bg-warm-100">
-              <span className="w-5 h-5 rounded-full bg-fairway flex items-center justify-center shrink-0 text-[10px] font-display font-bold text-cream leading-none">
+            <div
+              className="flex items-center gap-[10px] px-[15px] py-3 border-b border-[#EFE8DA]"
+              style={{ background: selected ? 'rgba(27,67,50,.06)' : 'transparent' }}
+            >
+              <span className="w-[22px] h-[22px] rounded-full bg-fairway flex items-center justify-center flex-none font-display font-bold text-[11px] text-cream leading-none">
                 {tier.tier_number}
               </span>
-              <h2 className="font-display font-bold text-sm uppercase tracking-wide text-charcoal flex-1">
+              <span className="font-display font-bold text-[14px] tracking-[.04em] text-charcoal flex-1">
                 {tier.label}
-              </h2>
+              </span>
               {selected && (
-                <span className="text-xs text-fairway font-medium">
+                <span className="text-[11.5px] font-semibold text-fairway">
                   {selected.player_name} ✓
                 </span>
               )}
             </div>
 
             {/* Player grid */}
-            <div className="p-4 grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 p-3">
               {(tier.tier_players ?? []).map(player => {
                 const isSelected = selected?.player_id === player.player_id
                 const odds = formatOdds(player.odds)
@@ -39,17 +40,25 @@ export default function TierPicker({ tiers, selections, onSelect }) {
                   <button
                     key={player.id}
                     onClick={() => onSelect(tier, player)}
-                    className={`text-left px-3 py-2.5 rounded-lg border text-sm transition-colors ${
-                      isSelected
-                        ? 'bg-fairway border-fairway text-cream'
-                        : 'bg-white border-warm-200 text-charcoal hover:border-warm-300 hover:bg-warm-100'
-                    }`}
+                    className="text-left px-[13px] py-[11px] rounded-[10px] border-[1.5px] transition-all duration-[120ms]"
+                    style={{
+                      background: isSelected ? '#1B4332' : '#FFFDF8',
+                      borderColor: isSelected ? '#1B4332' : '#E4DDD0',
+                    }}
                   >
-                    <span className="block font-medium leading-snug">{player.player_name}</span>
+                    <div
+                      className="font-semibold text-[13.5px] leading-[1.2] mb-[3px]"
+                      style={{ color: isSelected ? '#F8F5EE' : '#2D2D2A' }}
+                    >
+                      {player.player_name}
+                    </div>
                     {odds && (
-                      <span className={`text-xs font-mono ${isSelected ? 'text-cream/60' : 'text-warm-400'}`}>
+                      <div
+                        className="text-[11.5px]"
+                        style={{ color: isSelected ? 'rgba(248,245,238,.55)' : '#9E9488' }}
+                      >
                         {odds}
-                      </span>
+                      </div>
                     )}
                   </button>
                 )

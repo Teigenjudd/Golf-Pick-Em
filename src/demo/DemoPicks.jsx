@@ -1,13 +1,17 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useDemo } from './DemoContext'
 import { demoTournament, demoTiers } from './demoData'
 import TierPicker from '../components/picks/TierPicker'
+import PicksHeader from '../components/pool/PicksHeader'
+import PicksSubmitBar from '../components/pool/PicksSubmitBar'
 
 export default function DemoPicks() {
   const navigate = useNavigate()
   const { selections, selectPlayer, submit } = useDemo()
   const [error, setError] = useState(null)
+
+  const selectedCount = Object.keys(selections).length
 
   function handleSubmit() {
     const missing = demoTiers.filter(t => !selections[t.id])
@@ -19,24 +23,25 @@ export default function DemoPicks() {
     navigate('/demo/tournament')
   }
 
-  return (
-    <div>
-      {/* Header */}
-      <div className="bg-fairway px-6 pt-8 pb-6">
-        <div className="max-w-2xl mx-auto">
-          <Link to="/demo/tournament" className="text-cream/50 hover:text-cream/80 text-sm transition-colors">
-            ← Leaderboard
-          </Link>
-          <h1 className="font-display font-bold text-3xl text-cream tracking-tight leading-tight mt-4">
-            {demoTournament.name}
-          </h1>
-          <p className="text-cream/50 text-sm mt-1">Pick one player from each tier</p>
-        </div>
-      </div>
+  const subtitle = [
+    'Pick one from each tier',
+    demoTournament.scores_to_keep && demoTournament.pick_count
+      ? `Best ${demoTournament.scores_to_keep} of ${demoTournament.pick_count} count`
+      : null,
+  ].filter(Boolean).join(' · ')
 
-      <div className="max-w-2xl mx-auto px-6 py-6">
+  return (
+    <div className="min-h-screen bg-[#F4EFE4] pb-24">
+
+      <PicksHeader
+        backTo="/demo/tournament"
+        eyebrow={demoTournament.name}
+        subtitle={subtitle}
+      />
+
+      <div className="max-w-[560px] mx-auto px-[18px] pt-5">
         {error && (
-          <div className="mb-5 p-4 bg-birdie/5 border border-birdie/20 rounded-lg text-sm text-birdie">
+          <div className="mb-4 px-4 py-3 rounded-[12px] text-[13px] text-birdie" style={{ background: 'rgba(178,58,45,.05)', border: '1px solid rgba(178,58,45,.2)' }}>
             {error}
           </div>
         )}
@@ -46,16 +51,13 @@ export default function DemoPicks() {
           selections={selections}
           onSelect={(tier, player) => selectPlayer(tier.id, player)}
         />
-
-        <div className="mt-6">
-          <button
-            onClick={handleSubmit}
-            className="w-full bg-fairway hover:bg-fairway/90 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm"
-          >
-            Submit Picks
-          </button>
-        </div>
       </div>
+
+      <PicksSubmitBar
+        selectedCount={selectedCount}
+        totalCount={demoTiers.length}
+        onSubmit={handleSubmit}
+      />
     </div>
   )
 }

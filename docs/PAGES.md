@@ -254,8 +254,10 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 - Toggle player ↔ admin role (cannot toggle yourself)
 
 **Design notes:**
-- Admin pages are purely functional. They should look clean and trustworthy, not sporty.
-- The three-tab layout works. No strong redesign pull here — just bring it in line with the general Poold brand voice.
+- White sticky nav: `← Dashboard | POOLD Admin` on the left, "Sign out" text button on the right. Same nav pattern as CreateTournament.
+- Page background is `bg-sand`. Tab switcher uses `bg-[#EAD8C4]` container with `rounded-[10px]`, active tab is `bg-white`.
+- Tournament/participant/user cards use `rounded-[14px]` / `rounded-[13px]` with `border-[#EAD8C4]`.
+- Join link field uses `bg-sand` display (not a `<code>` element), with a Copy button that turns green/fairway when copied.
 
 ---
 
@@ -294,7 +296,10 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 - Error states throughout
 
 **Design notes:**
-- This is an infrequently used admin-only flow. Functional clarity beats visual polish.
+- White sticky nav: `← Admin | POOLD Create Tournament` on the left, step circle indicator + "of 2" on the right. 3px progress bar immediately below nav (50% at step 1, 100% at step 2).
+- Page background is `bg-sand`. Step 1 opens with `"Set it up."` heading (Barlow Condensed 800, 30px), then a `bg-white rounded-[16px] border-[1.5px] border-[#EAD8C4]` form card.
+- All inputs: `rounded-[11px] border-[1.5px] border-[#EAD8C4] bg-[#FFFAF6] py-3 px-[14px] text-[14px]`. Labels: 11px Inter semibold, uppercase, tracking-[.12em], warm-400.
+- Step 2 heading: `"Set the tiers."` (same font), subtitle in warm-400. Tier cards: `border-[2px] border-[#EAD8C4] rounded-[13px]`. Player cards: `bg-white border border-[#EAD8C4] rounded-[8px]`. Tier list area: `bg-sand`.
 - The drag-and-drop tier builder is power-user territory — keep it dense and informative (name + odds + rank visible).
 
 ---
@@ -330,8 +335,8 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 - `demoLeaderboardData` — frozen PGA leaderboard snapshot
 
 **What must be on this page:**
-- Same layout as TournamentDetail
-- Pick CTA banner if visitor hasn't picked yet, or "Your card is in" + edit link if they have
+- Same layout as TournamentDetail — renders through the shared `PoolHeader` / `StandingsCard` / `WidgetGrid` shells, so it tracks TournamentDetail automatically
+- Pick CTA banner if visitor hasn't picked yet, or "Your card is in" + edit link if they have (banner is page-specific, not part of the shell)
 - Full standings with visitor highlighted as "You"
 - All four widgets (or three if no prize pool)
 
@@ -348,13 +353,27 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 - `demoTiers` — static tiers with players and odds
 
 **What must be on this page:**
-- Same layout as Picks
+- Same layout as Picks — renders through the shared `PicksHeader` / `PicksSubmitBar` shells, so it tracks Picks automatically
 - TierPicker with demo players
 - Submit drops visitor into the demo standings as "You"
 
 ---
 
 ## Shared Components
+
+### Pool page shells — `src/components/pool/`
+
+The full chrome of the leaderboard and picks pages is shared so the live pages and the
+demo can't drift apart. Pages supply their own data source (Supabase vs `src/demo/`
+fixture); the shells are identical. **When restyling a pool/picks page, edit the shell.**
+
+| Shell | Props | Used by |
+|---|---|---|
+| `PoolHeader` | `backTo`, `backLabel`, `badgeConfig`, `subLabel`, `heroName`, `metaParts[]`, `roundBadge`, `updatedLabel`, `action` | TournamentDetail, DemoTournament |
+| `PicksHeader` | `backTo`, `backLabel`, `badgeConfig`, `eyebrow`, `title`, `subtitle` | Picks, DemoPicks |
+| `PicksSubmitBar` | `selectedCount`, `totalCount`, `onSubmit`, `submitting`, `hasExistingPicks` | Picks, DemoPicks |
+| `StandingsCard` | `children` (standings table or empty state) | TournamentDetail, DemoTournament |
+| `WidgetGrid` | `leaderboardData`, `picks`, `stakeAmount`, `participantCount`, `payoutStructure` | TournamentDetail, DemoTournament |
 
 ### `Standings` — `src/components/leaderboard/Standings.jsx`
 

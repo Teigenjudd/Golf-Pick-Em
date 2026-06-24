@@ -27,7 +27,10 @@
       "Bash(cat .env)",
       "Bash(cat .env.local)",
       "Bash(cat .env.production)",
-      "Bash(supabase functions *)"
+      "Bash(supabase functions *)",
+      "Bash(node *)",
+      "Bash(npx vite *)",
+      "Bash(npx eslint *)"
     ]
   }
 }
