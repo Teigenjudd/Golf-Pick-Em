@@ -94,10 +94,10 @@ export default function TournamentDetail() {
     if (!tournament?.slash_golf_tournament_id) return
     supabase
       .from('pga_event_badges')
-      .select('badge_line1, badge_line2')
+      .select('badge_config')
       .eq('tourn_id', tournament.slash_golf_tournament_id)
       .maybeSingle()
-      .then(({ data }) => { if (data) setBadge({ line1: data.badge_line1, line2: data.badge_line2 }) })
+      .then(({ data }) => { if (data) setBadge(data.badge_config) })
   }, [tournament?.slash_golf_tournament_id])
 
   useEffect(() => {
@@ -215,7 +215,7 @@ export default function TournamentDetail() {
         {/* Hero */}
         <div className="flex items-end justify-between gap-4 flex-wrap px-5 pt-5">
           <div className="flex items-center gap-[14px]">
-            <SportBadge line1={badge?.line1} line2={badge?.line2} size="lg" />
+            <SportBadge config={badge} size="lg" />
 
             <div>
               {subLabel && (

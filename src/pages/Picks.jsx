@@ -66,10 +66,10 @@ export default function Picks() {
       if (t.slash_golf_tournament_id) {
         supabase
           .from('pga_event_badges')
-          .select('badge_line1, badge_line2')
+          .select('badge_config')
           .eq('tourn_id', t.slash_golf_tournament_id)
           .maybeSingle()
-          .then(({ data: b }) => { if (b) setBadge({ line1: b.badge_line1, line2: b.badge_line2 }) })
+          .then(({ data: b }) => { if (b) setBadge(b.badge_config) })
       }
     }
     load()
@@ -191,7 +191,7 @@ export default function Picks() {
         </Link>
 
         <div className="flex items-center gap-3 mt-4">
-          <SportBadge line1={badge?.line1} line2={badge?.line2} size="pick" />
+          <SportBadge config={badge} size="pick" />
           <div>
             <div
               className="font-display font-bold uppercase mb-[2px]"

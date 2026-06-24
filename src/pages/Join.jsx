@@ -35,10 +35,10 @@ export default function Join() {
           if (data.slash_golf_tournament_id) {
             supabase
               .from('pga_event_badges')
-              .select('badge_line1, badge_line2')
+              .select('badge_config')
               .eq('tourn_id', data.slash_golf_tournament_id)
               .maybeSingle()
-              .then(({ data: b }) => { if (b) setBadge({ line1: b.badge_line1, line2: b.badge_line2 }) })
+              .then(({ data: b }) => { if (b) setBadge(b.badge_config) })
           }
         }
       })
@@ -185,7 +185,7 @@ export default function Join() {
 
           {/* Golf badge preview strip */}
           <div className="rounded-[12px] px-4 py-3.5 flex items-center gap-3 mb-5" style={{ background: 'linear-gradient(105deg,#1B4332,#0D1F18)' }}>
-            <SportBadge line1={badge?.line1} line2={badge?.line2} size="sm" />
+            <SportBadge config={badge} size="sm" />
             <div className="flex-1 text-left">
               <div className="font-display font-bold text-[9px] uppercase tracking-[.14em] text-gold">
                 {isLocked ? 'PICKS LOCKED' : 'PICKS OPEN'}

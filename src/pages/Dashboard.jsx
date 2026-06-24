@@ -66,12 +66,12 @@ export default function Dashboard() {
         if (slashIds.length) {
           supabase
             .from('pga_event_badges')
-            .select('tourn_id, badge_line1, badge_line2')
+            .select('tourn_id, badge_config')
             .in('tourn_id', slashIds)
             .then(({ data }) => {
               if (!data) return
               const map = {}
-              data.forEach(b => { map[b.tourn_id] = { line1: b.badge_line1, line2: b.badge_line2 } })
+              data.forEach(b => { map[b.tourn_id] = b.badge_config })
               setBadges(map)
             })
         }
@@ -183,7 +183,7 @@ export default function Dashboard() {
                 className="flex items-center gap-3 px-[15px] py-[13px]"
                 style={{ background: 'linear-gradient(105deg,#1B4332,#0D1F18)' }}
               >
-                {(() => { const b = badges[t.slashId] ?? {}; return <SportBadge line1={b.line1} line2={b.line2} size="md" /> })()}
+                <SportBadge config={badges[t.slashId]} size="md" />
                 <div className="flex-1">
                   <div className="font-display font-bold text-[9.5px] uppercase tracking-[.14em] text-gold">
                     {isComplete ? 'COMPLETE' : isLocked ? 'IN PROGRESS' : 'PICKS OPEN'}
