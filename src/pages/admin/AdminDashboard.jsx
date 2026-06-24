@@ -74,22 +74,22 @@ function TournamentsTab() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-warm-400">
+      <div className="flex items-center justify-between mb-[14px]">
+        <p className="text-[13px] text-warm-400">
           {visible.length} tournament{visible.length !== 1 ? 's' : ''}
         </p>
         <div className="flex items-center gap-4">
           {closedCount > 0 && (
             <button
               onClick={() => setShowClosed(s => !s)}
-              className="text-sm text-warm-400 hover:text-charcoal transition-colors"
+              className="text-[13px] text-warm-400 hover:text-charcoal transition-colors bg-transparent border-none cursor-pointer"
             >
               {showClosed ? 'Hide closed' : `Show closed (${closedCount})`}
             </button>
           )}
           <Link
             to="/admin/create-tournament"
-            className="text-sm text-fairway font-medium hover:text-fairway/80 transition-colors"
+            className="text-[13px] text-brand font-semibold no-underline hover:text-brand/80 transition-colors"
           >
             + New Tournament
           </Link>
@@ -99,39 +99,39 @@ function TournamentsTab() {
       {visible.length === 0 ? (
         <p className="text-sm text-warm-400 py-4">No tournaments on the board yet.</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-[10px]">
           {visible.map(t => {
             const lockDate = t.lock_time
               ? new Date(t.lock_time).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
               : null
             return (
-              <div key={t.id} className="bg-white border border-warm-200 rounded-lg p-4">
-                <div className="flex items-start justify-between gap-3 mb-3">
+              <div key={t.id} className="bg-white border border-[#EAD8C4] rounded-[14px] p-4">
+                <div className="flex items-start justify-between gap-3 mb-[11px]">
                   <div>
                     <Link
                       to={`/tournament/${t.id}`}
-                      className="text-sm font-medium text-charcoal hover:text-fairway transition-colors"
+                      className="text-[14.5px] font-semibold text-[#1C1610] no-underline hover:text-brand transition-colors"
                     >
                       {t.name}
                     </Link>
                     {lockDate && (
-                      <p className="text-xs text-warm-400 mt-0.5">Locks {lockDate}</p>
+                      <p className="text-[11.5px] text-warm-400 mt-[2px]">Locks {lockDate}</p>
                     )}
                   </div>
                   <StatusBadge status={t.status} />
                 </div>
 
                 {/* Join link */}
-                <div className="flex items-center gap-2 mb-3">
-                  <code className="flex-1 bg-warm-100 border border-warm-200 rounded px-2 py-1 text-xs text-warm-500 truncate font-mono">
+                <div className="flex items-center gap-2 mb-[11px]">
+                  <div className="flex-1 bg-sand border border-[#EAD8C4] rounded-[7px] px-[10px] py-[7px] text-[11px] text-warm-400 truncate">
                     {window.location.origin}/join/{t.join_code}
-                  </code>
+                  </div>
                   <button
                     onClick={() => copyJoinLink(t)}
-                    className={`shrink-0 text-xs px-2 py-1 rounded border font-medium transition-colors ${
+                    className={`shrink-0 text-[11.5px] font-semibold px-3 py-[7px] rounded-[7px] border cursor-pointer transition-colors ${
                       copiedId === t.id
                         ? 'bg-fairway/10 border-fairway/30 text-fairway'
-                        : 'bg-white border-warm-300 text-warm-500 hover:bg-warm-100'
+                        : 'bg-white border-[#EAD8C4] text-warm-400 hover:bg-warm-100'
                     }`}
                   >
                     {copiedId === t.id ? 'Copied!' : 'Copy'}
@@ -142,17 +142,17 @@ function TournamentsTab() {
                 {t.slash_golf_tournament_id && ['open', 'locked'].includes(t.status) && (() => {
                   const remaining = MANUAL_REFRESH_LIMIT - (t.manual_refresh_count ?? 0)
                   return (
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-warm-400">
+                    <div className="flex items-center justify-between mb-[11px]">
+                      <span className="text-[11.5px] text-warm-400">
                         {remaining}/{MANUAL_REFRESH_LIMIT} score refreshes left
                       </span>
                       <button
                         onClick={() => refreshScores(t)}
                         disabled={refreshing === t.id || remaining <= 0}
-                        className={`text-xs px-2.5 py-1 rounded border font-medium transition-colors ${
+                        className={`text-[11.5px] font-semibold px-3 py-[5px] rounded-[7px] border cursor-pointer transition-colors ${
                           remaining <= 0
                             ? 'border-warm-200 text-warm-300 cursor-not-allowed'
-                            : 'border-fairway/40 text-fairway hover:bg-fairway/5 disabled:opacity-50'
+                            : 'border-fairway/30 text-fairway hover:bg-fairway/5 disabled:opacity-50'
                         }`}
                       >
                         {refreshing === t.id ? 'Refreshing…' : 'Refresh Scores'}
@@ -168,7 +168,7 @@ function TournamentsTab() {
                       <button
                         onClick={() => setStatus(t.id, 'locked')}
                         disabled={updating === t.id}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-gold/40 text-gold hover:bg-gold/5 disabled:opacity-50 transition-colors"
+                        className="text-[12px] font-semibold px-[14px] py-[6px] rounded-[8px] border border-gold/50 text-gold hover:bg-gold/5 disabled:opacity-50 transition-colors cursor-pointer"
                       >
                         Lock
                       </button>
@@ -177,7 +177,7 @@ function TournamentsTab() {
                       <button
                         onClick={() => setStatus(t.id, 'open')}
                         disabled={updating === t.id}
-                        className="text-xs px-3 py-1.5 rounded-lg border border-fairway/40 text-fairway hover:bg-fairway/5 disabled:opacity-50 transition-colors"
+                        className="text-[12px] font-semibold px-[14px] py-[6px] rounded-[8px] border border-fairway/35 text-fairway hover:bg-fairway/5 disabled:opacity-50 transition-colors cursor-pointer"
                       >
                         Re-open
                       </button>
@@ -185,7 +185,7 @@ function TournamentsTab() {
                     <button
                       onClick={() => setStatus(t.id, 'complete')}
                       disabled={updating === t.id}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-warm-300 text-warm-500 hover:bg-warm-100 disabled:opacity-50 transition-colors"
+                      className="text-[12px] px-[14px] py-[6px] rounded-[8px] border border-[#EAD8C4] text-warm-400 hover:bg-warm-100 disabled:opacity-50 transition-colors cursor-pointer"
                     >
                       Close Tournament
                     </button>
@@ -284,7 +284,7 @@ function ParticipantsTab() {
           value={selectedId}
           onChange={e => handleSelectTournament(e.target.value)}
           disabled={loadingTournaments}
-          className="w-full px-3 py-2.5 border border-warm-300 rounded-lg text-sm text-charcoal bg-white focus:outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway disabled:opacity-50 transition-colors"
+          className="w-full px-[14px] py-[11px] border-[1.5px] border-[#EAD8C4] rounded-[11px] text-[14px] text-[#1C1610] bg-white outline-none appearance-none disabled:opacity-50"
         >
           <option value="">{loadingTournaments ? 'Loading…' : 'Select a tournament'}</option>
           {tournaments.map(t => (
@@ -304,30 +304,30 @@ function ParticipantsTab() {
       )}
 
       {participants.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-sm text-warm-400">
+        <div className="space-y-[9px]">
+          <p className="text-[13px] text-warm-400 mb-3">
             {participants.length} participant{participants.length !== 1 ? 's' : ''}
           </p>
           {participants.map(p => (
-            <div key={p.user_id} className="bg-white border border-warm-200 rounded-lg p-4">
-              <div className="flex items-start justify-between gap-3 mb-3">
+            <div key={p.user_id} className="bg-white border border-[#EAD8C4] rounded-[13px] px-4 py-[14px]">
+              <div className="flex items-start justify-between gap-3 mb-[11px]">
                 <div>
-                  <p className="text-sm font-medium text-charcoal">{p.display_name}</p>
-                  <p className="text-xs text-warm-400">{p.email}</p>
+                  <p className="text-[14px] font-semibold text-[#1C1610]">{p.display_name}</p>
+                  <p className="text-[12px] text-warm-400 mt-[1px]">{p.email}</p>
                 </div>
                 <button
                   onClick={() => removeParticipant(p.user_id, p.display_name)}
                   disabled={removing === p.user_id}
-                  className="text-xs px-2.5 py-1 rounded-lg border border-birdie/30 text-birdie hover:bg-birdie/5 disabled:opacity-50 transition-colors shrink-0"
+                  className="text-[11.5px] px-[11px] py-[5px] rounded-[7px] border border-birdie/30 text-birdie hover:bg-birdie/5 disabled:opacity-50 transition-colors shrink-0 cursor-pointer"
                 >
                   {removing === p.user_id ? 'Removing…' : 'Remove'}
                 </button>
               </div>
-              <div className="space-y-1.5">
+              <div className="flex flex-col gap-[5px]">
                 {p.picks.map((pick, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs">
-                    <span className="text-warm-400 w-14 shrink-0">{pick.label}</span>
-                    <span className="text-charcoal">{pick.player_name}</span>
+                  <div key={i} className="flex items-center gap-[10px]">
+                    <span className="text-[11px] text-warm-400 w-[50px] shrink-0">{pick.label}</span>
+                    <span className="text-[13px] text-[#1C1610]">{pick.player_name}</span>
                   </div>
                 ))}
               </div>
@@ -368,19 +368,19 @@ function UsersTab() {
 
   return (
     <div>
-      <p className="text-sm text-warm-400 mb-4">
+      <p className="text-[13px] text-warm-400 mb-3">
         {users.length} user{users.length !== 1 ? 's' : ''}
       </p>
 
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         {users.map(u => (
-          <div key={u.id} className="bg-white border border-warm-200 rounded-lg px-4 py-3 flex items-center gap-3">
+          <div key={u.id} className="bg-white border border-[#EAD8C4] rounded-[13px] px-4 py-[13px] flex items-center gap-3">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-charcoal truncate">{u.display_name || '—'}</p>
-              <p className="text-xs text-warm-400 truncate">{u.email}</p>
+              <p className="text-[14px] font-semibold text-[#1C1610] truncate">{u.display_name || '—'}</p>
+              <p className="text-[12px] text-warm-400 mt-[1px] truncate">{u.email}</p>
             </div>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${
-              u.role === 'admin' ? 'bg-fairway/10 text-fairway' : 'bg-warm-200 text-warm-400'
+            <span className={`text-[11px] font-semibold px-[9px] py-[3px] rounded-full shrink-0 ${
+              u.role === 'admin' ? 'bg-fairway/10 text-fairway' : 'bg-[#EBE3D4] text-warm-400'
             }`}>
               {u.role}
             </span>
@@ -388,7 +388,7 @@ function UsersTab() {
               <button
                 onClick={() => toggleRole(u.id, u.role)}
                 disabled={updating === u.id}
-                className="text-xs px-2.5 py-1 rounded-lg border border-warm-300 text-warm-500 hover:bg-warm-100 disabled:opacity-50 transition-colors shrink-0"
+                className="text-[12px] px-3 py-[6px] rounded-[8px] border border-[#EAD8C4] text-warm-400 hover:bg-warm-100 disabled:opacity-50 transition-colors shrink-0 cursor-pointer whitespace-nowrap"
               >
                 {updating === u.id ? '…' : u.role === 'admin' ? 'Make Player' : 'Make Admin'}
               </button>
@@ -409,36 +409,34 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('Tournaments')
 
   return (
-    <div className="min-h-screen bg-cream">
-      {/* Header */}
-      <div className="bg-fairway px-6 py-5">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/dashboard" className="text-cream/50 hover:text-cream/80 text-sm transition-colors">
-              ← Dashboard
-            </Link>
-            <span className="font-display font-bold text-cream text-xl tracking-tight">Admin</span>
-          </div>
-          <button
-            onClick={signOut}
-            className="text-sm text-cream/50 hover:text-cream/80 transition-colors"
-          >
-            Sign out
-          </button>
+    <div className="min-h-screen bg-sand pb-12">
+      {/* Sticky nav */}
+      <div className="bg-white border-b border-[#EAD8C4] px-[18px] h-14 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-[14px]">
+          <Link to="/dashboard" className="text-[13px] text-warm-400 no-underline">← Dashboard</Link>
+          <span className="text-[#EAD8C4] text-base select-none">|</span>
+          <span className="font-display font-extrabold text-[22px] text-brand tracking-[.06em]">POOLD</span>
+          <span className="font-display font-bold text-[16px] text-[#1C1610] tracking-[.04em]">Admin</span>
         </div>
+        <button
+          onClick={signOut}
+          className="text-[12px] text-[#C8B8A4] bg-transparent border-none cursor-pointer"
+        >
+          Sign out
+        </button>
       </div>
 
-      <div className="max-w-2xl mx-auto px-6 py-6">
+      <div className="max-w-[620px] mx-auto px-[18px] pt-[22px]">
         {/* Tabs */}
-        <div className="flex gap-0.5 bg-warm-200 rounded-lg p-0.5 mb-6">
+        <div className="flex gap-[2px] bg-[#EAD8C4] rounded-[10px] p-[3px] mb-[22px]">
           {TABS.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 text-sm font-medium py-1.5 rounded-md transition-colors ${
+              className={`flex-1 text-[13.5px] font-medium py-2 rounded-[8px] border-none cursor-pointer transition-colors ${
                 activeTab === tab
-                  ? 'bg-white text-charcoal shadow-sm'
-                  : 'text-warm-500 hover:text-charcoal'
+                  ? 'bg-white text-[#1C1610]'
+                  : 'bg-transparent text-[#7A6858]'
               }`}
             >
               {tab}

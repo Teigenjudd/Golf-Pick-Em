@@ -31,11 +31,11 @@ function generateJoinCode() {
 
 function PlayerCard({ player, isDragging = false }) {
   return (
-    <div className={`flex justify-between items-center px-3 py-2 bg-white border rounded-lg text-sm select-none ${
-      isDragging ? 'shadow-lg border-fairway/40' : 'border-warm-200'
+    <div className={`flex justify-between items-center px-[11px] py-2 bg-white border rounded-[8px] select-none ${
+      isDragging ? 'shadow-lg border-fairway/40' : 'border-[#EAD8C4]'
     }`}>
-      <span className="text-charcoal">{player.player_name}</span>
-      <span className="text-warm-400 font-mono text-xs">{formatOdds(player.odds)}</span>
+      <span className="text-[13px] text-[#1C1610]">{player.player_name}</span>
+      <span className="text-[11px] text-warm-400">{formatOdds(player.odds)}</span>
     </div>
   )
 }
@@ -47,11 +47,11 @@ function DraggablePlayer({ player }) {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`bg-white border border-warm-200 rounded-lg text-sm select-none cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
+      className={`bg-white border border-[#EAD8C4] rounded-[8px] text-sm select-none cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
     >
-      <div className="flex justify-between items-center px-3 py-2">
-        <span className="text-charcoal">{player.player_name}</span>
-        <span className="text-warm-400 font-mono text-xs">
+      <div className="flex justify-between items-center px-[11px] py-2">
+        <span className="text-[13px] text-[#1C1610]">{player.player_name}</span>
+        <span className="text-[11px] text-warm-400">
           {formatOdds(player.odds)} · #{player.owgr_rank ?? '—'}
         </span>
       </div>
@@ -64,18 +64,18 @@ function DroppableTier({ tier }) {
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg border-2 transition-colors min-h-[60px] overflow-hidden ${
-        isOver ? 'border-fairway/40 bg-fairway/5' : 'border-warm-200 bg-warm-100'
+      className={`rounded-[13px] border-2 transition-colors min-h-[60px] overflow-hidden ${
+        isOver ? 'border-fairway/40 bg-fairway/5' : 'border-[#EAD8C4]'
       }`}
     >
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-warm-200 bg-white">
-        <span className="w-5 h-5 rounded-full bg-fairway flex items-center justify-center text-[10px] font-display font-bold text-cream leading-none shrink-0">
-          {tier.tier_number}
+      <div className="flex items-center gap-[9px] px-[14px] py-[10px] border-b border-[#EAD8C4] bg-white">
+        <span className="w-5 h-5 rounded-full bg-fairway flex items-center justify-center shrink-0">
+          <span className="font-display font-bold text-[10px] text-cream leading-none">{tier.tier_number}</span>
         </span>
-        <h3 className="font-display font-bold text-sm uppercase tracking-wide text-charcoal flex-1">{tier.label}</h3>
-        <span className="text-xs text-warm-400">{tier.players.length}</span>
+        <h3 className="font-display font-bold text-[13px] tracking-[.04em] text-[#1C1610] flex-1">{tier.label}</h3>
+        <span className="text-[11px] text-warm-400">{tier.players.length}</span>
       </div>
-      <div className="p-3 space-y-1.5">
+      <div className="bg-sand p-[9px] flex flex-col gap-[5px]">
         {tier.players.map(player => (
           <DraggablePlayer key={player.player_id} player={player} />
         ))}
@@ -310,30 +310,46 @@ export default function CreateTournament() {
     }
   }
 
-  const inputClass = "w-full px-3 py-2.5 border border-warm-300 rounded-lg text-sm text-charcoal bg-white focus:outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway transition-colors disabled:opacity-50"
-  const labelClass = "block text-xs font-medium text-warm-500 uppercase tracking-wider mb-1.5"
+  const inputClass = "w-full px-[14px] py-3 border-[1.5px] border-[#EAD8C4] rounded-[11px] text-[14px] text-[#1C1610] bg-[#FFFAF6] outline-none disabled:opacity-50"
+  const labelClass = "block text-[11px] font-semibold uppercase tracking-[.12em] text-warm-400 mb-[7px]"
 
   return (
-    <div className="min-h-screen bg-cream">
-      {/* Header */}
-      <div className="bg-fairway px-6 py-5">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Link to="/dashboard" className="text-cream/50 hover:text-cream transition-colors text-sm">← Dashboard</Link>
-          <span className="text-cream/20 select-none">|</span>
-          <span className="font-display font-bold text-cream text-xl tracking-tight">Create Tournament</span>
-          <span className="text-cream/40 text-sm">Step {step} of 2</span>
+    <div className="min-h-screen bg-sand pb-12">
+      {/* Sticky nav */}
+      <div className="bg-white border-b border-[#EAD8C4] px-[18px] h-14 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-[14px]">
+          <Link to="/admin" className="text-[13px] text-warm-400 no-underline">← Admin</Link>
+          <span className="text-[#EAD8C4] text-base select-none">|</span>
+          <span className="font-display font-extrabold text-[22px] text-brand tracking-[.06em]">POOLD</span>
+          <span className="font-display font-bold text-[16px] text-[#1C1610] tracking-[.04em]">Create Tournament</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-full bg-brand flex items-center justify-center">
+            <span className="font-display font-bold text-[11px] text-white">{step}</span>
+          </div>
+          <span className="text-[12px] text-warm-400">of 2</span>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6">
+      {/* Progress bar */}
+      <div className="h-[3px] bg-[#EAD8C4]">
+        <div
+          className="h-full bg-brand rounded-r-[2px] transition-[width] duration-300"
+          style={{ width: step === 1 ? '50%' : '100%' }}
+        />
+      </div>
+
+      <div className="max-w-4xl mx-auto px-[18px] py-6">
         {error && (
-          <div className="mb-5 p-4 bg-birdie/5 border border-birdie/20 rounded-lg text-sm text-birdie">
+          <div className="mb-5 p-4 bg-birdie/5 border border-birdie/20 rounded-[11px] text-[13px] text-birdie">
             {error}
           </div>
         )}
 
         {step === 1 && (
-          <div className="bg-white border border-warm-200 rounded-lg p-8 space-y-5 max-w-xl">
+          <div className="max-w-[520px]">
+            <div className="font-display font-extrabold text-[30px] text-[#1C1610] leading-none mb-6">Set it up.</div>
+          <div className="bg-white border-[1.5px] border-[#EAD8C4] rounded-[16px] p-[22px] flex flex-col gap-[18px]">
             <div>
               <label className={labelClass}>Tournament Name</label>
               <input
@@ -436,16 +452,16 @@ export default function CreateTournament() {
             </div>
 
             {Number(stakeAmount) > 0 && (
-              <div className="rounded-lg border border-warm-200 bg-warm-100/50 p-4 space-y-3">
+              <div className="bg-sand border border-[#EAD8C4] rounded-[12px] px-4 py-[14px] flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium text-warm-500 uppercase tracking-wider">Payout Structure</p>
-                  <span className={`text-xs font-medium ${payoutSum === 100 ? 'text-fairway' : 'text-birdie'}`}>
+                  <p className="text-[11px] font-semibold uppercase tracking-[.12em] text-warm-400">Payout Structure</p>
+                  <span className={`text-[12px] font-semibold ${payoutSum === 100 ? 'text-fairway' : 'text-birdie'}`}>
                     {payoutSum}% {payoutSum === 100 ? '✓' : 'of 100%'}
                   </span>
                 </div>
                 {payouts.map((pct, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="text-sm text-charcoal w-14 shrink-0">{ordinal(i + 1)}</span>
+                  <div key={i} className="flex items-center gap-[10px]">
+                    <span className="text-[13px] text-[#1C1610] w-9 shrink-0">{ordinal(i + 1)}</span>
                     <input
                       type="number"
                       min={0}
@@ -453,13 +469,13 @@ export default function CreateTournament() {
                       value={pct}
                       onChange={e => updatePayout(i, e.target.value)}
                       placeholder="%"
-                      className="flex-1 px-3 py-2 border border-warm-300 rounded-lg text-sm text-charcoal bg-white focus:outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway transition-colors"
+                      className="flex-1 px-3 py-[9px] border-[1.5px] border-[#EAD8C4] rounded-[9px] text-[14px] text-[#1C1610] bg-white outline-none"
                     />
-                    <span className="text-warm-400 text-sm w-4">%</span>
+                    <span className="text-[13px] text-warm-400 w-4">%</span>
                     <button
                       type="button"
                       onClick={() => removePayout(i)}
-                      className="text-warm-400 hover:text-birdie transition-colors text-sm px-1.5"
+                      className="text-[#C8B8A4] hover:text-birdie transition-colors text-sm px-1.5 bg-transparent border-none cursor-pointer"
                       aria-label={`Remove ${ordinal(i + 1)} place`}
                     >
                       ✕
@@ -469,7 +485,7 @@ export default function CreateTournament() {
                 <button
                   type="button"
                   onClick={addPayout}
-                  className="text-sm text-fairway font-medium hover:text-fairway/80 transition-colors"
+                  className="text-[13px] text-brand font-semibold bg-transparent border-none cursor-pointer text-left p-0 mt-[2px]"
                 >
                   + Add placement
                 </button>
@@ -477,25 +493,25 @@ export default function CreateTournament() {
             )}
 
             {oddsWarning ? (
-              <div className="rounded-lg border border-gold/30 bg-gold/5 p-4 space-y-3">
-                <p className="text-sm font-medium text-charcoal">
+              <div className="rounded-[11px] border border-gold/30 bg-gold/5 p-4 flex flex-col gap-3">
+                <p className="text-[14px] font-medium text-[#1C1610]">
                   Odds unavailable — the market may not be open yet.
                 </p>
-                <p className="text-sm text-warm-500">
+                <p className="text-[13px] text-warm-500">
                   Tiers will fall back to OWGR rankings. You can retry now or wait for odds to post.
                 </p>
                 <div className="flex gap-2">
                   <button
                     onClick={handleRetryOdds}
                     disabled={buildingTiers || retryIn > 0}
-                    className="flex-1 bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream text-sm font-medium py-2 rounded-lg transition-colors"
+                    className="flex-1 bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream text-[14px] font-medium py-2.5 rounded-[11px] transition-colors border-none cursor-pointer"
                   >
                     {buildingTiers ? 'Checking…' : retryIn > 0 ? `Retry in ${retryIn}s` : 'Try Again'}
                   </button>
                   <button
                     onClick={handleContinueWithOwgr}
                     disabled={buildingTiers}
-                    className="flex-1 border border-warm-300 text-warm-600 hover:bg-warm-100 disabled:opacity-50 text-sm font-medium py-2 rounded-lg transition-colors"
+                    className="flex-1 border-[1.5px] border-[#EAD8C4] text-warm-500 hover:bg-warm-100 disabled:opacity-50 text-[14px] font-medium py-2.5 rounded-[11px] transition-colors bg-transparent cursor-pointer"
                   >
                     Continue with OWGR Rankings
                   </button>
@@ -505,24 +521,28 @@ export default function CreateTournament() {
               <button
                 onClick={handleNext}
                 disabled={buildingTiers || !name || !selectedSlashId}
-                className="w-full bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm"
+                className={`w-full text-white font-bold text-[15px] py-[14px] rounded-[11px] border-none cursor-pointer transition-opacity ${
+                  !name || !selectedSlashId ? 'bg-[#C8B8A4]' : 'bg-brand hover:opacity-90'
+                } disabled:opacity-60`}
               >
-                {buildingTiers ? 'Fetching field & odds…' : 'Next →'}
+                {buildingTiers ? 'Fetching field & odds…' : 'Fetch field & odds →'}
               </button>
             )}
+          </div>
           </div>
         )}
 
         {step === 2 && (
           <div>
-            <p className="text-sm text-warm-400 mb-4">Drag players between tiers to adjust.</p>
+            <div className="font-display font-extrabold text-[30px] text-[#1C1610] leading-none mb-[6px]">Set the tiers.</div>
+            <p className="text-[13px] text-warm-400 mb-[22px]">Drag players between tiers to adjust. Field auto-built from OWGR + odds.</p>
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <div className="grid grid-cols-2 gap-4 mb-5">
+              <div className="grid grid-cols-2 gap-[14px] mb-[22px]">
                 {tiers.map(tier => (
                   <DroppableTier key={tier.tier_number} tier={tier} />
                 ))}
@@ -532,17 +552,17 @@ export default function CreateTournament() {
               </DragOverlay>
             </DndContext>
 
-            <div className="flex gap-3">
+            <div className="flex gap-[10px]">
               <button
                 onClick={() => { setStep(1); setError(null) }}
-                className="px-6 py-2.5 border border-warm-300 rounded-lg text-sm text-warm-500 hover:bg-warm-100 transition-colors"
+                className="px-[22px] py-[13px] border-[1.5px] border-[#EAD8C4] rounded-[11px] text-[14px] text-warm-400 hover:bg-warm-100 bg-transparent transition-colors cursor-pointer"
               >
                 ← Back
               </button>
               <button
                 onClick={handleCreate}
                 disabled={saving}
-                className="flex-1 bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream font-medium py-2.5 rounded-lg transition-colors text-sm"
+                className="flex-1 bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream font-bold text-[15px] py-[13px] rounded-[11px] border-none cursor-pointer transition-colors"
               >
                 {saving ? 'Creating…' : 'Create Tournament'}
               </button>
