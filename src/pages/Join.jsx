@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import SportBadge from '../components/SportBadge'
 
 export default function Join() {
   const { code } = useParams()
@@ -11,6 +12,7 @@ export default function Join() {
   const [tournament, setTournament] = useState(null)
   const [tournamentLoading, setTournamentLoading] = useState(false)
   const [tournamentError, setTournamentError] = useState(null)
+  const [badge, setBadge] = useState(null)
 
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
@@ -22,12 +24,23 @@ export default function Join() {
     setTournamentLoading(true)
     supabase
       .from('tournaments')
-      .select('id, name, status, lock_time, pick_count')
+      .select('id, name, status, lock_time, pick_count, slash_golf_tournament_id')
       .eq('join_code', code)
       .single()
       .then(({ data, error }) => {
-        if (error || !data) setTournamentError('Invalid or expired join code.')
-        else setTournament(data)
+        if (error || !data) {
+          setTournamentError('Invalid or expired join code.')
+        } else {
+          setTournament(data)
+          if (data.slash_golf_tournament_id) {
+            supabase
+              .from('pga_event_badges')
+              .select('badge_line1, badge_line2')
+              .eq('tourn_id', data.slash_golf_tournament_id)
+              .maybeSingle()
+              .then(({ data: b }) => { if (b) setBadge({ line1: b.badge_line1, line2: b.badge_line2 }) })
+          }
+        }
       })
       .finally(() => setTournamentLoading(false))
   }, [user, authLoading, code])
@@ -172,13 +185,7 @@ export default function Join() {
 
           {/* Golf badge preview strip */}
           <div className="rounded-[12px] px-4 py-3.5 flex items-center gap-3 mb-5" style={{ background: 'linear-gradient(105deg,#1B4332,#0D1F18)' }}>
-            <div
-              className="flex-none flex flex-col items-center justify-center"
-              style={{ width: 36, height: 42, background: '#1F6F47', border: '2px solid #E6C66B', borderRadius: '8px 8px 18px 18px' }}
-            >
-              <span className="font-display font-extrabold text-[13px] text-cream leading-[.85]">GO</span>
-              <span className="font-display font-bold text-[6.5px] text-gold tracking-[.04em]">GOLF</span>
-            </div>
+            <SportBadge line1={badge?.line1} line2={badge?.line2} size="sm" />
             <div className="flex-1 text-left">
               <div className="font-display font-bold text-[9px] uppercase tracking-[.14em] text-gold">
                 {isLocked ? 'PICKS LOCKED' : 'PICKS OPEN'}

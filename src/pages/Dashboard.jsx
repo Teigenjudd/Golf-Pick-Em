@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { Navigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { computeScores, assignRanks, formatScore } from '../utils/scoring'
+import SportBadge from '../components/SportBadge'
 
 function getInitials(name) {
   if (!name) return '?'
@@ -34,12 +35,13 @@ export default function Dashboard() {
   const [showClosed, setShowClosed] = useState(false)
   const [showClosedAdmin, setShowClosedAdmin] = useState(false)
   const [myStandings, setMyStandings] = useState({})
+  const [badges, setBadges] = useState({})
 
   useEffect(() => {
     if (!user) return
     supabase
       .from('picks')
-      .select('tournament_id, status, tournaments(id, name, status, lock_time, scores_to_keep)')
+      .select('tournament_id, status, tournaments(id, name, status, lock_time, scores_to_keep, slash_golf_tournament_id)')
       .eq('user_id', user.id)
       .then(({ data }) => {
         if (!data) return
@@ -49,16 +51,30 @@ export default function Dashboard() {
           if (!map[tid]) map[tid] = { ...row.tournaments, statuses: [] }
           map[tid].statuses.push(row.status)
         })
-        setMyTournaments(
-          Object.values(map).map(t => ({
-            id: t.id,
-            name: t.name,
-            tournamentStatus: t.status,
-            lockTime: t.lock_time,
-            scoresToKeep: t.scores_to_keep,
-            pickStatus: t.statuses.every(s => s === 'confirmed') ? 'confirmed' : 'pending',
-          }))
-        )
+        const tournaments = Object.values(map).map(t => ({
+          id: t.id,
+          name: t.name,
+          tournamentStatus: t.status,
+          lockTime: t.lock_time,
+          scoresToKeep: t.scores_to_keep,
+          slashId: t.slash_golf_tournament_id,
+          pickStatus: t.statuses.every(s => s === 'confirmed') ? 'confirmed' : 'pending',
+        }))
+        setMyTournaments(tournaments)
+
+        const slashIds = tournaments.map(t => t.slashId).filter(Boolean)
+        if (slashIds.length) {
+          supabase
+            .from('pga_event_badges')
+            .select('tourn_id, badge_line1, badge_line2')
+            .in('tourn_id', slashIds)
+            .then(({ data }) => {
+              if (!data) return
+              const map = {}
+              data.forEach(b => { map[b.tourn_id] = { line1: b.badge_line1, line2: b.badge_line2 } })
+              setBadges(map)
+            })
+        }
       })
   }, [user])
 
@@ -167,13 +183,7 @@ export default function Dashboard() {
                 className="flex items-center gap-3 px-[15px] py-[13px]"
                 style={{ background: 'linear-gradient(105deg,#1B4332,#0D1F18)' }}
               >
-                <div
-                  className="flex-none flex flex-col items-center justify-center"
-                  style={{ width: 40, height: 46, background: '#1F6F47', border: '2px solid #E6C66B', borderRadius: '9px 9px 20px 20px' }}
-                >
-                  <span className="font-display font-extrabold text-[14px] text-cream leading-[.85]">GO</span>
-                  <span className="font-display font-bold text-[7px] text-gold tracking-[.04em]">GOLF</span>
-                </div>
+                {(() => { const b = badges[t.slashId] ?? {}; return <SportBadge line1={b.line1} line2={b.line2} size="md" /> })()}
                 <div className="flex-1">
                   <div className="font-display font-bold text-[9.5px] uppercase tracking-[.14em] text-gold">
                     {isComplete ? 'COMPLETE' : isLocked ? 'IN PROGRESS' : 'PICKS OPEN'}

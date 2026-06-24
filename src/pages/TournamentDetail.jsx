@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { computeScores, assignRanks, unwrapNumber } from '../utils/scoring'
 import Standings from '../components/leaderboard/Standings'
 import { PGALeadersWidget, MostPopularWidget, TierValueWidget, PrizePoolWidget } from '../components/leaderboard/Widgets'
+import SportBadge from '../components/SportBadge'
 
 function weatherDescription(code) {
   if (code === 0) return 'Clear'
@@ -31,6 +32,7 @@ export default function TournamentDetail() {
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
   const [weather, setWeather] = useState(null)
+  const [badge, setBadge] = useState(null)
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
@@ -41,7 +43,7 @@ export default function TournamentDetail() {
     ] = await Promise.all([
       supabase
         .from('tournaments')
-        .select('id, name, pga_name, course_name, status, scores_to_keep, pick_count, join_code, lock_time, latitude, longitude, stake_amount, payout_structure')
+        .select('id, name, pga_name, course_name, status, scores_to_keep, pick_count, join_code, lock_time, latitude, longitude, stake_amount, payout_structure, slash_golf_tournament_id')
         .eq('id', id)
         .single(),
       supabase
@@ -87,6 +89,16 @@ export default function TournamentDetail() {
   }, [id])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!tournament?.slash_golf_tournament_id) return
+    supabase
+      .from('pga_event_badges')
+      .select('badge_line1, badge_line2')
+      .eq('tourn_id', tournament.slash_golf_tournament_id)
+      .maybeSingle()
+      .then(({ data }) => { if (data) setBadge({ line1: data.badge_line1, line2: data.badge_line2 }) })
+  }, [tournament?.slash_golf_tournament_id])
 
   useEffect(() => {
     if (!tournament?.latitude || !tournament?.longitude) return
@@ -203,20 +215,7 @@ export default function TournamentDetail() {
         {/* Hero */}
         <div className="flex items-end justify-between gap-4 flex-wrap px-5 pt-5">
           <div className="flex items-center gap-[14px]">
-            {/* Sport badge — tombstone shape */}
-            <div
-              className="flex-none flex flex-col items-center justify-center"
-              style={{
-                width: 52, height: 60,
-                background: '#1F6F47',
-                border: '2px solid #E6C66B',
-                borderRadius: '13px 13px 26px 26px',
-                boxShadow: '0 8px 18px -8px rgba(0,0,0,.4)',
-              }}
-            >
-              <span className="font-display font-extrabold text-[19px] text-cream leading-[.8]">GO</span>
-              <span className="font-display font-bold text-[8px] text-gold tracking-[.08em]">GOLF</span>
-            </div>
+            <SportBadge line1={badge?.line1} line2={badge?.line2} size="lg" />
 
             <div>
               {subLabel && (
