@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Navigate, Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
+import { getMyPickRows, getPoolViewsByIds, getPoolPicks, getLatestLeaderboard, getAllPools } from '../lib/golf'
 import { computeScores, assignRanks, formatScore } from '../utils/scoring'
 import SportBadge from '../components/SportBadge'
 
@@ -35,47 +35,31 @@ export default function Dashboard() {
   const [showClosed, setShowClosed] = useState(false)
   const [showClosedAdmin, setShowClosedAdmin] = useState(false)
   const [myStandings, setMyStandings] = useState({})
-  const [badges, setBadges] = useState({})
 
   useEffect(() => {
     if (!user) return
-    supabase
-      .from('picks')
-      .select('tournament_id, status, tournaments(id, name, status, lock_time, scores_to_keep, slash_golf_tournament_id)')
-      .eq('user_id', user.id)
-      .then(({ data }) => {
-        if (!data) return
-        const map = {}
-        data.forEach(row => {
-          const tid = row.tournament_id
-          if (!map[tid]) map[tid] = { ...row.tournaments, statuses: [] }
-          map[tid].statuses.push(row.status)
-        })
-        const tournaments = Object.values(map).map(t => ({
-          id: t.id,
-          name: t.name,
-          tournamentStatus: t.status,
-          lockTime: t.lock_time,
-          scoresToKeep: t.scores_to_keep,
-          slashId: t.slash_golf_tournament_id,
-          pickStatus: t.statuses.every(s => s === 'confirmed') ? 'confirmed' : 'pending',
-        }))
-        setMyTournaments(tournaments)
-
-        const slashIds = tournaments.map(t => t.slashId).filter(Boolean)
-        if (slashIds.length) {
-          supabase
-            .from('pga_event_badges')
-            .select('tourn_id, badge_config')
-            .in('tourn_id', slashIds)
-            .then(({ data }) => {
-              if (!data) return
-              const map = {}
-              data.forEach(b => { map[b.tourn_id] = b.badge_config })
-              setBadges(map)
-            })
-        }
+    getMyPickRows(user.id).then(rows => {
+      const statusesByPool = {}
+      rows.forEach(r => {
+        if (!statusesByPool[r.pool_id]) statusesByPool[r.pool_id] = []
+        statusesByPool[r.pool_id].push(r.status)
       })
+      const poolIds = Object.keys(statusesByPool)
+      if (!poolIds.length) { setMyTournaments([]); return }
+
+      getPoolViewsByIds(poolIds).then(pools => {
+        setMyTournaments(pools.map(p => ({
+          id: p.id,
+          eventId: p.event_id,
+          name: p.name,
+          tournamentStatus: p.status,
+          lockTime: p.lock_time,
+          scoresToKeep: p.scores_to_keep,
+          badgeConfig: p.badge_config,
+          pickStatus: statusesByPool[p.id].every(s => s === 'confirmed') ? 'confirmed' : 'pending',
+        })))
+      })
+    })
   }, [user])
 
   // Fetch rank + score for locked/complete tournaments
@@ -86,22 +70,12 @@ export default function Dashboard() {
     if (!targets.length || !user) return
 
     targets.forEach(async t => {
-      const [{ data: allPicks }, { data: cache }] = await Promise.all([
-        supabase
-          .from('picks')
-          .select('user_id, player_id, player_name, profiles(display_name)')
-          .eq('tournament_id', t.id)
-          .eq('status', 'confirmed'),
-        supabase
-          .from('leaderboard_cache')
-          .select('data')
-          .eq('tournament_id', t.id)
-          .order('fetched_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+      const [allPicks, cache] = await Promise.all([
+        getPoolPicks(t.id),
+        getLatestLeaderboard(t.eventId),
       ])
 
-      if (!allPicks || !cache) return
+      if (!allPicks?.length || !cache) return
 
       const standings = assignRanks(computeScores({
         picks: allPicks,
@@ -121,11 +95,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user || profile?.role !== 'admin') return
-    supabase
-      .from('tournaments')
-      .select('id, name, status, join_code')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => setAdminTournaments(data ?? []))
+    getAllPools().then(setAdminTournaments)
   }, [user, profile])
 
   if (loading) return null
@@ -183,7 +153,7 @@ export default function Dashboard() {
                 className="flex items-center gap-3 px-[15px] py-[13px]"
                 style={{ background: 'linear-gradient(105deg,#1B4332,#0D1F18)' }}
               >
-                <SportBadge config={badges[t.slashId]} size="md" />
+                <SportBadge config={t.badgeConfig} size="md" />
                 <div className="flex-1">
                   <div className="font-display font-bold text-[9.5px] uppercase tracking-[.14em] text-gold">
                     {isComplete ? 'COMPLETE' : isLocked ? 'IN PROGRESS' : 'PICKS OPEN'}
