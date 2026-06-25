@@ -309,16 +309,22 @@ prod migration**, and is **additive-then-cleanup, never destructive in one deplo
 
 - **Phase 0 — Spike (no schema change). ✅ DONE — see "Spike results" below.** Decision:
   **default to split queries; do not depend on cross-schema PostgREST embedding.**
-- **Phase 1 — Create core + golf schema, additive.** Add `public.sports` (seed `golf`),
-  `public.events`, `public.pools.event_id`, `pool_participants`, `pool_standings`; create
-  `golf` schema + grants + `config.toml` exposure. Nothing reads new structures yet.
-- **Phase 2 — Backfill, preserving PKs.** Copy into `golf.event_details / tiers /
-  tier_players / picks / leaderboard_cache` and populate `public.events` + `public.pools`
-  + `pool_participants` from existing rows. **Carry the same UUIDs** so every downstream FK
-  stays valid — this is the linchpin. Keep old `public` tables intact as the live source
-  until frontend cuts over.
-- **Phase 3 — Port RLS + helpers** onto golf tables; repoint `public.profiles` visibility
-  + standings to `pool_participants`.
+- **Phase 1 — Create core + golf schema, additive. ✅ DONE** (`20260624120000`). Created
+  `public.sports` (seed `golf`), `public.events`, `public.pools`, `pool_participants`,
+  `pool_standings`, and the `golf` schema (`event_details`, `tiers`, `tier_players`, `picks`,
+  `leaderboard_cache`) + grants + RLS-on (deny-all). Added `golf` to local `config.toml`.
+  Nothing reads new structures yet.
+- **Phase 2 — Backfill, preserving PKs. ✅ DONE** (`20260624130000`). Each old `tournaments.id`
+  reused as BOTH `events.id` and `pools.id`, so every old `tournament_id` reference resolves
+  with no remapping. Added `golf.event_details.manual_refresh_count` (the one homeless column).
+  Verified: all old/new row counts match; cross-schema joins coherent. Old tables untouched.
+- **Phase 3 — Port RLS policies onto the new tables. ✅ DONE** (`20260624140000`). Faithful
+  mirrors of the existing protections (pick integrity, pre-lock privacy, admin access),
+  re-pointed at the new tables. Verified the pre-lock privacy gate hides/reveals correctly on
+  real data (rolled-back test). **Deferred:** the `public.profiles` visibility repoint
+  (currently keyed on `public.picks`) and `pool_participants`/`pool_standings` population move
+  to **Phase 4 cutover** — repointing now would hide names for users who join via the still-live
+  old app, since nothing maintains `pool_participants` until the app cuts over.
 - **Phase 4 — Frontend cutover.** Route golf reads/writes through `.schema('golf')`; split
   any embeds the spike flagged; move golf strings/theme into `sports` / `event_details`.
   Ship to `main`, **then** flip prod Exposed Schemas, **then** run the cutover migration.
