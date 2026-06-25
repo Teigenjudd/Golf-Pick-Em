@@ -53,37 +53,55 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Optional: target a single tournament (used by admin manual refresh)
-  let targetTournamentId: string | null = null
+  // Optional: target a single event (used by admin manual refresh)
+  let targetEventId: string | null = null
   try {
     const body = await req.json()
-    targetTournamentId = body?.tournament_id ?? null
+    targetEventId = body?.event_id ?? null
   } catch {
-    // No body — poll all active tournaments
+    // No body — poll every event that has an active pool
   }
 
-  let query = supabase
-    .from('tournaments')
-    .select('id, slash_golf_tournament_id')
+  // An event is worth polling if it has at least one open/locked pool.
+  let poolQuery = supabase
+    .from('pools')
+    .select('event_id')
     .in('status', ['open', 'locked'])
 
-  if (targetTournamentId) {
-    query = query.eq('id', targetTournamentId)
+  if (targetEventId) {
+    poolQuery = poolQuery.eq('event_id', targetEventId)
   }
 
-  const { data: tournaments, error: tournamentsError } = await query
+  const { data: activePools, error: poolsError } = await poolQuery
 
-  if (tournamentsError) {
-    return new Response(JSON.stringify({ error: tournamentsError.message }), {
+  if (poolsError) {
+    return new Response(JSON.stringify({ error: poolsError.message }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })
   }
 
-  const active = (tournaments ?? []).filter((t) => t.slash_golf_tournament_id)
+  const eventIds = [...new Set((activePools ?? []).map((p) => p.event_id))]
+
+  // The Slash Golf id lives on golf.event_details (per event). An empty id list
+  // is a valid query that simply returns no rows.
+  const { data: details, error: detailsError } = await supabase
+    .schema('golf')
+    .from('event_details')
+    .select('event_id, slash_golf_tournament_id')
+    .in('event_id', eventIds)
+
+  if (detailsError) {
+    return new Response(JSON.stringify({ error: detailsError.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  const active = (details ?? []).filter((d) => d.slash_golf_tournament_id)
 
   if (!active.length) {
-    return new Response(JSON.stringify({ message: 'No active tournaments' }), {
+    return new Response(JSON.stringify({ message: 'No active events' }), {
       headers: { 'Content-Type': 'application/json' },
     })
   }
@@ -92,16 +110,16 @@ Deno.serve(async (req) => {
   const results: Array<{ id: string; ok?: boolean; error?: string }> = []
   let callsThisPoll = 0
 
-  for (const tournament of active) {
-    // Re-check cap before each call in case we're polling multiple tournaments
+  for (const event of active) {
+    // Re-check cap before each call in case we're polling multiple events
     if (currentCount + callsThisPoll >= MONTHLY_CAP) {
-      results.push({ id: tournament.id, error: 'Monthly cap reached mid-poll' })
+      results.push({ id: event.event_id, error: 'Monthly cap reached mid-poll' })
       continue
     }
 
     try {
       const res = await fetch(
-        `${SLASH_GOLF_BASE}/leaderboard?orgId=1&tournId=${tournament.slash_golf_tournament_id}&year=${year}`,
+        `${SLASH_GOLF_BASE}/leaderboard?orgId=1&tournId=${event.slash_golf_tournament_id}&year=${year}`,
         {
           headers: {
             'x-rapidapi-key': slashGolfKey,
@@ -111,7 +129,7 @@ Deno.serve(async (req) => {
       )
 
       if (!res.ok) {
-        results.push({ id: tournament.id, error: `Slash Golf ${res.status}` })
+        results.push({ id: event.event_id, error: `Slash Golf ${res.status}` })
         continue
       }
 
@@ -119,21 +137,23 @@ Deno.serve(async (req) => {
       callsThisPoll++
 
       await supabase
+        .schema('golf')
         .from('leaderboard_cache')
         .delete()
-        .eq('tournament_id', tournament.id)
+        .eq('event_id', event.event_id)
 
       const { error: insertError } = await supabase
+        .schema('golf')
         .from('leaderboard_cache')
-        .insert({ tournament_id: tournament.id, data })
+        .insert({ event_id: event.event_id, data })
 
       results.push(
         insertError
-          ? { id: tournament.id, error: insertError.message }
-          : { id: tournament.id, ok: true },
+          ? { id: event.event_id, error: insertError.message }
+          : { id: event.event_id, ok: true },
       )
     } catch (err) {
-      results.push({ id: tournament.id, error: (err as Error).message })
+      results.push({ id: event.event_id, error: (err as Error).message })
     }
   }
 

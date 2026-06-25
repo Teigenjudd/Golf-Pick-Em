@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { getPoolViewByCode } from '../lib/golf'
 import { useAuth } from '../context/AuthContext'
 import SportBadge from '../components/SportBadge'
 
@@ -22,24 +23,13 @@ export default function Join() {
   useEffect(() => {
     if (authLoading || !user) return
     setTournamentLoading(true)
-    supabase
-      .from('tournaments')
-      .select('id, name, status, lock_time, pick_count, slash_golf_tournament_id')
-      .eq('join_code', code)
-      .single()
-      .then(({ data, error }) => {
-        if (error || !data) {
+    getPoolViewByCode(code)
+      .then(pool => {
+        if (!pool) {
           setTournamentError('Invalid or expired join code.')
         } else {
-          setTournament(data)
-          if (data.slash_golf_tournament_id) {
-            supabase
-              .from('pga_event_badges')
-              .select('badge_config')
-              .eq('tourn_id', data.slash_golf_tournament_id)
-              .maybeSingle()
-              .then(({ data: b }) => { if (b) setBadge(b.badge_config) })
-          }
+          setTournament(pool)
+          setBadge(pool.badge_config ?? null)
         }
       })
       .finally(() => setTournamentLoading(false))

@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
+import {
+  getAdminPools, getAllPools, setPoolStatus, bumpRefreshCount,
+  getPoolPicks, removePoolParticipant,
+} from '../../lib/golf'
 
 const STATUS_BADGE = {
   open:     'bg-fairway/10 text-fairway',
@@ -31,11 +35,7 @@ function TournamentsTab() {
   const [showClosed, setShowClosed] = useState(false)
 
   const load = useCallback(async () => {
-    const { data } = await supabase
-      .from('tournaments')
-      .select('id, name, status, lock_time, join_code, created_at, manual_refresh_count, slash_golf_tournament_id')
-      .order('created_at', { ascending: false })
-    setTournaments(data ?? [])
+    setTournaments(await getAdminPools())
     setLoading(false)
   }, [])
 
@@ -49,7 +49,7 @@ function TournamentsTab() {
 
   async function setStatus(id, status) {
     setUpdating(id)
-    await supabase.from('tournaments').update({ status }).eq('id', id)
+    await setPoolStatus(id, status)
     await load()
     setUpdating(null)
   }
@@ -57,8 +57,8 @@ function TournamentsTab() {
   async function refreshScores(t) {
     setRefreshing(t.id)
     try {
-      await supabase.functions.invoke('poll-leaderboard', { body: { tournament_id: t.id } })
-      await supabase.from('tournaments').update({ manual_refresh_count: (t.manual_refresh_count ?? 0) + 1 }).eq('id', t.id)
+      await supabase.functions.invoke('poll-leaderboard', { body: { event_id: t.event_id } })
+      await bumpRefreshCount(t.event_id, t.manual_refresh_count)
       await load()
     } catch (err) {
       console.error('Refresh failed:', err)
@@ -211,25 +211,18 @@ function ParticipantsTab() {
   const [removing, setRemoving] = useState(null)
 
   useEffect(() => {
-    supabase
-      .from('tournaments')
-      .select('id, name')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        setTournaments(data ?? [])
-        setLoadingTournaments(false)
-      })
+    getAllPools().then(data => {
+      setTournaments(data)
+      setLoadingTournaments(false)
+    })
   }, [])
 
-  async function loadParticipants(tournamentId) {
+  async function loadParticipants(poolId) {
     setLoadingParticipants(true)
     // Email is column-restricted on profiles, so pull it from the admin RPC and
     // merge it in by user_id rather than embedding it on the picks query.
-    const [{ data }, { data: users }] = await Promise.all([
-      supabase
-        .from('picks')
-        .select('user_id, player_name, tiers(tier_number, label), profiles(display_name)')
-        .eq('tournament_id', tournamentId),
+    const [data, { data: users }] = await Promise.all([
+      getPoolPicks(poolId, { confirmedOnly: false }),
       supabase.rpc('admin_list_users'),
     ])
 
@@ -272,7 +265,7 @@ function ParticipantsTab() {
   async function removeParticipant(userId, displayName) {
     if (!window.confirm(`Remove ${displayName}'s picks from this tournament? This cannot be undone.`)) return
     setRemoving(userId)
-    await supabase.from('picks').delete().eq('tournament_id', selectedId).eq('user_id', userId)
+    await removePoolParticipant(selectedId, userId)
     setParticipants(prev => prev.filter(p => p.user_id !== userId))
     setRemoving(null)
   }

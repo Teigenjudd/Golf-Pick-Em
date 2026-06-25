@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { getPoolView, getPoolPicks, getLatestLeaderboard } from '../lib/golf'
 import { computeScores, assignRanks, unwrapNumber } from '../utils/scoring'
 import Standings from '../components/leaderboard/Standings'
 import PoolHeader from '../components/pool/PoolHeader'
@@ -37,38 +37,22 @@ export default function TournamentDetail() {
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
-    const [
-      { data: t, error: tErr },
-      { data: picks },
-      { data: cache },
-    ] = await Promise.all([
-      supabase
-        .from('tournaments')
-        .select('id, name, pga_name, course_name, status, scores_to_keep, pick_count, join_code, lock_time, latitude, longitude, stake_amount, payout_structure, slash_golf_tournament_id')
-        .eq('id', id)
-        .single(),
-      supabase
-        .from('picks')
-        .select('user_id, player_id, player_name, status, tier_id, profiles(display_name), tiers(tier_number, label)')
-        .eq('tournament_id', id)
-        .eq('status', 'confirmed'),
-      supabase
-        .from('leaderboard_cache')
-        .select('data, fetched_at')
-        .eq('tournament_id', id)
-        .order('fetched_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ])
 
-    if (tErr || !t) {
+    const pool = await getPoolView(id)
+    if (!pool) {
       setError('Tournament not found.')
       setLoading(false)
       setRefreshing(false)
       return
     }
 
-    setTournament(t)
+    const [picks, cache] = await Promise.all([
+      getPoolPicks(pool.id),
+      getLatestLeaderboard(pool.event_id),
+    ])
+
+    setTournament(pool)
+    setBadge(pool.badge_config ?? null)
     setRawPicks(picks ?? [])
 
     if (cache) {
@@ -77,7 +61,7 @@ export default function TournamentDetail() {
       setStandings(assignRanks(computeScores({
         picks: picks ?? [],
         leaderboardData: cache.data,
-        scoresToKeep: t.scores_to_keep,
+        scoresToKeep: pool.scores_to_keep,
       })))
     } else {
       setFetchedAt(null)
@@ -90,16 +74,6 @@ export default function TournamentDetail() {
   }, [id])
 
   useEffect(() => { load() }, [load])
-
-  useEffect(() => {
-    if (!tournament?.slash_golf_tournament_id) return
-    supabase
-      .from('pga_event_badges')
-      .select('badge_config')
-      .eq('tourn_id', tournament.slash_golf_tournament_id)
-      .maybeSingle()
-      .then(({ data }) => { if (data) setBadge(data.badge_config) })
-  }, [tournament?.slash_golf_tournament_id])
 
   useEffect(() => {
     if (!tournament?.latitude || !tournament?.longitude) return

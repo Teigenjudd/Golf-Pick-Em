@@ -19,6 +19,8 @@
 
 When given a substantial instruction or multi-step request, respond with a short summary (under 100 words) of what you understand and plan to do — then wait for approval or refinement before writing any code. Skip this for simple one-liner fixes where the intent is unambiguous.
 
+**Audience / how to explain things:** The user is a **data scientist/analyst**, comfortable with **intermediate Python and OOP**, but **not a web/backend/frontend/infra developer**. Explain things **as simply and plainly as possible while staying accurate**. When a concept is genuinely complex or uses unfamiliar web/backend/DB/DevOps jargon (RLS, schemas, PostgREST, edge functions, FKs, embedding, CORS, etc.), **define it in simple terms first, then proceed** — don't blaze ahead assuming it's understood. Use an analogy only when it genuinely makes something clearer; don't force everything into Python/data metaphors. SQL and Python can be assumed; web/infra plumbing cannot.
+
 ## Design System
 
 **Stack:** React + Vite + Tailwind CSS v4 (`@tailwindcss/vite`). Theme tokens live in `src/index.css` via `@theme {}` — there is no `tailwind.config.js`.
