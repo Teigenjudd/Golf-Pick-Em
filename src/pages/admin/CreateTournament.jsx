@@ -10,7 +10,7 @@ import {
   useDroppable,
   closestCenter,
 } from '@dnd-kit/core'
-import { supabase } from '../../lib/supabase'
+import { createGolfPool } from '../../lib/golf'
 import { useAuth } from '../../context/AuthContext'
 import { getTournaments, getTournamentField, getRankings } from '../../lib/slashGolf'
 import { getGolfOdds, GOLF_SPORT_KEYS } from '../../lib/oddsApi'
@@ -261,48 +261,22 @@ export default function CreateTournament() {
     setSaving(true)
     setError(null)
     try {
-      const { data: tournament, error: tErr } = await supabase
-        .from('tournaments')
-        .insert({
-          name,
-          pga_name: selectedPgaName || null,
-          course_name: courseName.trim() || null,
-          slash_golf_tournament_id: selectedSlashId,
-          pick_count: pickCount,
-          scores_to_keep: scoresToKeep,
-          stake_amount: Number(stakeAmount) > 0 ? Number(stakeAmount) : null,
-          payout_structure: Number(stakeAmount) > 0 ? payouts.map(Number) : null,
-          lock_time: lockTime ? new Date(lockTime).toISOString() : null,
-          latitude: geoCoords.lat,
-          longitude: geoCoords.lon,
-          join_code: generateJoinCode(),
-          status: 'open',
-          created_by: user.id,
-        })
-        .select()
-        .single()
-      if (tErr) throw tErr
-
-      for (const tier of tiers) {
-        const { data: tierRow, error: tierErr } = await supabase
-          .from('tiers')
-          .insert({ tournament_id: tournament.id, tier_number: tier.tier_number, label: tier.label })
-          .select()
-          .single()
-        if (tierErr) throw tierErr
-        if (tier.players.length > 0) {
-          const { error: pErr } = await supabase.from('tier_players').insert(
-            tier.players.map(p => ({
-              tier_id: tierRow.id,
-              player_id: p.player_id,
-              player_name: p.player_name,
-              odds: p.odds,
-            }))
-          )
-          if (pErr) throw pErr
-        }
-      }
-      navigate(`/tournament/${tournament.id}`)
+      const { poolId } = await createGolfPool({
+        name,
+        pgaName: selectedPgaName,
+        courseName: courseName.trim(),
+        slashId: selectedSlashId,
+        pickCount,
+        scoresToKeep,
+        stakeAmount,
+        payouts,
+        lockTime,
+        geoCoords,
+        tiers,
+        createdBy: user.id,
+        joinCode: generateJoinCode(),
+      })
+      navigate(`/tournament/${poolId}`)
     } catch (err) {
       setError(err.message)
     } finally {

@@ -165,3 +165,124 @@ export async function submitPicks({ poolId, userId, picks }) {
     .upsert({ pool_id: poolId, user_id: userId }, { onConflict: 'pool_id,user_id', ignoreDuplicates: true })
   if (partErr) throw partErr
 }
+
+// ── Admin ────────────────────────────────────────────────────────────────────
+
+// Create a golf pool end to end: event -> pool -> event_details -> tiers ->
+// players. If any step fails, the event is deleted, which cascades away anything
+// already created — so a failed create never leaves junk behind.
+// tiers: [{ tier_number, label, players: [{ player_id, player_name, odds }] }]
+export async function createGolfPool({
+  name, pgaName, courseName, slashId, pickCount, scoresToKeep,
+  stakeAmount, payouts, lockTime, geoCoords, tiers, createdBy, joinCode,
+}) {
+  const hasStake = Number(stakeAmount) > 0
+
+  const { data: event, error: eErr } = await supabase
+    .from('events')
+    .insert({ sport_id: 'golf', name: pgaName || name, status: 'open' })
+    .select('id')
+    .single()
+  if (eErr) throw eErr
+
+  try {
+    const { data: pool, error: pErr } = await supabase
+      .from('pools')
+      .insert({
+        event_id: event.id,
+        name,
+        join_code: joinCode,
+        status: 'open',
+        lock_time: lockTime ? new Date(lockTime).toISOString() : null,
+        stake_amount: hasStake ? Number(stakeAmount) : null,
+        payout_structure: hasStake ? payouts.map(Number) : null,
+        created_by: createdBy,
+      })
+      .select('id')
+      .single()
+    if (pErr) throw pErr
+
+    // Badge art still comes from the seeded pga_event_badges table; copy it onto
+    // the event so the seam can read it from one place going forward.
+    const { data: badgeRow } = await supabase
+      .from('pga_event_badges').select('badge_config').eq('tourn_id', slashId).maybeSingle()
+
+    const { error: dErr } = await golf().from('event_details').insert({
+      event_id: event.id,
+      slash_golf_tournament_id: slashId,
+      pga_name: pgaName || null,
+      course_name: courseName || null,
+      latitude: geoCoords.lat,
+      longitude: geoCoords.lon,
+      pick_count: pickCount,
+      scores_to_keep: scoresToKeep,
+      badge_config: badgeRow?.badge_config ?? null,
+    })
+    if (dErr) throw dErr
+
+    for (const tier of tiers) {
+      const { data: tierRow, error: tErr } = await golf()
+        .from('tiers')
+        .insert({ event_id: event.id, tier_number: tier.tier_number, label: tier.label })
+        .select('id')
+        .single()
+      if (tErr) throw tErr
+      if (tier.players.length > 0) {
+        const { error: tpErr } = await golf().from('tier_players').insert(
+          tier.players.map(p => ({
+            tier_id: tierRow.id,
+            player_id: p.player_id,
+            player_name: p.player_name,
+            odds: p.odds,
+          }))
+        )
+        if (tpErr) throw tpErr
+      }
+    }
+
+    return { eventId: event.id, poolId: pool.id }
+  } catch (err) {
+    await supabase.from('events').delete().eq('id', event.id) // cascades to all children
+    throw err
+  }
+}
+
+// Admin pool list with the operational fields the admin panel needs.
+export async function getAdminPools() {
+  const { data: pools } = await supabase
+    .from('pools')
+    .select('id, name, status, lock_time, join_code, created_at, event_id')
+    .order('created_at', { ascending: false })
+  if (!pools?.length) return []
+  const eventIds = [...new Set(pools.map(p => p.event_id))]
+  const { data: details } = await golf()
+    .from('event_details')
+    .select('event_id, slash_golf_tournament_id, manual_refresh_count')
+    .in('event_id', eventIds)
+  const byEvent = {}
+  ;(details ?? []).forEach(d => { byEvent[d.event_id] = d })
+  return pools.map(p => ({
+    ...p,
+    slash_golf_tournament_id: byEvent[p.event_id]?.slash_golf_tournament_id ?? null,
+    manual_refresh_count: byEvent[p.event_id]?.manual_refresh_count ?? 0,
+  }))
+}
+
+export async function setPoolStatus(poolId, status) {
+  const { error } = await supabase.from('pools').update({ status }).eq('id', poolId)
+  if (error) throw error
+}
+
+export async function bumpRefreshCount(eventId, current) {
+  const { error } = await golf()
+    .from('event_details')
+    .update({ manual_refresh_count: (current ?? 0) + 1 })
+    .eq('event_id', eventId)
+  if (error) throw error
+}
+
+export async function removePoolParticipant(poolId, userId) {
+  const { error } = await golf().from('picks').delete().eq('pool_id', poolId).eq('user_id', userId)
+  if (error) throw error
+  await supabase.from('pool_participants').delete().eq('pool_id', poolId).eq('user_id', userId)
+}
