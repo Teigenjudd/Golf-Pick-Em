@@ -117,3 +117,51 @@ export async function getAllPools() {
     .order('created_at', { ascending: false })
   return data ?? []
 }
+
+// An event's tiers with their players embedded (shape the picker expects):
+//   [{ id, tier_number, label, tier_players: [{ id, player_id, player_name, odds }] }]
+export async function getEventTiers(eventId) {
+  const { data } = await golf()
+    .from('tiers')
+    .select('id, tier_number, label, tier_players(id, player_id, player_name, odds)')
+    .eq('event_id', eventId)
+    .order('tier_number')
+  return data ?? []
+}
+
+// The current user's existing picks in a pool.
+export async function getMyPicks(poolId, userId) {
+  const { data } = await golf()
+    .from('picks')
+    .select('id, tier_id, player_id, player_name, status')
+    .eq('pool_id', poolId)
+    .eq('user_id', userId)
+  return data ?? []
+}
+
+// Replace the user's picks for a pool and record their pool membership.
+// picks: [{ tier_id, player_id, player_name }]
+export async function submitPicks({ poolId, userId, picks }) {
+  const { error: delErr } = await golf().from('picks')
+    .delete().eq('pool_id', poolId).eq('user_id', userId)
+  if (delErr) throw delErr
+
+  const { error: insErr } = await golf().from('picks').insert(
+    picks.map(p => ({
+      pool_id: poolId,
+      tier_id: p.tier_id,
+      user_id: userId,
+      player_id: p.player_id,
+      player_name: p.player_name,
+      status: 'confirmed',
+    }))
+  )
+  if (insErr) throw insErr
+
+  // Record membership so leaderboards can show this player's name. DO NOTHING on
+  // conflict (no UPDATE needed/allowed for a normal user).
+  const { error: partErr } = await supabase
+    .from('pool_participants')
+    .upsert({ pool_id: poolId, user_id: userId }, { onConflict: 'pool_id,user_id', ignoreDuplicates: true })
+  if (partErr) throw partErr
+}

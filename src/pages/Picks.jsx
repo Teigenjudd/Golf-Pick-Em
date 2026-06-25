@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { getPoolView, getEventTiers, getMyPicks, submitPicks } from '../lib/golf'
 import TierPicker from '../components/picks/TierPicker'
 import PicksHeader from '../components/pool/PicksHeader'
 import PicksSubmitBar from '../components/pool/PicksSubmitBar'
@@ -23,54 +23,29 @@ export default function Picks() {
   useEffect(() => {
     if (!user) return
     async function load() {
-      const [{ data: t, error: tErr }, { data: picks }] = await Promise.all([
-        supabase
-          .from('tournaments')
-          .select(`
-            id, name, pga_name, status, lock_time, pick_count, scores_to_keep,
-            slash_golf_tournament_id,
-            tiers (
-              id, tier_number, label,
-              tier_players ( id, player_id, player_name, odds )
-            )
-          `)
-          .eq('id', id)
-          .single(),
-        supabase
-          .from('picks')
-          .select('id, tier_id, player_id, player_name, status')
-          .eq('tournament_id', id)
-          .eq('user_id', user.id),
-      ])
-
-      if (tErr || !t) {
+      const pool = await getPoolView(id)
+      if (!pool) {
         setError('Tournament not found.')
         setLoading(false)
         return
       }
 
-      const sortedTiers = (t.tiers ?? []).sort((a, b) => a.tier_number - b.tier_number)
-      setTournament(t)
-      setTiers(sortedTiers)
+      const [eventTiers, myPicks] = await Promise.all([
+        getEventTiers(pool.event_id),
+        getMyPicks(pool.id, user.id),
+      ])
 
-      const existingPickList = picks ?? []
-      setExistingPicks(existingPickList)
+      setTournament(pool)
+      setBadge(pool.badge_config ?? null)
+      setTiers(eventTiers)
 
+      setExistingPicks(myPicks)
       const initSelections = {}
-      existingPickList.forEach(p => {
+      myPicks.forEach(p => {
         initSelections[p.tier_id] = { player_id: p.player_id, player_name: p.player_name }
       })
       setSelections(initSelections)
       setLoading(false)
-
-      if (t.slash_golf_tournament_id) {
-        supabase
-          .from('pga_event_badges')
-          .select('badge_config')
-          .eq('tourn_id', t.slash_golf_tournament_id)
-          .maybeSingle()
-          .then(({ data: b }) => { if (b) setBadge(b.badge_config) })
-      }
     }
     load()
   }, [user, id])
@@ -95,18 +70,15 @@ export default function Picks() {
     setSubmitting(true)
     setError(null)
     try {
-      await supabase.from('picks').delete().eq('tournament_id', id).eq('user_id', user.id)
-      const { error: insertErr } = await supabase.from('picks').insert(
-        tiers.map(tier => ({
-          tournament_id: id,
+      await submitPicks({
+        poolId: id,
+        userId: user.id,
+        picks: tiers.map(tier => ({
           tier_id: tier.id,
-          user_id: user.id,
           player_id: selections[tier.id].player_id,
           player_name: selections[tier.id].player_name,
-          status: 'confirmed',
-        }))
-      )
-      if (insertErr) throw insertErr
+        })),
+      })
       setSubmitted(true)
     } catch (err) {
       setError(err.message)
