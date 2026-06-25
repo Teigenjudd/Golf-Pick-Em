@@ -307,9 +307,8 @@ Live data is tiny (9 tournaments, 72 tiers, 1003 tier_players, 192 picks, 7 cach
 21 profiles), so risk is low. Every phase ships **frontend to `main` before the coupled
 prod migration**, and is **additive-then-cleanup, never destructive in one deploy.**
 
-- **Phase 0 — Spike (no schema change).** Prove cross-schema embedding + grants on a
-  throwaway `golf` schema with one table. Decide embed-vs-split-query now; it shapes the
-  frontend work. **Gate the whole plan on this.**
+- **Phase 0 — Spike (no schema change). ✅ DONE — see "Spike results" below.** Decision:
+  **default to split queries; do not depend on cross-schema PostgREST embedding.**
 - **Phase 1 — Create core + golf schema, additive.** Add `public.sports` (seed `golf`),
   `public.events`, `public.pools.event_id`, `pool_participants`, `pool_standings`; create
   `golf` schema + grants + `config.toml` exposure. Nothing reads new structures yet.
@@ -328,6 +327,35 @@ prod migration**, and is **additive-then-cleanup, never destructive in one deplo
 
 **Cutover safety:** PKs are preserved and old tables linger through Phase 4, so rollback
 at any point = repoint the client back to `public`. The only irreversible step is Phase 5.
+
+### Spike results (Phase 0)
+
+Run against the linked project in throwaway `spike_core` / `spike_golf` schemas (stand-ins
+for `public` / `golf`), then dropped — zero residue, no existing tables touched. Mechanics
+verified with `supabase db query --linked`:
+
+| Mechanic | Test | Result |
+|---|---|---|
+| Cross-schema FK | `spike_golf.picks.pool_id REFERENCES spike_core.pools` | ✅ created + seeded, no error |
+| Cross-schema RLS subquery | `authenticated` reads `spike_golf.picks`; policy's `EXISTS` reads `spike_core.pools` lock gate; one pool locked, one open | ✅ returned **only** the locked pool's pick — the post-lock privacy gate works across schemas |
+| Grants | `authenticated` could read both schemas only after `GRANT USAGE`/`SELECT` | ✅ as expected |
+| SECURITY DEFINER + search_path | `spike_core` function with `SET search_path` reads `spike_golf` | ✅ returned full count (2), bypassing RLS as definer |
+
+**Not tested (intentionally):** PostgREST cross-schema resource **embedding** — it needs the
+running API and either Docker (unavailable here) or flipping prod Exposed Schemas (avoided
+for a throwaway test).
+
+**Decision — design embedding out.** Default to **split queries** across the `public`/`golf`
+boundary rather than nested embeds. Rationale: (1) it removes all dependence on PostgREST's
+finicky cross-schema embedding + exposed-schema ordering; (2) `TournamentDetail` and
+`Dashboard` already load with separate `Promise.all` queries; (3) only **one** query in the
+app embeds across the future boundary — `Picks.jsx` (`tournaments → tiers → tier_players`) —
+and it splits trivially into "pool from `public`" + "tiers/players from `golf`". This makes
+Phase 4's "split any embeds" a known, one-file change instead of an open risk, so **the gate
+is satisfied: nothing in the plan now depends on the one untested mechanic.**
+
+The only `public`↔`golf` join that remains in-database (not in the client) is RLS subqueries
+and the standings/participants logic — all proven above.
 
 ---
 
