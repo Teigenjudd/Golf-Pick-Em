@@ -3,7 +3,18 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const SLASH_GOLF_BASE = 'https://live-golf-data.p.rapidapi.com'
 const MONTHLY_CAP = 1800
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
+}
+
 Deno.serve(async (req) => {
+  // CORS preflight: the browser sends this before the real call and it carries
+  // no auth, so answer it immediately, before any auth check.
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -32,7 +43,7 @@ Deno.serve(async (req) => {
   }
 
   if (!authorized) {
-    return new Response('Unauthorized', { status: 401 })
+    return new Response('Unauthorized', { status: 401, headers: corsHeaders })
   }
 
   const slashGolfKey = Deno.env.get('SLASH_GOLF_API_KEY')!
@@ -49,7 +60,7 @@ Deno.serve(async (req) => {
   if (currentCount >= MONTHLY_CAP) {
     return new Response(
       JSON.stringify({ error: `Monthly Slash Golf API cap (${MONTHLY_CAP}) reached` }),
-      { status: 429, headers: { 'Content-Type': 'application/json' } },
+      { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   }
 
@@ -77,7 +88,7 @@ Deno.serve(async (req) => {
   if (poolsError) {
     return new Response(JSON.stringify({ error: poolsError.message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
@@ -92,17 +103,24 @@ Deno.serve(async (req) => {
     .in('event_id', eventIds)
 
   if (detailsError) {
+    console.error('[poll] detailsError (golf query failed):', detailsError.message)
     return new Response(JSON.stringify({ error: detailsError.message }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
   const active = (details ?? []).filter((d) => d.slash_golf_tournament_id)
 
+  console.log('[poll] target=', targetEventId,
+    'activePools=', activePools?.length,
+    'eventIds=', JSON.stringify(eventIds),
+    'detailRows=', details?.length,
+    'active=', JSON.stringify(active))
+
   if (!active.length) {
     return new Response(JSON.stringify({ message: 'No active events' }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
@@ -128,6 +146,8 @@ Deno.serve(async (req) => {
         },
       )
 
+      console.log('[poll] fetch tournId=', event.slash_golf_tournament_id, 'year=', year, 'status=', res.status)
+
       if (!res.ok) {
         results.push({ id: event.event_id, error: `Slash Golf ${res.status}` })
         continue
@@ -135,6 +155,7 @@ Deno.serve(async (req) => {
 
       const data = await res.json()
       callsThisPoll++
+      console.log('[poll] leaderboardRows=', (data?.leaderboardRows?.length ?? 'none'))
 
       await supabase
         .schema('golf')
@@ -147,12 +168,14 @@ Deno.serve(async (req) => {
         .from('leaderboard_cache')
         .insert({ event_id: event.event_id, data })
 
+      console.log('[poll] cache write err=', insertError?.message ?? 'none')
       results.push(
         insertError
           ? { id: event.event_id, error: insertError.message }
           : { id: event.event_id, ok: true },
       )
     } catch (err) {
+      console.error('[poll] threw', (err as Error).message)
       results.push({ id: event.event_id, error: (err as Error).message })
     }
   }
@@ -165,7 +188,8 @@ Deno.serve(async (req) => {
     )
   }
 
+  console.log('[poll] done results=', JSON.stringify(results))
   return new Response(JSON.stringify({ results }), {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
 })
