@@ -9,7 +9,7 @@ A social sports pick'em platform for friend groups. Currently focused on PGA gol
 - **Frontend:** React + Vite + Tailwind CSS v4
 - **Backend:** Supabase (Postgres + Auth + Edge Functions + RLS)
 - **Hosting:** Netlify — [getpoold.app](https://getpoold.app)
-- **APIs:** Slash Golf via RapidAPI (proxied), The Odds API, Open-Meteo, Nominatim/OpenStreetMap
+- **APIs:** Slash Golf via RapidAPI (proxied), The Odds API, Open-Meteo (weather + geocoding)
 
 ## Local Development
 
@@ -49,4 +49,5 @@ Leaderboard polling runs via pg_cron, every 20 minutes during the 7am–8pm ET w
 - **WD/CUT players penalized +20** — kept in the scoring pool rather than dropped
 - **Optional money pools** — commissioners can set a per-player stake and payout percentages (enforced to sum to 100%); the leaderboard shows the prize breakdown by placement
 - **Public demo at `/demo`** — no sign-up; runs entirely on a static fixture and never touches the database
-- **The Odds API is still client-side** — known security TODO before public launch (see `docs/AUDIT.md`)
+- **Per-sport Postgres schemas** — sport-agnostic core in `public` (events, pools, participants), golf's contest structure in the `golf` schema; all golf data access goes through `src/lib/golf.js`
+- **The Odds API is still client-side** — known security TODO before public launch (see `docs/BACKLOG.md`)

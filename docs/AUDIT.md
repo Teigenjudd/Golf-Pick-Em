@@ -1,5 +1,11 @@
 # Codebase Audit — Follow-ups
 
+> ⚠️ **SUPERSEDED (2026-07-09) by `docs/BACKLOG.md`.** This audit predates the
+> multi-sport migration — its file paths and table names describe the old
+> single-schema model, and some items are resolved. The C1–C4 resolution record
+> below is still the historical reference; for anything open, use BACKLOG.md
+> (its "Audit reconciliation" section maps every M/L item to a new ID).
+
 Findings from the 2026-06-20 full-codebase audit. **C1–C4 (critical) are fixed**;
 everything below the line is still open. File references point at the relevant
 file + function — line numbers drift as the code evolves, so they're approximate.

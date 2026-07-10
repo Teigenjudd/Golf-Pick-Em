@@ -1,7 +1,10 @@
 # Multi-Sport Migration — Execution Plan
 
-> **Status:** Planning / aligned, not yet executed. Working reference.
-> **Last updated:** 2026-06-24
+> **Status:** Phases 0–4 SHIPPED (June 2026 — the app runs on the new schemas via
+> `lib/golf.js`). Phase 5 cleanup (drop legacy tables) is pending, plus a
+> populate-or-drop decision on `public.pool_standings` — tracked as F1 in
+> `docs/BACKLOG.md`.
+> **Last updated:** 2026-07-10
 > **Scope guard:** This is seam work only. The only active sport is **golf**, and golf
 > behavior stays unchanged. We are removing golf-as-an-assumption from shared schema,
 > shared components, and shared logic so that adding a second sport later is **additive

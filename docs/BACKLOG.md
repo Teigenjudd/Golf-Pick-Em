@@ -262,13 +262,13 @@
 
 ## H. Documentation
 
-- [ ] 🟠 **H1 — `docs/AUDIT.md` is stale post-migration; reconcile or retire.**
+- [x] 🟠 **H1 — `docs/AUDIT.md` is stale post-migration; reconcile or retire.** *(Done 2026-07-10 — superseded banner added pointing here.)*
   It still lists resolved items (L6 dead code — `Pending.jsx` gone, `golf-temp`
   renamed to `poold`, helpers consolidated) and references `public.picks`/
   `tournaments` file paths that the multi-sport cutover moved into the `golf` schema.
   **Fix:** mark AUDIT.md superseded by this file, or prune it to only-still-open items.
 
-- [ ] 🟡 **H2 — CLAUDE.md / README describe the pre-migration data model.**
+- [x] 🟡 **H2 — CLAUDE.md / README describe the pre-migration data model.** *(Done 2026-07-10 — data-model section added to CLAUDE.md; geocoder line, table names, and backlog pointer fixed; README updated. Note: `docs/PAGES.md` still uses some pre-migration field names.)*
   CLAUDE.md's "Architecture Summary" and Routes still talk in terms of `tournaments`,
   and says geocoding uses Nominatim while the code uses Open-Meteo (F3). The doc
   doesn't mention the `public`/`golf` schema split or `lib/golf.js` as the data seam
@@ -282,7 +282,7 @@
   card is a missed opportunity). **Fix:** set title/description/OG image; brand the
   favicon.
 
-- [ ] ⚪ **H4 — `MULTI_SPORT_MIGRATION.md` still says "Planning / not yet executed."**
+- [x] ⚪ **H4 — `MULTI_SPORT_MIGRATION.md` still says "Planning / not yet executed."** *(Done 2026-07-10 — status header updated.)*
   Phases 1–4 are done (per git history); the doc header hasn't been updated. **Fix:**
   update status to "Phases 1–4 shipped; Phase 5 cleanup pending" (ties to F1).
 
