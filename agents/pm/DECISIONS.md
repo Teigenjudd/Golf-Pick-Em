@@ -13,6 +13,50 @@
 
 ---
 
+## 2026-07-14 — Column access is a GRANT problem, not an RLS problem
+
+**Decision:** Privileged *columns* on `public.profiles` are protected by column-level
+GRANTs, and every privileged operation on them goes through a `SECURITY DEFINER` RPC that
+re-checks `is_admin()` itself. `anon`/`authenticated` can SELECT only
+`(id, display_name, role, status, created_at)` and UPDATE only `(display_name)`.
+`admin_list_users()` reads email; `admin_set_role()` writes role. Fixing A1 (PR #24).
+
+**Why:** The instinct on seeing "any user can set `role='admin'`" is to fix the *policy* —
+add a `WITH CHECK` that pins `role` to its current value. **That cannot work: Postgres RLS
+is row-level and has no column granularity.** A policy can say *which rows* you may touch
+and *what the resulting row must look like*, but it cannot say *which columns you may
+write*, and expressing "role must not change" inside a policy means either an
+`OLD`-referencing check RLS doesn't give you, or a `BEFORE UPDATE` trigger — i.e. a second
+mechanism, in a second place, that the next person won't know to look for.
+
+Column GRANTs are the mechanism Postgres actually provides for this, and they're *stronger*
+than a policy: **privileges are checked before any policy runs**, so a revoked column is
+unreachable regardless of what any current or future policy says. It's the same move C3
+made for reads (2026-06-20) — this just applies it symmetrically to writes, so `profiles`
+is now locked in both directions by one consistent mechanism.
+
+**Consequence to know:** a plain `supabase.from('profiles').update({ role })` **will fail,
+by design.** That is not a bug to route around — it's the fix. Privileged writes get an RPC.
+
+**`admin_set_role()` also refuses a self-role-change.** The admin UI already hid the toggle
+on your own row, but that was a UI convention, not an invariant. A sole admin demoting
+themselves leaves nobody able to promote anyone, and recovery needs raw SQL. We have locked
+ourselves out of admin once already (the coupled-migration incident); once is enough.
+
+**Gave up:** Self-service display-name editing is the only profile write a user can make,
+and any *new* self-editable field now needs an explicit `GRANT UPDATE (col)` — a small,
+deliberate friction. That's the intended cost: adding a user-writable column to `profiles`
+should be a decision, not a default.
+
+**Watch for:** Someone hitting the failed `.update({ role })`, concluding the RLS policy is
+"too strict," and re-granting table-level UPDATE to make it work. That silently reopens A1.
+The grant is the gate; the policy is belt-and-braces.
+
+**Revisit if:** Postgres ever gains column-level RLS, at which point the two mechanisms
+could collapse into one.
+
+---
+
 ## 2026-07-13 — The merge guard checks `agents/pm/`, not "any .md"
 
 **Decision:** `pm-sync-guard.mjs` now blocks `gh pr merge` when a substantive diff leaves

@@ -6,8 +6,8 @@
 > lives in `PRODUCT.md`; engineering-level defects live in `docs/BACKLOG.md` (IDs like
 > A1/B2 below point there).
 >
-> **Last updated:** 2026-07-13 (P0.5 added after the Supabase pause outage; badge system
-> shipped — see the status log at the bottom)
+> **Last updated:** 2026-07-14 (P0.1 + P0.3 shipped — the security blockers are closed;
+> P0.2 self-serve creation is now the whole critical path. See the status log.)
 >
 > **Ease scale:** 🟢 Easy (a session or two) · 🟡 Moderate (several sessions, one
 > surface) · 🔴 Hard (multi-PR, schema + UI + new moving parts)
@@ -57,8 +57,13 @@ Researched: Splash Sports, RunYourPool, Majors Challenge, RunMyPools, EasyOffice
 Our stated strategy is "win the commissioner — they bring the group."
 **Today, nobody but the founder can create a pool.** Pool creation is gated behind the
 global admin role. Until that changes, Poold has no acquisition motion at all — every
-other growth idea is downstream of this one fact. That, plus the two security items
-that make a public push irresponsible (A1, A2), defines P0.
+other growth idea is downstream of this one fact.
+
+**Updated 2026-07-14:** the two security items that made a public push irresponsible
+(A1, A2) are now **fixed**. That sharpens the read rather than softening it — the reason
+we can't tell anyone about Poold is no longer *"it isn't safe."* It's that **the product
+has no way for them to use it.** P0.2 (self-serve creation) is now the whole of P0's
+critical path, with P0.5 (Supabase auto-pause) as the remaining infrastructure floor.
 
 ---
 
@@ -68,9 +73,9 @@ that make a public push irresponsible (A1, A2), defines P0.
 
 | # | Item | Why | Impact | Ease |
 |---|---|---|---|---|
-| 0.1 | **Fix A1 privilege escalation** — any signed-in user can set `role='admin'` via the unscoped profiles RLS policy | One curious user away from full takeover (all emails, all pools). Blocks everything. | Critical | 🟢 (BACKLOG A1 has the fix sketched) |
+| 0.1 | ~~**Fix A1 privilege escalation**~~ ✅ **SHIPPED 2026-07-14 (PR #24)** — `profiles` is column-locked (GRANTs, not RLS — policies can't restrict columns); role changes go through the `admin_set_role()` SECURITY DEFINER RPC | One curious user away from full takeover (all emails, all pools). Blocked everything. | Critical | 🟢 |
 | 0.2 | **Self-serve pool creation** — any user can create a pool and becomes its commissioner; per-pool commissioner powers (lock/close/refresh/manage participants for *their* pool); global admin stays for ops | Turns the product from founder-run to commissioner-run. THE strategic unlock — without it there is no growth loop. | Very High | 🔴 (roles model + RLS + admin-UI split into "my pools"; the create wizard itself already exists and mostly just needs un-gating) |
-| 0.3 | **A2: move Odds API key server-side** + rotate | Key is in the public JS bundle; anyone can burn our quota. Pre-marketing gate. | High (risk removal) | 🟢 (copy the existing `slash-golf-proxy` pattern) |
+| 0.3 | ~~**A2: move Odds API key server-side**~~ ✅ **SHIPPED 2026-07-14 (PR #24)** — `odds-proxy` edge function; key is now a Supabase secret. ⚠️ **The rotation is a manual deploy step** — the old key was public in the bundle and must be assumed burned | Key was in the public JS bundle; anyone could burn our quota. Pre-marketing gate. | High (risk removal) | 🟢 |
 | 0.4 | **Error states instead of blank screens** (C1, C2, B2) | A commissioner's first bad experience shouldn't look like a broken product. Silent failures are trust killers for exactly the audience we can't afford to lose. | High | 🟡 (thread errors through `lib/golf.js` + a few UI states) |
 | 0.5 | **Stop Supabase auto-pausing the project** — upgrade to Pro (~$25/mo), or run a year-round heartbeat so the DB never idles out | **Proven failure, 2026-07-13:** the free tier paused after ~7 days idle, Supabase pulled the project's DNS, and getpoold.app died at sign-in with an opaque "load failed." Any gap between tournaments is long enough to trigger it — so an invite that lands in a quiet week reaches a dead app. This is the single cheapest way to stop losing users we've already acquired. | High (risk removal) | 🟢 (Pro is a billing toggle; the heartbeat is a scheduled function) |
 
@@ -131,6 +136,8 @@ Phase 5 legacy-table cleanup + `pool_standings` decision (F1) · tests for
 | 2026-07-10 | Initial roadmap from market research + full repo read. Nothing started; P0 defined as A1 + self-serve creation + A2 + error states. |
 | 2026-07-13 | **Shipped: tournament badge color system** (Claude Design import). Badge bg/border are now per-tournament and encode prestige + geography; all 48 events designed and seeded. Not on this roadmap when written — it's craft/polish rather than a P0–P3 item, but it lands squarely on differentiation #1 (the friend-group *feel*), so it earns its place. |
 | 2026-07-13 | Supabase free tier **auto-paused the project** after ~7 days idle, taking getpoold.app down with an opaque "load failed" at sign-in. Restored manually. This is a live launch risk, not an annoyance — see the new item **0.5** in P0. |
+| 2026-07-14 | **Shipped: P0.1 (A1) + P0.3 (A2)** — PR #24. The self-promotion hole is closed and the Odds key is off the client. Two consequences worth naming. **(1) The blunt read changed:** the blocker on telling anyone about Poold is no longer safety, it's that only the founder can create a pool — P0.2 now *is* the critical path. **(2) A pattern was established, not just a bug fixed:** RLS can't restrict columns, so column access is a GRANT problem, and privileged operations belong in `SECURITY DEFINER` RPCs that re-check `is_admin()`. That's now the house rule for every future privileged write (see DECISIONS). |
+| 2026-07-14 | **Logged, not shipped: `docs/BRAINSTORM.md`** — a ~120-idea product dump (multi-sport, formats, social, live UI, data, brand, growth, retention, monetization) with an anti-ideas list. It is deliberately **not** a roadmap; it's the pile this roadmap can pull from. Four of its ideas challenge things written here and want an explicit decision: that the second sport should be a *field* sport (F1/UFC — which reuse golf's schema) rather than NFL (which reuses none of it); that a **Crew** object would make season pools (2.1, rated 🔴) mostly a query; that "run it back" is a 🟢 retention win we're leaving on the table; and that the tagline implies a category ("make it interesting") much larger than *sports*. |
 | 2026-07-13 | **Shipped: odds coverage fix** (PR #22). Odds were read from one bookmaker and joined to the field by exact name — 11 of 100 players in The Open had no price (incl. Tom Kim, both Højgaards) and silently fell back to OWGR interpolation for tiering. Now unions all books (median price) and matches names in layers. **100/100 priced.** Not a roadmap item, but it was quietly degrading the tier builder — the admin's first real impression of the product — and the diagnosis exposed that we have no test coverage on this path (**F4**). |
 
 ---

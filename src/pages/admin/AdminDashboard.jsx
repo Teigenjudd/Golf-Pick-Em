@@ -339,6 +339,7 @@ function UsersTab() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(null)
+  const [error, setError] = useState(null)
 
   const load = useCallback(async () => {
     // Email is column-restricted on profiles; admins read it via this RPC.
@@ -352,8 +353,15 @@ function UsersTab() {
   async function toggleRole(userId, currentRole) {
     const newRole = currentRole === 'admin' ? 'player' : 'admin'
     setUpdating(userId)
-    await supabase.from('profiles').update({ role: newRole }).eq('id', userId)
-    await load()
+    setError(null)
+    // profiles.role is column-locked against the client (A1) — admins change it
+    // through this RPC, which checks is_admin() server-side.
+    const { error: rpcError } = await supabase.rpc('admin_set_role', {
+      target_user: userId,
+      new_role: newRole,
+    })
+    if (rpcError) setError(rpcError.message)
+    else await load()
     setUpdating(null)
   }
 
@@ -364,6 +372,12 @@ function UsersTab() {
       <p className="text-[13px] text-warm-400 mb-3">
         {users.length} user{users.length !== 1 ? 's' : ''}
       </p>
+
+      {error && (
+        <p className="text-[12px] text-birdie border border-birdie/30 bg-birdie/5 rounded-[8px] px-3 py-2 mb-3">
+          Couldn’t change that role — {error}
+        </p>
+      )}
 
       <div className="flex flex-col gap-2">
         {users.map(u => (

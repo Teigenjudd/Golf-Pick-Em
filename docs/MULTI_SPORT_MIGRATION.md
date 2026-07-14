@@ -247,6 +247,7 @@ flowchart TB
     subgraph EF["Edge Functions (service role)"]
       PROXY["slash-golf-proxy"]
       POLL["poll-leaderboard"]
+      ODDSFN["odds-proxy"]
     end
     CRON["pg_cron — poll Thu–Sun"]
   end
@@ -263,10 +264,11 @@ flowchart TB
   LIBP --> AUTH
   REST --> PUB
   REST --> GOLF
-  UI -. "odds @ create" .-> ODDS
   UI -. "weather" .-> METEO
   UI -. "geocode @ create" .-> NOMIN
   UI -. "invoke" .-> PROXY
+  UI -. "invoke @ create" .-> ODDSFN
+  ODDSFN --> ODDS
   PROXY --> SLASH
   PROXY --> GOLF
   CRON --> POLL
@@ -282,7 +284,10 @@ Infrastructure notes:
 - **Edge functions use the service role** (bypass RLS) but still schema-qualify golf
   tables; `poll-leaderboard` reads `golf.event_details` joined to `public.pools` for which
   events to poll, and writes `golf.leaderboard_cache`.
-- Unchanged from today: external API wiring, magic-link auth, pg_cron cadence.
+- **No third-party API key reaches the browser.** Slash Golf and The Odds API are both
+  proxied (`slash-golf-proxy`, `odds-proxy` — the latter added 2026-07-14 for A2). Only
+  the keyless APIs (Open-Meteo weather + geocoding) are still called client-side.
+- Unchanged from today: magic-link auth, pg_cron cadence.
 
 ---
 
