@@ -79,6 +79,24 @@
   `.env`, `.env.local`, `.env.production`. Fine for solo dev; revisit if the repo is
   shared. Confirm no real secret ever lands in a committed `.env.example`.
 
+- [ ] 🟠 **A7 — `privacy@getpoold.app` doesn't exist. Mail to it bounces.**
+  `/privacy` and `/terms` (shipped 2026-07-14) both name it as the contact and
+  data-deletion address, and the privacy policy promises deletion on request — so
+  right now the one channel we advertise for exercising that right is a dead drop.
+  Accepted knowingly to unblock the launch; it is the weakest line in either document
+  and should not sit here long.
+  **State today:** `getpoold.app` DNS is hosted at Netlify (nameservers `nsone.net`)
+  and has **no MX records at all**, which is why mail bounces rather than merely
+  going unread.
+  **Fix (cheapest path, ~5 min, no nameserver change):** sign up at ImprovMX (or
+  ForwardEmail) with `getpoold.app`, alias `privacy@` → `juddteigen@gmail.com`, then
+  add the 2 MX records + 1 SPF TXT record they issue to Netlify DNS. Receive-only —
+  replies come from Gmail. A real sending mailbox (Zoho free, or Google Workspace at
+  ~$7/mo) is the upgrade if it ever needs to look like a support desk.
+  **Interim mitigation if this lingers:** point both documents at `juddteigen@gmail.com`,
+  which works today. It's a one-line change in `src/pages/legal/Privacy.jsx` and
+  `Terms.jsx` — a personal address that receives mail beats a branded one that doesn't.
+
 ---
 
 ## B. Correctness & Data Integrity
