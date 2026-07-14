@@ -11,10 +11,14 @@ export function AuthProvider({ children }) {
   async function fetchProfile(userId) {
     const { data } = await supabase
       .from('profiles')
-      .select('id, display_name, role, status, created_at')
+      .select('id, display_name, display_name_set_at, role, status, created_at')
       .eq('id', userId)
       .single()
     setProfile(data)
+  }
+
+  async function refreshProfile() {
+    if (user) await fetchProfile(user.id)
   }
 
   useEffect(() => {
@@ -42,7 +46,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )

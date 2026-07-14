@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import Footer from '../components/Footer'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -80,6 +81,11 @@ export default function Login() {
               >
                 {loading ? 'Sending…' : 'Send Magic Link'}
               </button>
+              <p className="text-[11px] text-warm-300 leading-[1.5] text-center mt-3 mb-0">
+                By signing in you agree to our{' '}
+                <Link to="/terms" className="text-warm-400 underline">Terms</Link> and{' '}
+                <Link to="/privacy" className="text-warm-400 underline">Privacy Policy</Link>.
+              </p>
             </form>
           )}
         </div>
@@ -90,6 +96,8 @@ export default function Login() {
             <span className="text-brand font-semibold">Try the demo →</span>
           </Link>
         </div>
+
+        <Footer />
 
       </div>
     </div>

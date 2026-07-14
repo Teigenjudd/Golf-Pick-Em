@@ -11,10 +11,14 @@ export default function AuthCallback() {
     if (loading) return
     if (!profile) return
     const joinCode = new URLSearchParams(location.search).get('join')
-    if (joinCode) {
-      navigate(`/join/${joinCode}`, { replace: true })
+    const destination = joinCode ? `/join/${joinCode}` : '/dashboard'
+
+    // Brand-new account (the signup trigger leaves display_name NULL): name
+    // yourself first, then carry on to wherever the link was taking you.
+    if (!profile.display_name) {
+      navigate(`/welcome?next=${encodeURIComponent(destination)}`, { replace: true })
     } else {
-      navigate('/dashboard', { replace: true })
+      navigate(destination, { replace: true })
     }
   }, [profile, loading, navigate, location.search])
 

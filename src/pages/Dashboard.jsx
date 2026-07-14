@@ -3,12 +3,10 @@ import { useAuth } from '../context/AuthContext'
 import { Navigate, Link } from 'react-router-dom'
 import { getMyPickRows, getPoolViewsByIds, getPoolPicks, getLatestLeaderboard, getAllPools } from '../lib/golf'
 import { computeScores, assignRanks, formatScore } from '../utils/scoring'
+import { getInitials } from '../utils/format'
 import SportBadge from '../components/SportBadge'
-
-function getInitials(name) {
-  if (!name) return '?'
-  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-}
+import BottomNav from '../components/BottomNav'
+import Footer from '../components/Footer'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -106,7 +104,7 @@ export default function Dashboard() {
   const visibleTournaments = showClosed ? myTournaments : myTournaments.filter(t => t.tournamentStatus !== 'complete')
 
   return (
-    <div className="min-h-screen bg-sand pb-20">
+    <div className="min-h-screen bg-sand pb-20 flex flex-col">
 
       {/* Sticky top nav */}
       <div className="bg-white border-b border-[#EAD8C4] px-[18px] h-14 flex items-center justify-between sticky top-0 z-10">
@@ -115,9 +113,9 @@ export default function Dashboard() {
           {profile?.role === 'admin' && (
             <Link to="/admin/create-tournament" className="text-[12px] font-medium text-warm-400 no-underline">+ New</Link>
           )}
-          <div className="w-[34px] h-[34px] rounded-full bg-brand flex items-center justify-center">
+          <Link to="/profile" className="w-[34px] h-[34px] rounded-full bg-brand flex items-center justify-center no-underline">
             <span className="font-display font-bold text-[13px] text-white">{initials}</span>
-          </div>
+          </Link>
         </div>
       </div>
 
@@ -318,32 +316,12 @@ export default function Dashboard() {
 
       </div>
 
-      {/* Sticky bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 h-16 bg-sand border-t border-[#EAD8C4] flex justify-around items-start pt-2.5 z-10">
-        <Link to="/dashboard" className="flex flex-col items-center gap-[3px] no-underline">
-          <div
-            className="w-[26px] h-[26px] rounded-[8px] flex items-center justify-center"
-            style={{ background: 'rgba(193,74,24,.12)', border: '1px solid rgba(193,74,24,.28)' }}
-          >
-            <span className="font-display font-extrabold text-[13px] text-brand">P</span>
-          </div>
-          <span className="font-semibold text-[10px] text-brand">Pools</span>
-        </Link>
-        <div className="flex flex-col items-center gap-1 pt-0.5">
-          <div className="flex flex-col gap-[3px] w-[22px]">
-            <div className="h-[2.5px] bg-[#C8B8A4] rounded-sm" />
-            <div className="h-[2.5px] bg-[#C8B8A4] rounded-sm w-4" />
-            <div className="h-[2.5px] bg-[#C8B8A4] rounded-sm w-2.5" />
-          </div>
-          <span className="text-[10px] text-[#B8A890]">Board</span>
-        </div>
-        <div className="flex flex-col items-center gap-[3px]">
-          <div className="w-[26px] h-[26px] rounded-full border-2 border-[#C8B8A4] flex items-center justify-center">
-            <span className="font-display font-bold text-[10px] text-[#B8A890]">{initials}</span>
-          </div>
-          <span className="text-[10px] text-[#B8A890]">You</span>
-        </div>
+      {/* mt-auto: sit at the foot of the page, not wherever the content happens to end */}
+      <div className="mt-auto">
+        <Footer />
       </div>
+
+      <BottomNav active="pools" />
 
     </div>
   )

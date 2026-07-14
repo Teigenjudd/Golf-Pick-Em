@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { getPoolViewByCode } from '../lib/golf'
 import { useAuth } from '../context/AuthContext'
 import SportBadge from '../components/SportBadge'
+import Footer from '../components/Footer'
 
 export default function Join() {
   const { code } = useParams()
@@ -109,9 +110,16 @@ export default function Join() {
                 >
                   {sending ? 'Sending…' : 'Send Magic Link'}
                 </button>
+                <p className="text-[11px] text-warm-300 leading-[1.5] text-center mt-3 mb-0">
+                  By signing in you agree to our{' '}
+                  <Link to="/terms" className="text-warm-400 underline">Terms</Link> and{' '}
+                  <Link to="/privacy" className="text-warm-400 underline">Privacy Policy</Link>.
+                </p>
               </form>
             )}
           </div>
+
+          <Footer />
 
         </div>
       </div>
@@ -203,6 +211,8 @@ export default function Join() {
             Go to dashboard
           </Link>
         </div>
+
+        <Footer />
 
       </div>
     </div>

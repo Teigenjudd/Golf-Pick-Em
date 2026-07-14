@@ -10,6 +10,12 @@ export function ordinal(n) {
   }
 }
 
+// Avatar initials from a display name: "Judd Teigen" → "JT". "?" when unnamed.
+export function getInitials(name) {
+  if (!name) return '?'
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+}
+
 // Whole-dollar money, with thousands separators: 1200 → "$1,200"
 export function formatMoney(n) {
   return `$${Math.round(n).toLocaleString()}`
