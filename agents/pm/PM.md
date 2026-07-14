@@ -124,6 +124,9 @@ writing code.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.
+- Odds coverage fix (2026-07-13, PR #22) — odds are unioned across all bookmakers
+  (median price) and joined to the field by a layered name matcher instead of an exact
+  string. The Open went from 11 unpriced players to 0. (`docs/NAME_MATCHING.md`)
 - Security audit criticals C1–C4 (pick integrity, pre-lock pick privacy, email
   exposure, committed cron secret) — fixed.
 
@@ -165,6 +168,15 @@ is about who keeps them true, not where they sit.
 **This table is the contract the `/pm-sync` skill runs on.** When a PR changes
 something, this is how you decide what to update. Keep it current — if you add a doc,
 add a row.
+
+**What the merge guard actually enforces** (`.claude/hooks/pm-sync-guard.mjs`): a PR
+with substantive code changes cannot merge unless it touches **`agents/pm/`**, and a PR
+touching `src/pages|components` cannot merge without **`docs/PAGES.md`**. Those two are
+the only rules a hook can check by reading a diff — the rest of this table is on you.
+The guard used to accept *any* `.md` as proof the PM had run, and PR #22 slipped through
+on `CLAUDE.md` alone while these four strategy docs went stale (see DECISIONS,
+2026-07-13). If nothing in `agents/pm/` genuinely applies, that's fine — but say what
+you checked and merge with `PM_SYNC_SKIP=1`.
 
 | Document | Owns (the kind of truth it holds) | Update when a PR… |
 |---|---|---|

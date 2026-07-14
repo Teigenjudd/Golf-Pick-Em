@@ -131,6 +131,7 @@ Phase 5 legacy-table cleanup + `pool_standings` decision (F1) · tests for
 | 2026-07-10 | Initial roadmap from market research + full repo read. Nothing started; P0 defined as A1 + self-serve creation + A2 + error states. |
 | 2026-07-13 | **Shipped: tournament badge color system** (Claude Design import). Badge bg/border are now per-tournament and encode prestige + geography; all 48 events designed and seeded. Not on this roadmap when written — it's craft/polish rather than a P0–P3 item, but it lands squarely on differentiation #1 (the friend-group *feel*), so it earns its place. |
 | 2026-07-13 | Supabase free tier **auto-paused the project** after ~7 days idle, taking getpoold.app down with an opaque "load failed" at sign-in. Restored manually. This is a live launch risk, not an annoyance — see the new item **0.5** in P0. |
+| 2026-07-13 | **Shipped: odds coverage fix** (PR #22). Odds were read from one bookmaker and joined to the field by exact name — 11 of 100 players in The Open had no price (incl. Tom Kim, both Højgaards) and silently fell back to OWGR interpolation for tiering. Now unions all books (median price) and matches names in layers. **100/100 priced.** Not a roadmap item, but it was quietly degrading the tier builder — the admin's first real impression of the product — and the diagnosis exposed that we have no test coverage on this path (**F4**). |
 
 ---
 

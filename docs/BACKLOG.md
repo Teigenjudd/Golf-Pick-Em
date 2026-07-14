@@ -74,6 +74,15 @@
   like a valid low score. Slash Golf ids vs the field-import ids are the likely
   drift source. **Fix:** surface unmatched picks (badge them "no data") instead of
   silently benching, and log a count. (AUDIT M4.)
+  **Update 2026-07-13 (PR #22, not a fix):** `normalizeName` now transliterates atomic
+  letters (`ø`, `æ`, `ð`, …) that the old `[^a-z]` strip deleted outright, so
+  `Højgaard` no longer normalizes to `hjgaard`. That removes one drift source here, but
+  B1 stands: the silent-bench behaviour is untouched. Note the **asymmetry it created** —
+  the odds join now resolves names through the layered matcher in `playerMatch.js`
+  (`resolvePlayer`), while `computeScores` still does a raw `normalizeName` lookup. Both
+  sides of the scoring join are Slash Golf, so this is not currently a live bug; if that
+  ever stops being true, route `computeScores` through `resolvePlayer` too rather than
+  reinventing the fallback. See `docs/NAME_MATCHING.md`.
 
 - [ ] 🟠 **B2 — Failed score refresh still consumes an allowance.**
   `AdminDashboard.refreshScores` awaits `functions.invoke(...)` but never inspects
