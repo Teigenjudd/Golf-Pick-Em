@@ -5,7 +5,7 @@
 > whenever a user-facing capability ships or changes — it should always describe the
 > product as deployed, not as planned. (The plan lives in `ROADMAP.md`.)
 >
-> **Last updated:** 2026-07-13 · Live at [getpoold.app](https://getpoold.app)
+> **Last updated:** 2026-07-14 · Live at [getpoold.app](https://getpoold.app)
 
 ---
 
@@ -171,8 +171,9 @@ until golf is won.
 ## 6. How we work
 
 **Stack:** React + Vite + Tailwind v4 (Netlify) · Supabase (Postgres + magic-link Auth
-+ Edge Functions + RLS) · Slash Golf via RapidAPI (proxied server-side) · The Odds API
-(client-side — moving server-side, BACKLOG A2) · Open-Meteo (weather + geocoding).
++ Edge Functions + RLS) · Slash Golf via RapidAPI and The Odds API (both proxied
+server-side — no third-party key reaches the browser) · Open-Meteo (weather +
+geocoding — keyless, so still called client-side).
 
 **Architecture in one line:** thin sport-agnostic core in the `public` schema (events,
 pools, participants); golf's whole contest structure in the `golf` schema; the only
@@ -195,8 +196,10 @@ components keep the live pages and `/demo` pixel-identical by construction.
 at 1,800 calls/month — polling cadence and manual refreshes are budgeted against it.
 
 **Current health, honestly:** product works end-to-end and survived its first live
-event (2026 US Open). One critical security hole is open (BACKLOG A1 — any user can
-self-promote to admin); the Odds API key ships in the browser bundle (A2); the Supabase
+event (2026 US Open). **The two security launch-blockers are closed** (2026-07-14, PR
+#24): a signed-in user can no longer self-promote to admin (A1), and the Odds API key no
+longer ships in the browser bundle (A2). What remains before a public push: the Supabase
 free tier auto-paused the whole project after a week idle and took the site down
-(2026-07-13); zero test coverage; several silent-failure states. These gate any public
-push — see `ROADMAP.md` P0.
+(2026-07-13, ROADMAP P0.5); pool creation is still founder-only (P0.2), so there is no
+acquisition motion; zero test coverage; several silent-failure states render as blank
+screens. See `ROADMAP.md` P0.

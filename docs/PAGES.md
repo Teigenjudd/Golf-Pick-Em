@@ -253,7 +253,8 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 
 *Users tab:*
 - User list: name, email, role badge
-- Toggle player ↔ admin role (cannot toggle yourself)
+- Toggle player ↔ admin role (cannot toggle yourself) — writes via the `admin_set_role(target_user, new_role)` RPC, **not** a direct `profiles` update: `profiles.role` is column-locked against the client (A1). The RPC re-checks `is_admin()` server-side and refuses a self-role-change, so "cannot toggle yourself" is now an enforced invariant rather than a UI convention.
+- Inline error line if the role change is refused (previously the update failed silently)
 
 **Design notes:**
 - White sticky nav: `← Dashboard | POOLD Admin` on the left, "Sign out" text button on the right. Same nav pattern as CreateTournament.

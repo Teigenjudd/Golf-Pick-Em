@@ -12,7 +12,7 @@
 
 ## A. Security
 
-- [ ] 🔴 **A1 — Privilege escalation: any user can make themselves admin.**
+- [x] 🔴 **A1 — Privilege escalation: any user can make themselves admin.** *(Fixed 2026-07-14, PR #24 — `20260714000000_a1_lock_profile_role.sql`. Took fix option (a): `REVOKE UPDATE ON profiles FROM anon, authenticated` — **both** held the grant — then `GRANT UPDATE (display_name)`. Column privileges are evaluated before RLS, so `role` is now unreachable from the Data API regardless of policy. Role changes go through `admin_set_role(target_user, new_role)`, a SECURITY DEFINER RPC that re-checks `is_admin()` and refuses a self-role-change (a sole admin can no longer demote themselves into a lockout). Also added the missing `WITH CHECK` to the self-update policy, and pinned `search_path` on `is_admin()`, which was SECURITY DEFINER without one. Verified by a rolled-back dry-run against the linked project: `display_name` is the only UPDATE-able column, the table grant is gone, the policy has a WITH CHECK, both functions have `search_path` pinned.)*
   `20260615000000_initial_schema.sql` — policy `"Users can update own profile"`
   is `FOR UPDATE USING (auth.uid() = id)` with **no `WITH CHECK` and no column
   restriction**, and it was never scoped by any later migration. `authenticated`
@@ -30,12 +30,19 @@
   trigger that rejects changes to privileged columns unless `is_admin()`. Verify
   in prod with a non-admin JWT before/after.
 
-- [ ] 🟠 **A2 — Odds API key shipped in the browser bundle.**
-  `src/lib/oddsApi.js` reads `import.meta.env.VITE_ODDS_API_KEY`, which Vite inlines
-  into client JS (visible in DevTools/Netlify bundle). Anyone can lift it and burn
-  the quota. **Fix:** proxy through an edge function (same pattern as
-  `slash-golf-proxy`), then rotate the key in The Odds API dashboard and drop the
-  `VITE_` var from `.env`/Netlify. (Was M1 in AUDIT.md — still open.)
+- [x] 🟠 **A2 — Odds API key shipped in the browser bundle.** *(Fixed 2026-07-14, PR #24.)*
+  `src/lib/oddsApi.js` read `import.meta.env.VITE_ODDS_API_KEY`, which Vite inlines
+  into client JS (visible in DevTools/Netlify bundle). Anyone could lift it and burn
+  the quota. (Was M1 in AUDIT.md.)
+  **Fixed by** `supabase/functions/odds-proxy/` — same pattern as `slash-golf-proxy`
+  (admin-JWT gate, key read from the `ODDS_API_KEY` Supabase secret). `getGolfOdds`
+  now calls `functions.invoke('odds-proxy')`; the median-price / canonical-name
+  pooling stays client-side. The function constrains `sportKey` to `/^golf_[a-z0-9_]+$/`
+  so a leaked admin token can't turn it into a general-purpose proxy against our quota
+  across every sport the key covers. Verified the key appears nowhere in `dist/`.
+  ⚠️ **The old key is burned** — it was public in the bundle for the life of the
+  project. Rotation in The Odds API dashboard + removal of `VITE_ODDS_API_KEY` from
+  `.env`/Netlify is a **deploy step, not a code change** (see the PR checklist).
 
 - [ ] 🟠 **A3 — Manual-refresh limit is client-side only.**
   `AdminDashboard.refreshScores` + `golf.bumpRefreshCount` enforce the 3/tournament
@@ -47,9 +54,18 @@
   service role, not in the browser.
 
 - [ ] 🟡 **A4 — Edge functions allow all origins.**
-  Both functions set `Access-Control-Allow-Origin: '*'`. Combined with admin-JWT
-  checks the risk is low, but any site can invoke them with a victim's token if it
-  leaks. **Fix:** reflect an allowlist (`getpoold.app`, localhost) instead of `*`.
+  All three functions (`slash-golf-proxy`, `poll-leaderboard`, and now `odds-proxy`)
+  set `Access-Control-Allow-Origin: '*'`. Combined with admin-JWT checks the risk is
+  low, but any site can invoke them with a victim's token if it leaks. **Fix:** reflect
+  an allowlist (`getpoold.app`, localhost) instead of `*`. `odds-proxy` (2026-07-14)
+  deliberately matched the existing `*` rather than diverging — fix all three together.
+
+- [ ] ⚪ **A7 — `odds-proxy` doesn't meter the Odds API quota.**
+  `api_usage.slash_golf_calls` counts Slash Golf calls; nothing counts The Odds API.
+  The proxy is admin-only and odds are fetched once per pool creation, so the spend is
+  tiny — but the quota is now invisible, where before it at least failed loudly in the
+  browser. **Fix:** add an `odds_api_calls` column and increment it in `odds-proxy`
+  (fold into B4's atomic-counter fix rather than duplicating the read-then-write bug).
 
 - [ ] 🟡 **A5 — `join_code` readable for every non-draft pool.**
   RLS `"read non-draft pools"` lets any authenticated user `SELECT *` on `public.pools`,
@@ -325,9 +341,13 @@
 into `utils/scoring.js`, `package.json` renamed `golf-temp` → `poold`). C1–C4 remain
 fixed and were faithfully re-ported to the `golf` schema in Phase 3.
 
-**Still open (carried forward, re-pathed to the new schema):** M1→A2, M2→C1, M3→C2,
-M4→B1, M5→B2, M6→B3, L1→D2, L2→D1, L3→B4, L4→E1, L5→E2, L7→A5, plus the two Demo items→G2.
+**Still open (carried forward, re-pathed to the new schema):** M2→C1, M3→C2, M4→B1,
+M5→B2, M6→B3, L1→D2, L2→D1, L3→B4, L4→E1, L5→E2, L7→A5, plus the two Demo items→G2.
 
 **New this scan:** A1 (profiles UPDATE privilege escalation — highest priority), A3/A4
 (refresh + CORS), B5 (non-atomic pick submit), C3 (no 404), F1 (migration Phase 5 +
 `pool_standings`), F2/F4/F5, G-series, H-series.
+
+**Closed since this scan (2026-07-14, PR #24):** **A1** (privilege escalation) and
+**A2** (Odds key in the bundle — the carried-forward M1). A7 was opened by that same PR:
+`odds-proxy` doesn't meter the Odds API quota.

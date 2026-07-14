@@ -129,17 +129,26 @@ writing code.
   string. The Open went from 11 unpriced players to 0. (`docs/NAME_MATCHING.md`)
 - Security audit criticals C1–C4 (pick integrity, pre-lock pick privacy, email
   exposure, committed cron secret) — fixed.
+- **A1 + A2 — fixed 2026-07-14 (PR #24).** The privilege-escalation hole is closed
+  (`profiles` is column-locked; role changes go through the `admin_set_role()` RPC) and
+  the Odds API key now lives behind the `odds-proxy` edge function. **The governing
+  pattern, worth knowing before you touch `profiles`:** RLS cannot restrict *columns*,
+  so column access is enforced by GRANTs, which run before any policy. Privileged reads
+  and writes go through `SECURITY DEFINER` RPCs that re-check `is_admin()`.
 
 **Open — launch blockers (gate any growth/marketing push on these):**
-- 🔴 **A1 — privilege escalation:** any signed-in user can set their own
-  `profiles.role = 'admin'` via the unscoped UPDATE RLS policy. Full admin takeover.
-  This is the single highest-priority item in the repo. (BACKLOG A1)
 - 🔴 **Supabase free tier auto-pauses the project** after ~7 days idle — it did, on
   2026-07-13, and took getpoold.app down with an opaque "load failed" at sign-in.
   Any quiet week between tournaments can kill the app. Upgrade to Pro or run a
-  heartbeat. (ROADMAP P0.5)
-- 🟠 **A2 — Odds API key is in the browser bundle** (`VITE_ODDS_API_KEY`). Move behind
-  an edge function + rotate before any public push. (BACKLOG A2)
+  heartbeat. (ROADMAP P0.5) **This is now the last infrastructure blocker.**
+- 🔴 **Self-serve pool creation** (ROADMAP P0.2) — still the strategic blocker. With A1
+  and A2 closed, the remaining P0 is no longer about safety; it's that nobody but the
+  founder can start a pool, so there is no acquisition motion at all.
+
+**Deploy note (2026-07-14):** PR #24 is a *coupled* change — the frontend must reach
+`main` before `supabase db push`, or the live admin UI updates `profiles.role` against a
+grant that no longer permits it. Rotating the old Odds API key is a manual step; it was
+public in the bundle for the life of the project and must be assumed burned.
 
 **Open — significant rough edges:**
 - Phase 5 cleanup not done: legacy `public.tournaments/tiers/picks/...` tables still
@@ -269,8 +278,8 @@ agent trusts it.
 
 The full prioritized roadmap — market research, where we win, P0–P3 with impact and
 ease estimates — lives in **`ROADMAP.md`** in this directory. Headline as of
-2026-07-10: **P0 = fix A1, build self-serve pool creation (pool creation is currently
-founder-only, which contradicts the whole commissioner acquisition strategy), move the
-Odds key server-side, and replace silent failures with real error states — before any
-public push.** Then sharpen the growth loop (invite previews, deadline reminders,
-live-feel leaderboard), then season-long formats for retention.
+2026-07-14: **A1 and the Odds key (A2) are fixed.** What's left of P0 is
+**self-serve pool creation** (pool creation is founder-only, which contradicts the whole
+commissioner acquisition strategy), **real error states** instead of silent failures, and
+**getting off the Supabase free tier**. Then sharpen the growth loop (invite previews,
+deadline reminders, live-feel leaderboard), then season-long formats for retention.
