@@ -331,5 +331,3 @@ M4→B1, M5→B2, M6→B3, L1→D2, L2→D1, L3→B4, L4→E1, L5→E2, L7→A5,
 **New this scan:** A1 (profiles UPDATE privilege escalation — highest priority), A3/A4
 (refresh + CORS), B5 (non-atomic pick submit), C3 (no 404), F1 (migration Phase 5 +
 `pool_standings`), F2/F4/F5, G-series, H-series.
-</content>
-</invoke>
