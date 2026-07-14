@@ -332,7 +332,13 @@ prod migration**, and is **additive-then-cleanup, never destructive in one deplo
   any embeds the spike flagged; move golf strings/theme into `sports` / `event_details`.
   Ship to `main`, **then** flip prod Exposed Schemas, **then** run the cutover migration.
 - **Phase 5 — Cleanup.** Drop legacy `public.tournaments / tiers / tier_players / picks /
-  leaderboard_cache / pga_event_badges` once nothing references them.
+  leaderboard_cache` once nothing references them.
+  ⚠️ **`public.pga_event_badges` is the exception — it is still live.** `createGolfPool`
+  reads it to seed `golf.event_details.badge_config` (badge art per Slash Golf
+  `tourn_id`), and that call swallows its error, so dropping it would silently degrade
+  every new pool to the generic badge instead of failing. Migrate the badge seed into
+  the `golf` schema and repoint `createGolfPool` **before** dropping it. See F1 in
+  `docs/BACKLOG.md`.
 
 **Cutover safety:** PKs are preserved and old tables linger through Phase 4, so rollback
 at any point = repoint the client back to `public`. The only irreversible step is Phase 5.
