@@ -35,7 +35,7 @@
   into client JS (visible in DevTools/Netlify bundle). Anyone can lift it and burn
   the quota. **Fix:** proxy through an edge function (same pattern as
   `slash-golf-proxy`), then rotate the key in The Odds API dashboard and drop the
-  `VITE_` var from `.env`/Netlify. (Tracked as M1 in AUDIT.md / TODO.md — still open.)
+  `VITE_` var from `.env`/Netlify. (Was M1 in AUDIT.md — still open.)
 
 - [ ] 🟠 **A3 — Manual-refresh limit is client-side only.**
   `AdminDashboard.refreshScores` + `golf.bumpRefreshCount` enforce the 3/tournament
@@ -262,7 +262,9 @@
 - [ ] 🟡 **G1 — Tier format is hardcoded.**
   `src/utils/tierBuilder.js` fixes `REGULAR_TIER_SIZE=6`, `WILDCARD_TIER_COUNT=2`,
   `WILDCARD_POOL_SIZE=64`. Commissioners can't adjust field size/shape. **Fix:**
-  surface these on Create-Tournament Step 1. (TODO.md.)
+  surface these on Create-Tournament Step 1. Constants to expose: `REGULAR_TIER_SIZE`,
+  `WILDCARD_TIER_COUNT`, `WILDCARD_POOL_SIZE` — add inputs alongside the existing pick
+  count / scores-to-keep fields.
 
 - [ ] 🟡 **G2 — Demo leaderboard is frozen + demo picks reset on refresh.**
   `/demo` runs off the static `src/demo/demoData.js` snapshot (won't move during a

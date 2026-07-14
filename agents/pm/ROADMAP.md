@@ -6,7 +6,8 @@
 > lives in `PRODUCT.md`; engineering-level defects live in `docs/BACKLOG.md` (IDs like
 > A1/B2 below point there).
 >
-> **Last updated:** 2026-07-10 (initial version, from market research + full repo read)
+> **Last updated:** 2026-07-13 (P0.5 added after the Supabase pause outage; badge system
+> shipped — see the status log at the bottom)
 >
 > **Ease scale:** 🟢 Easy (a session or two) · 🟡 Moderate (several sessions, one
 > surface) · 🔴 Hard (multi-PR, schema + UI + new moving parts)
@@ -71,6 +72,7 @@ that make a public push irresponsible (A1, A2), defines P0.
 | 0.2 | **Self-serve pool creation** — any user can create a pool and becomes its commissioner; per-pool commissioner powers (lock/close/refresh/manage participants for *their* pool); global admin stays for ops | Turns the product from founder-run to commissioner-run. THE strategic unlock — without it there is no growth loop. | Very High | 🔴 (roles model + RLS + admin-UI split into "my pools"; the create wizard itself already exists and mostly just needs un-gating) |
 | 0.3 | **A2: move Odds API key server-side** + rotate | Key is in the public JS bundle; anyone can burn our quota. Pre-marketing gate. | High (risk removal) | 🟢 (copy the existing `slash-golf-proxy` pattern) |
 | 0.4 | **Error states instead of blank screens** (C1, C2, B2) | A commissioner's first bad experience shouldn't look like a broken product. Silent failures are trust killers for exactly the audience we can't afford to lose. | High | 🟡 (thread errors through `lib/golf.js` + a few UI states) |
+| 0.5 | **Stop Supabase auto-pausing the project** — upgrade to Pro (~$25/mo), or run a year-round heartbeat so the DB never idles out | **Proven failure, 2026-07-13:** the free tier paused after ~7 days idle, Supabase pulled the project's DNS, and getpoold.app died at sign-in with an opaque "load failed." Any gap between tournaments is long enough to trigger it — so an invite that lands in a quiet week reaches a dead app. This is the single cheapest way to stop losing users we've already acquired. | High (risk removal) | 🟢 (Pro is a billing toggle; the heartbeat is a scheduled function) |
 
 ### P1 — Sharpen the growth loop *(make every invite and every weekend better)*
 
@@ -127,6 +129,8 @@ Phase 5 legacy-table cleanup + `pool_standings` decision (F1) · tests for
 | Date | Change |
 |---|---|
 | 2026-07-10 | Initial roadmap from market research + full repo read. Nothing started; P0 defined as A1 + self-serve creation + A2 + error states. |
+| 2026-07-13 | **Shipped: tournament badge color system** (Claude Design import). Badge bg/border are now per-tournament and encode prestige + geography; all 48 events designed and seeded. Not on this roadmap when written — it's craft/polish rather than a P0–P3 item, but it lands squarely on differentiation #1 (the friend-group *feel*), so it earns its place. |
+| 2026-07-13 | Supabase free tier **auto-paused the project** after ~7 days idle, taking getpoold.app down with an opaque "load failed" at sign-in. Restored manually. This is a live launch risk, not an annoyance — see the new item **0.5** in P0. |
 
 ---
 

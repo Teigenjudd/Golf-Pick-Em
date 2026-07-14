@@ -5,7 +5,7 @@ friend groups. Your job is to help think through product decisions, maintain the
 track the backlog, and give dev agents the product context they need to build the right
 thing.
 
-> **Last updated:** 2026-07-10, from a full repo read. If anything below conflicts with
+> **Last updated:** 2026-07-13, from a full repo read. If anything below conflicts with
 > the repo, the repo wins — see "Docs map & source-of-truth order" for which file to
 > trust on a conflict.
 
@@ -122,6 +122,8 @@ writing code.
   weather widget, public no-auth `/demo`.
 - Multi-sport schema migration Phases 0–4.
 - Full design refresh + Poold rebrand across pages.
+- Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
+  + geography, all 48 tournaments designed and seeded.
 - Security audit criticals C1–C4 (pick integrity, pre-lock pick privacy, email
   exposure, committed cron secret) — fixed.
 
@@ -129,8 +131,12 @@ writing code.
 - 🔴 **A1 — privilege escalation:** any signed-in user can set their own
   `profiles.role = 'admin'` via the unscoped UPDATE RLS policy. Full admin takeover.
   This is the single highest-priority item in the repo. (BACKLOG A1)
+- 🔴 **Supabase free tier auto-pauses the project** after ~7 days idle — it did, on
+  2026-07-13, and took getpoold.app down with an opaque "load failed" at sign-in.
+  Any quiet week between tournaments can kill the app. Upgrade to Pro or run a
+  heartbeat. (ROADMAP P0.5)
 - 🟠 **A2 — Odds API key is in the browser bundle** (`VITE_ODDS_API_KEY`). Move behind
-  an edge function + rotate before any public push. (BACKLOG A2 / TODO.md)
+  an edge function + rotate before any public push. (BACKLOG A2)
 
 **Open — significant rough edges:**
 - Phase 5 cleanup not done: legacy `public.tournaments/tiers/picks/...` tables still
@@ -149,42 +155,47 @@ writing code.
 
 ---
 
-## Docs map & source-of-truth order
+## Documentation ownership index
 
-When files disagree, trust them in this order (most current first):
+**PM owns every document below — but they live where their readers look, not in one
+folder.** A dev agent building a feature looks in `docs/`; burying engineering
+references under `agents/pm/` would hide them from the people who need them. Ownership
+is about who keeps them true, not where they sit.
 
-1. **The code** (`src/`, `supabase/migrations/`) — always wins.
-2. **`docs/BACKLOG.md`** (2026-07-09) — ranked full-codebase improvement inventory,
-   post-migration. The authoritative backlog. Severity-tagged (🔴🟠🟡⚪), items keyed
-   A1–H4. Supersedes AUDIT.md's open items.
-3. **`docs/MULTI_SPORT_MIGRATION.md`** — the architecture plan. Accurate on design and
-   phase details, but its header still says "not yet executed" — in reality Phases 0–4
-   shipped; only Phase 5 cleanup remains.
-4. **`docs/PAGES.md`** — page-by-page inventory (data, layout, functionality). Must be
-   kept in sync when any page changes (CLAUDE.md rule). Some sections still use
-   pre-migration `tournaments.*` field names.
-5. **`DESIGN_SPEC.md`** (repo root) — full design token/component/screen spec derived
-   from `docs/design_prototype/`. More current on design than CLAUDE.md's token table
-   (it has the two-register palette incl. brand orange).
-6. **`CLAUDE.md`** — brand voice, working style, and design patterns are current;
-   its "Architecture Summary" and data-model language are **pre-migration and stale**
-   (tracked as BACKLOG H2).
-7. **`docs/AUDIT.md`** (2026-06-20) — historical. C1–C4 record is valid; open items
-   are superseded by BACKLOG.md.
-8. **`TODO.md`, `README.md`** — light, mostly accurate, partially duplicated by BACKLOG.
+**This table is the contract the `/pm-sync` skill runs on.** When a PR changes
+something, this is how you decide what to update. Keep it current — if you add a doc,
+add a row.
 
-**PM working files** live in this directory (`agents/Project Manager/`):
-- **`PRODUCT.md`** — the product inventory: what Poold is, does, looks like, the user
-  journeys, positioning vs competitors, and how we work. Keep it describing the product
-  *as deployed*.
-- **`ROADMAP.md`** — the prioritized roadmap (P0–P3 with impact + ease estimates),
-  market snapshot, and sequencing logic. Update statuses as items ship; log changes in
-  its status log.
-- Create `decisions.md` alongside these when a decision log is needed.
+| Document | Owns (the kind of truth it holds) | Update when a PR… |
+|---|---|---|
+| `agents/pm/PM.md` | How the PM agent works; this index; the status board | …changes how we work, or ships/blocks something on the status board |
+| `agents/pm/PRODUCT.md` | What Poold **is today** — features, surfaces, journeys, look, positioning, how we work | …changes anything a user can see or do, or how we operate |
+| `agents/pm/ROADMAP.md` | What we're doing **next** and why — P0–P3, impact/ease, market read, status log | …ships a roadmap item, or reveals a new risk/opportunity. **Always add a status-log line.** |
+| `agents/pm/DECISIONS.md` | **Why** we chose what we chose — the append-only decision log | …makes a call that future-us would otherwise re-litigate. Never rewrite history; append. |
+| `docs/BACKLOG.md` | The ranked engineering inventory (A1–H4, severity-tagged). **The** backlog. | …fixes, adds, or invalidates a backlog item. Check items off with a date; don't delete them. |
+| `docs/PAGES.md` | Page-by-page inventory: data, layout, functionality, shared components | …changes any page or shared component. **Hard rule in CLAUDE.md — same PR, no exceptions.** |
+| `DESIGN_SPEC.md` (root) | Design tokens, component specs, screen map | …changes a token, component, or screen |
+| `CLAUDE.md` (root) | Brand voice, working style, architecture summary, design system, routes | …changes architecture, routes, conventions, or the design system. **Must stay at repo root — Claude Code auto-loads it from there.** |
+| `docs/MULTI_SPORT_MIGRATION.md` | The multi-sport architecture plan + phase status | …advances or changes the migration (Phase 5 is what's left) |
+| `README.md` | The 60-second orientation for a human arriving cold | …changes setup, stack, or a headline architecture decision |
+| `docs/AUDIT.md` | **Historical.** The 2026-06-20 audit; C1–C4 resolution record | …basically never. Superseded by `BACKLOG.md`. Don't add to it. |
 
-Do **not** write to `agents/pm/` (that path was never created) and do **not** fork a
-second backlog that competes with `docs/BACKLOG.md`; product-priority calls go in the
-PM files, engineering items go in the dev backlog.
+### Source-of-truth order (when two docs disagree)
+
+**The code always wins.** After that: `docs/BACKLOG.md` → `agents/pm/DECISIONS.md` →
+`docs/MULTI_SPORT_MIGRATION.md` → `docs/PAGES.md` → `DESIGN_SPEC.md` → `CLAUDE.md` →
+`docs/AUDIT.md` (superseded, historical only).
+
+When you find a conflict, **fix it in the same PR** rather than noting it — a doc that's
+known-wrong and left alone is worse than one that's merely out of date, because the next
+agent trusts it.
+
+### Rules
+
+- **Don't fork a second backlog.** Engineering items go in `docs/BACKLOG.md`.
+  Product-priority calls go in `ROADMAP.md`. Rationale goes in `DECISIONS.md`.
+- **`TODO.md` is gone** (deleted 2026-07-13) — it had drifted into a stale duplicate of
+  `BACKLOG.md`. Don't recreate it.
 
 ---
 
@@ -214,9 +225,20 @@ PM files, engineering items go in the dev backlog.
   before the matching frontend ships to `main` (Netlify serves `main`) — violating
   this once caused an admin lockout.
 
+**When a PR is ready to merge:**
+- Run the **`/pm-sync`** skill (`.claude/skills/pm-sync/`). It reads the PR's real diff,
+  walks the ownership index above, updates every doc the change made untrue, and commits
+  into the **same PR** — so docs never lag the code and no second deploy is spent.
+- A `PreToolUse` hook (`.claude/hooks/pm-sync-guard.mjs`) blocks `gh pr merge` when a PR
+  changes code but no documentation. If no doc genuinely needs updating, say so
+  explicitly and merge with `PM_SYNC_SKIP=1 gh pr merge …`.
+
 **When logging decisions:**
-- Log to `agents/Project Manager/decisions.md` (create it on first use) with date and
-  reasoning.
+- Append to `agents/pm/DECISIONS.md`: what we decided, why, what we gave up, what would
+  make us revisit. **Append only — never rewrite history.** A reversed decision gets a
+  new entry that supersedes the old one.
+- The bar for an entry: *would someone six months from now waste an hour re-deriving
+  this?* Routine implementation choices don't qualify; the code shows those.
 - Keep backlog-style items in this format:
   ```
   ### [Title]

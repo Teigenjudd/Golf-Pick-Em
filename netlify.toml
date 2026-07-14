@@ -1,0 +1,8 @@
+# Build settings (command / publish dir) stay in the Netlify dashboard — this file only
+# adds the ignore rule, so it can't drift from or override them.
+
+[build]
+  # Skip the build when a commit touches no code. Netlify treats exit 0 from `ignore` as
+  # "nothing to deploy", so documentation-only PRs (docs/, agents/, *.md, .claude/) cost
+  # zero build minutes. `git diff --quiet` exits 0 when the given paths are unchanged.
+  ignore = "git diff --quiet HEAD^ HEAD -- src public index.html package.json package-lock.json vite.config.js eslint.config.js netlify.toml"

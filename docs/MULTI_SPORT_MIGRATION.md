@@ -90,7 +90,11 @@ golf  (owns golf's full contest structure)
   (`slash_golf_*`, `pga_name`, `course_name`, lat/lon, `scores_to_keep`, `pick_count`)
   → `golf.event_details`; generic event identity → `public.events`.
 - `tiers`, `tier_players`, `picks`, `leaderboard_cache` → `golf.*`.
-- `pga_event_badges` → folds into `golf.event_details.badge_config`.
+- `pga_event_badges` → its config is **copied** into `golf.event_details.badge_config` at pool
+  creation. ⚠️ It did *not* fold away: `public.pga_event_badges` is still the live seed table
+  (48 tournaments, keyed by Slash Golf `tourn_id`) and `createGolfPool` still reads it. It cannot
+  be dropped in Phase 5 without first moving the seed into the `golf` schema — see F1 in
+  `docs/BACKLOG.md`.
 - `stake_amount` / `payout_structure` stay in `public.pools` (money pool is generic).
 - `api_usage` stays in `public` (generic provider usage).
 

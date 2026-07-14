@@ -70,6 +70,12 @@ When given a substantial instruction or multi-step request, respond with a short
 
 On the leaderboard (TournamentDetail), each row expands via a `flex` container where the first child is a `w-[3px] bg-gold` bar — the gold stripe that runs the full height of the expanded content. Inside: tier numbers as small `w-5 h-5 rounded-full bg-fairway/80` circles with `text-cream` numbers (hole-marker style), player names, and tabular scores. The last row is a "TOTAL" row with `border-t border-warm-200`.
 
+### Tournament Badges (SportBadge)
+
+The shield/tombstone emblem on every pool surface (dashboard tile, join preview, picks header, leaderboard header). **Badge color is a system, not a constant:** background + border are stored per tournament in `badge_config` and encode **prestige + geography** — each major has a signature palette (The Open = navy `#162258` + gold `#C9A368`, the Masters = `#004F2D` + `#E8C872`), flagship/playoff events use dark grounds with prestige gold, and tour stops follow regional families. Shape and type never vary.
+
+`badge_config` is one object per event: `{ line1, line2, bg, border }`. Line 1 always renders cream; line 2 always renders in the badge's own border color; line 1's **font size is derived from its character count** by `SportBadge`, never stored, so a long abbreviation can't overflow the shield. Seed data for all 48 tournaments lives in `public.pga_event_badges` (keyed by Slash Golf `tourn_id`) and is **copied** onto `golf.event_details.badge_config` at pool creation — so editing a seed row does not change pools that already exist. Full spec in `DESIGN_SPEC.md` §Sport badge and `docs/PAGES.md` §SportBadge.
+
 ### Page Header Pattern
 
 Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` header band with `text-cream` content. Auth/utility pages (Login, Join) use a centered layout on `bg-cream` with a large `font-display font-bold text-fairway` wordmark.

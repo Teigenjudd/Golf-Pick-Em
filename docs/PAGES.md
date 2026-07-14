@@ -113,7 +113,8 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 - Sign out
 
 **Design notes:**
-- Dashboard pool tiles are the primary surface for **sport-specific theming**. A golf pool tile should look like golf; a football pool tile should look like football. The list-row format currently has no sport flavor — this is the biggest opportunity.
+- Dashboard pool tiles are the primary surface for **sport-specific theming**. A golf pool tile should look like golf; a football pool tile should look like football.
+- Each tile now carries the event's `SportBadge` (`md`, 40×46) in its per-tournament colors, so the tiles already read as *which* event, not just which sport — the Masters tile is green, The Open's is navy. Extending that flavor to the rest of the row (score snapshot, sport-tinted chrome) is the remaining opportunity.
 - Consider a card-based layout where each pool tile shows the sport, status, and maybe a quick score snapshot.
 - "Show closed" toggle exists — closed pools should feel clearly archived.
 
@@ -139,6 +140,7 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 - `latitude` / `longitude` — for weather
 - `stake_amount` — optional buy-in per participant
 - `payout_structure` — ordered array of payout percentages by placement
+- `badge_config` — the event's badge art (`{ line1, line2, bg, border }`), rendered by `SportBadge` at `lg`
 
 *Picks (all confirmed participants):*
 - `user_id`, `player_id`, `player_name`, `tier_id`
@@ -374,6 +376,27 @@ fixture); the shells are identical. **When restyling a pool/picks page, edit the
 | `PicksSubmitBar` | `selectedCount`, `totalCount`, `onSubmit`, `submitting`, `hasExistingPicks` | Picks, DemoPicks |
 | `StandingsCard` | `children` (standings table or empty state) | TournamentDetail, DemoTournament |
 | `WidgetGrid` | `leaderboardData`, `picks`, `stakeAmount`, `participantCount`, `payoutStructure` | TournamentDetail, DemoTournament |
+
+### `SportBadge` — `src/components/SportBadge.jsx`
+
+The tombstone/shield emblem that identifies the event. Rendered on the Dashboard pool tile (`md`), the Join page preview (`sm`), the Picks header (`pick`), and the leaderboard header (`lg`) — every page that shows a pool.
+
+**Badge color is a system, not a constant.** Background and border are stored per tournament and encode **prestige + geography**: each major has a signature palette (The Open = navy `#162258` + gold `#C9A368`; the Masters = `#004F2D` + `#E8C872`), flagship/playoff events use dark grounds with prestige gold, and regular tour stops follow regional families (ocean, desert, southeast, midwest, international). The shape and the type never vary — only the two colors and the two words.
+
+**Props:** `config` (the event's `badge_config`), `size` (`sm` | `md` | `pick` | `lg`).
+
+**`badge_config` shape** — one object per event:
+
+```json
+{ "line1": "THE", "line2": "OPEN", "bg": "#162258", "border": "#C9A368" }
+```
+
+- Line 1 is the abbreviation (≤4 chars: sponsor initials, location code, or iconic short name) and **always renders cream**.
+- Line 2 is the event/city code (`OPEN`, `CHP`, `INV`, `CLS`, `CUP`, or a 3-letter city) and **always renders in the badge's own border color**.
+- **Font size is derived, not stored.** `SportBadge` scales line 1 by its character count (≤2 → full size, 3 → ×0.86, 4 → ×0.77, 5+ → ×0.64) so a long abbreviation can never overflow the shield.
+- Absent config falls back to a generic green "GO / GOLF" badge. A legacy branch still renders the pre-2026-07 array shape, so a half-applied migration degrades rather than blanking out.
+
+**Where the data comes from:** all 48 tournaments are seeded in `public.pga_event_badges`, keyed by Slash Golf `tourn_id`. `createGolfPool` **copies** the config onto `golf.event_details.badge_config` at pool creation — so editing the seed row afterward does *not* change an existing pool; update that event's `badge_config` directly. (This is also why `pga_event_badges` can't be dropped in migration Phase 5 — see BACKLOG F1.)
 
 ### `Standings` — `src/components/leaderboard/Standings.jsx`
 

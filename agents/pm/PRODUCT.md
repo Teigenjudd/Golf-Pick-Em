@@ -5,7 +5,7 @@
 > whenever a user-facing capability ships or changes — it should always describe the
 > product as deployed, not as planned. (The plan lives in `ROADMAP.md`.)
 >
-> **Last updated:** 2026-07-10 · Live at [getpoold.app](https://getpoold.app)
+> **Last updated:** 2026-07-13 · Live at [getpoold.app](https://getpoold.app)
 
 ---
 
@@ -85,6 +85,15 @@ white with warm borders and modest radii — no glassy consumer-app gloss.
 **Signature UI moment:** the scorecard expand. Tapping a standings row unfolds a
 scorecard with a gold left bar, hole-marker tier circles, per-pick scores with WD/CUT
 badges, and a TOTAL row. This is the thing users remember; protect it.
+
+**Tournament badges:** every pool wears a shield emblem, and **its colors are specific to
+the event** — background and border encode prestige and geography. Each major has a
+signature palette (The Open is navy and gold, the Masters deep green), flagship and
+playoff events use dark grounds with prestige gold, and regular tour stops follow
+regional families. All 48 tournaments on the calendar are designed. It's a small thing
+that does real work: a pool tile reads as *which tournament* at a glance, and it's the
+kind of detail that makes the product feel made rather than generated — which is exactly
+the ground we're competing on (see Positioning).
 
 **Type system:** Barlow Condensed (display — tournament names, ranks, scores, section
 labels) over Inter (body). Scores are always tabular numerals.
@@ -171,7 +180,7 @@ door between frontend and golf data is `src/lib/golf.js`. Shared "pool shell"
 components keep the live pages and `/demo` pixel-identical by construction.
 
 **Team:** solo founder (data scientist — explain web/infra plainly) + Claude agents
-(dev, PM). PM working files live in `agents/Project Manager/`.
+(dev, PM). PM working files live in `agents/pm/`.
 
 **Process rules that matter:**
 - Branch → PR → merge for everything; Netlify serves `main`.
@@ -187,6 +196,7 @@ at 1,800 calls/month — polling cadence and manual refreshes are budgeted again
 
 **Current health, honestly:** product works end-to-end and survived its first live
 event (2026 US Open). One critical security hole is open (BACKLOG A1 — any user can
-self-promote to admin); the Odds API key ships in the browser bundle (A2); zero test
-coverage; several silent-failure states. These gate any public push — see `ROADMAP.md`
-P0.
+self-promote to admin); the Odds API key ships in the browser bundle (A2); the Supabase
+free tier auto-paused the whole project after a week idle and took the site down
+(2026-07-13); zero test coverage; several silent-failure states. These gate any public
+push — see `ROADMAP.md` P0.
