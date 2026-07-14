@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { saveDisplayName, validateDisplayName, NAME_MAX } from '../lib/profile'
+import { saveDisplayName, validateDisplayName, randomNamePlaceholder, NAME_MAX } from '../lib/profile'
 
 // Only ever bounce back to a path inside the app — "//evil.com" is a valid URL,
 // so checking for a leading "/" alone is not enough.
@@ -18,6 +18,7 @@ export default function Welcome() {
   const [name, setName] = useState('')
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [placeholder] = useState(randomNamePlaceholder)
 
   if (loading) return null
   if (!user) return <Navigate to="/" replace />
@@ -67,7 +68,7 @@ export default function Welcome() {
               value={name}
               maxLength={NAME_MAX}
               onChange={e => { setName(e.target.value); setError(null) }}
-              placeholder="Judd T."
+              placeholder={placeholder}
               className="w-full px-[15px] py-[13px] border-[1.5px] border-[#EAD8C4] rounded-[11px] text-[15px] text-[#1C1610] bg-[#FFFAF6] outline-none placeholder:text-warm-300"
             />
             {error && <p className="text-[13px] text-birdie mt-2.5 mb-0">{error}</p>}

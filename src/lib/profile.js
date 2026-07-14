@@ -12,6 +12,24 @@ export function validateDisplayName(raw) {
   return null
 }
 
+// Placeholder only — never saved. One is picked at random each time the field
+// mounts, so the empty state has a bit of the group-chat energy the pools do.
+// Keep every entry inside NAME_MAX so it can't suggest a name that won't save.
+const NAME_PLACEHOLDERS = [
+  'Sunday Sandbagger',
+  'Bogey Bandit',
+  'Cart Path Cowboy',
+  'Range Rat',
+  'Chunk & Run',
+  'Fairway Villain',
+  'Mulligan Enthusiast',
+  'Three-Putt Terror',
+]
+
+export function randomNamePlaceholder() {
+  return NAME_PLACEHOLDERS[Math.floor(Math.random() * NAME_PLACEHOLDERS.length)]
+}
+
 // display_name is the only column a user may write on their own row
 // (GRANT UPDATE (display_name), migration 20260714000000). display_name_set_at is
 // stamped by a DB trigger, so it is deliberately not sent from here.

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { saveDisplayName, validateDisplayName, NAME_MAX } from '../lib/profile'
+import { saveDisplayName, validateDisplayName, randomNamePlaceholder, NAME_MAX } from '../lib/profile'
 import { getInitials } from '../utils/format'
 import BottomNav from '../components/BottomNav'
 
@@ -14,6 +14,7 @@ export default function Profile() {
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [placeholder] = useState(randomNamePlaceholder)
 
   if (loading) return null
   if (!user) return <Navigate to="/" replace />
@@ -87,7 +88,7 @@ export default function Profile() {
               value={name}
               maxLength={NAME_MAX}
               onChange={e => { setDraft(e.target.value); setError(null); setSaved(false) }}
-              placeholder="Judd T."
+              placeholder={placeholder}
               className="w-full px-[15px] py-[13px] border-[1.5px] border-[#EAD8C4] rounded-[11px] text-[15px] text-[#1C1610] bg-[#FFFAF6] outline-none placeholder:text-warm-300"
             />
             {error && <p className="text-[13px] text-birdie mt-2.5 mb-0">{error}</p>}
