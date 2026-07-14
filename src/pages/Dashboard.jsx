@@ -104,7 +104,7 @@ export default function Dashboard() {
   const visibleTournaments = showClosed ? myTournaments : myTournaments.filter(t => t.tournamentStatus !== 'complete')
 
   return (
-    <div className="min-h-screen bg-sand pb-20">
+    <div className="min-h-screen bg-sand pb-20 flex flex-col">
 
       {/* Sticky top nav */}
       <div className="bg-white border-b border-[#EAD8C4] px-[18px] h-14 flex items-center justify-between sticky top-0 z-10">
@@ -314,8 +314,11 @@ export default function Dashboard() {
           </button>
         </div>
 
-        <Footer />
+      </div>
 
+      {/* mt-auto: sit at the foot of the page, not wherever the content happens to end */}
+      <div className="mt-auto">
+        <Footer />
       </div>
 
       <BottomNav active="pools" />

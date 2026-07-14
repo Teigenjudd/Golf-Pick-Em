@@ -44,7 +44,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-sand pb-20">
+    <div className="min-h-screen bg-sand pb-20 flex flex-col">
 
       <div className="bg-white border-b border-[#EAD8C4] px-[18px] h-14 flex items-center justify-between sticky top-0 z-10">
         <Link to="/dashboard" className="font-display font-extrabold text-[26px] text-brand tracking-[.07em] no-underline">POOLD</Link>
@@ -113,8 +113,11 @@ export default function Profile() {
           </button>
         </div>
 
-        <Footer />
+      </div>
 
+      {/* mt-auto: sit at the foot of the page, not wherever the content happens to end */}
+      <div className="mt-auto">
+        <Footer />
       </div>
 
       <BottomNav active="you" />
