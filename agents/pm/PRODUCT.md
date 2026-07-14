@@ -138,8 +138,15 @@ demo card, see yourself in the standings — without an account.
 
 **Known experience gaps (honest list):** no notifications of any kind (lock reminders,
 score swings); no in-app chat/trash-talk surface; nothing between events (no season
-standings, no history page); some failures render as empty states instead of errors;
-invite links unfurl as bare URLs with no preview card.
+standings, no history page); some failures render as empty states instead of errors.
+*(Invite previews were on this list until 2026-07-14 — see below.)*
+
+**The invite, as it arrives (2026-07-14):** a join link pasted into a group chat unfurls as
+a branded card — **"Judd invited you to The Open Championship"** / *"8 picks. No app, no
+password, no download. Tap the link and you're in."* A `/demo` link makes its own pitch
+("Try a Poold pool — no sign-up"); any other Poold link gets the branded default. This is
+the first surface that shows a user's display name to people who have never opened the app,
+which is why display names are chosen by the user and never derived from an email.
 
 ---
 

@@ -111,7 +111,9 @@ writing code.
 - Early channels: golf clubs, courses, and bars.
 - Acquisition motion: win the commissioner, they bring the group.
 - The join link is the growth loop — anything that adds friction there is a P0 concern.
-  (Known gap: no OG tags on the share link, so invites unfurl as a bare URL — BACKLOG H3.)
+  (**Fixed 2026-07-14, PR #26:** the link now unfurls as a real card — *"Judd invited you
+  to The Open Championship · 8 picks. No app, no password, no download."* Note this puts a
+  user's display name in front of people who have never opened the app.)
 
 ---
 
@@ -131,6 +133,13 @@ writing code.
   string. The Open went from 11 unpriced players to 0. (`docs/NAME_MATCHING.md`)
 - Security audit criticals C1–C4 (pick integrity, pre-lock pick privacy, email
   exposure, committed cron secret) — fixed.
+- **Invite link previews (P1.1) — shipped 2026-07-14 (PR #26).** A join link pasted into a
+  group chat now unfurls as a branded card with the organizer's name, the pool, and the
+  pick count; `/demo` has its own "no sign-up" pitch; everything else gets a default card.
+  Crawlers don't run JavaScript, so this had to happen in the served HTML — a Netlify edge
+  function rewrites the OG tags in front of the CDN. It reads pool data through a narrow
+  `SECURITY DEFINER` RPC (`pool_preview`) rather than a service-role key. Per-event card
+  images are the leftover (BACKLOG H5).
 - **User-set display names + legal pages — shipped 2026-07-14 (PR #25).** Display names
   were being seeded from the email local-part, so leaderboards published part of every
   player's email to their pool. Names are now chosen: new accounts are walled at
@@ -293,8 +302,11 @@ agent trusts it.
 
 The full prioritized roadmap — market research, where we win, P0–P3 with impact and
 ease estimates — lives in **`ROADMAP.md`** in this directory. Headline as of
-2026-07-14: **A1 and the Odds key (A2) are fixed.** What's left of P0 is
-**self-serve pool creation** (pool creation is founder-only, which contradicts the whole
-commissioner acquisition strategy), **real error states** instead of silent failures, and
-**getting off the Supabase free tier**. Then sharpen the growth loop (invite previews,
-deadline reminders, live-feel leaderboard), then season-long formats for retention.
+2026-07-14: **A1 and the Odds key (A2) are fixed, and invite links now preview (P1.1).**
+What's left of P0 is **self-serve pool creation** (pool creation is founder-only, which
+contradicts the whole commissioner acquisition strategy), **real error states** instead of
+silent failures, and **getting off the Supabase free tier**. The rest of the growth loop
+(deadline reminders, live-feel leaderboard) follows, then season-long formats for retention.
+
+Worth noticing: the invite link now previews beautifully but still leads to a pool only the
+founder could have created. The funnel is polished ahead of the thing it feeds.
