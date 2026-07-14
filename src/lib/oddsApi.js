@@ -1,6 +1,5 @@
+import { supabase } from './supabase'
 import { canonicalName } from '../utils/playerMatch'
-
-const BASE_URL = 'https://api.the-odds-api.com/v4/sports'
 
 export const GOLF_SPORT_KEYS = [
   { key: 'golf_masters_tournament_winner', label: 'Masters Tournament' },
@@ -26,10 +25,12 @@ function medianPrice(prices) {
 // returns and keep each player's median price. Reading a single book would cap the
 // field at whatever that one book happened to list.
 export async function getGolfOdds(sportKey) {
-  const url = `${BASE_URL}/${sportKey}/odds?apiKey=${import.meta.env.VITE_ODDS_API_KEY}&regions=us&markets=outrights&oddsFormat=american`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Odds API error: ${res.status}`)
-  const data = await res.json()
+  // Proxied server-side so the API key stays out of the browser bundle (A2).
+  // invoke() does not throw on a 4xx/5xx from the function — it returns { error }.
+  const { data, error } = await supabase.functions.invoke('odds-proxy', {
+    body: { sportKey },
+  })
+  if (error) throw error
 
   if (!Array.isArray(data) || !data.length) return []
 
