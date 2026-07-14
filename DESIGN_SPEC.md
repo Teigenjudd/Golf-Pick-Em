@@ -24,9 +24,9 @@ Everything else (backgrounds, text, borders) is shared across both registers.
 | **brand** | `#C14A18` | Wordmark, primary CTA (general register), active nav tab, magic link button, progress bar |
 | **fairway** | `#1B4332` | Golf header gradient, selected state, primary CTA (sport register), prize amounts, tier circles |
 | **fairway-deep** | `#0F241B` / `#0D1F18` | Golf header gradient end (dark) |
-| **fairway-mid** | `#1F6F47` | Sport badge/emblem background |
+| **fairway-mid** | `#1F6F47` | Default/fallback badge field (also the U.S. Open's signature field) — badge colors are otherwise per-tournament, see §Sport badge |
 | **gold** | `#C9A368` | Sport status labels, YOU badge background, 1st-place rank, gold left-bar on expand |
-| **gold-light** | `#E6C66B` | Sport badge border, emblem accent |
+| **gold-light** | `#E6C66B` | Default/fallback badge border (also the U.S. Open's), emblem accent — otherwise per-tournament |
 | **gold-medium** | `#E8CE9A` | Share button text in golf header |
 | **gold-dark** | `#B8924F` | Locked badge text, lock button text |
 | **birdie** | `#B23A2D` | Under-par (negative) scores only |
@@ -178,13 +178,17 @@ padding: 16px 20px 24px
 
 **Sport badge ("tombstone" shape):**
 ```
-width: 44–52px; height: 50–60px
-background: #1F6F47
-border: 2px solid #E6C66B
-border-radius: [top: 10–13px] [bottom: 22–26px]   ← rounded bottom, less-rounded top
+width: 36–52px; height: 42–60px
+background: <per-tournament>                       ← see the badge color system below
+border: 2px solid <per-tournament>
+border-radius: [top: 8–13px] [bottom: 18–26px]     ← rounded bottom, less-rounded top
 box-shadow: 0 8px 18px -8px rgba(0,0,0,.4)         ← only on full-size variant
 ```
-Content: 2-line text (abbreviated name in Barlow 800 16–19px cream, event name in Barlow 700 7–8px gold, letterSpacing .04–.08em). Three sizes: 36×42px (join page preview), 44×50px (picks header), 52×60px (tournament detail).
+Content: 2-line text. Line 1 is the abbreviated name in Barlow 800, always cream `#F8F5EE`, letterSpacing .02em. Line 2 is the event/city code in Barlow 700 at 5.5–8px, **always the badge's own border color**, letterSpacing .06em. Four sizes: 36×42 (join preview), 40×46 (dashboard tile), 44×50 (picks header), 52×60 (leaderboard header).
+
+**Badge color system.** The field and border are *not* fixed brand colors — they are stored per tournament in `badge_config` and encode **prestige + geography**: each major carries a signature palette (The Open is navy `#162258` + gold `#C9A368`; the Masters is `#004F2D` + `#E8C872`), flagship/playoff events use dark grounds with prestige gold, and regular tour stops follow regional families (ocean, desert, southeast, midwest, international). Shape and type never vary — only the two colors and the two words do.
+
+`badge_config` is one object per event: `{ line1, line2, bg, border }`. Line 1's font size is **derived from its character count** by `SportBadge` (≤2 chars → full size, 3 → ×0.86, 4 → ×0.77, 5+ → ×0.64), not stored, so a long abbreviation can't overflow the shield. Seed data for all 48 tournaments lives in `public.pga_event_badges` and is copied onto `golf.event_details.badge_config` at pool creation.
 
 **Hero text:**
 - Kicker: Barlow 700 10–11px uppercase tracking .18–.2em `#C9A368`
