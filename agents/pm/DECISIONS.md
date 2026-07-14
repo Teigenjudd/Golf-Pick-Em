@@ -13,6 +13,82 @@
 
 ---
 
+## 2026-07-14 — Nobody plays under a name derived from their email
+
+**Decision:** `profiles.display_name` is chosen by the user, never generated from their
+email. New accounts are created with it NULL and are **blocked** at `/welcome` until they
+pick one — a wall, not a prompt. Existing users are **not** forced to rename; they get a
+short-lived nudge pointing at the "You" tab and change it when they feel like it.
+
+**Why:** The signup trigger had been writing `split_part(email, '@', 1)` into
+`display_name` since 2026-06-16. That column is the one piece of identity other players
+are *supposed* to read about each other, so it is exempt from the column-GRANT lockdown
+that hides `email` — which means we were publishing the local part of every user's email
+address to everyone else in their pool, on every leaderboard, for two months. The fix is
+not a stronger grant; the column was never the problem. The data we put in it was.
+
+**Why a wall for new users but only a nudge for existing ones:** an account with no name
+renders as "Participant" on a leaderboard, which is worse than a bad name — so new
+accounts have to clear the bar. Existing accounts already have *a* name; forcing a rename
+would interrupt everyone to fix something they may not care about. And a login-time prompt
+would have missed them anyway: Supabase keeps sessions alive, so most users never see the
+login screen — they go straight to `/dashboard`. That is why the nudge lives in the bottom
+nav, not in the auth flow. (Founder's read, and it's correct.)
+
+**What we gave up:** one extra step in the signup funnel — on the invite path, which is
+the growth loop, so it is not free. Mitigated by carrying the join code through `?next=`
+so the invite still lands in the pool it was for. Also: email-derived names persist on
+leaderboards until each user acts, so the leak closes gradually, not at once.
+
+**Mechanism worth knowing:** `display_name_set_at` distinguishes "a human chose this" from
+"the old trigger wrote this." It is stamped by a `BEFORE UPDATE` trigger, never sent by the
+client, so it cannot be faked to dodge the nudge — and it kept the write path on the plain
+`GRANT UPDATE (display_name)` from A1 rather than inventing a second one.
+
+**Revisit if:** the extra step measurably hurts invite conversion (then: let people in and
+nudge them instead, accepting "Participant" rows), or if we ever want handles to be unique
+(they are not — two Mikes in one pool is currently allowed and fine).
+
+---
+
+## 2026-07-14 — The legal pages say exactly what the code does about money
+
+**Decision:** Shipped public `/privacy` and `/terms`. The load-bearing clause is that
+**Poold never processes, holds, escrows, collects, or transfers money** — stakes and
+payouts are described as a *convenience calculator* over numbers the commissioner typed
+in, settling happens between participants off-platform, and we disclaim any dispute about
+who owes what. Utah governing law, 18+, as-is warranty, and an explicit note that
+third-party score data can be wrong and the commissioner has the final say on results.
+
+**Why:** The no-money-on-platform rule has been a standing constraint since June (see the
+2026-06 entry) and is the legal moat, but it existed only as a *product* principle — there
+was no document anywhere telling a user, or a regulator, that this is what the app does.
+The prize-pool feature (`stake_amount`, `payout_structure`) makes the app *look* like it
+might touch money. Saying plainly that it doesn't is the cheapest protection available, and
+it costs nothing precisely because it is true.
+
+**The coupling to remember:** the Terms now describe the code. If a future feature ever
+does touch money — Stripe, escrow, payouts, anything — **the Terms must change before it
+ships**, and at that point the legal moat is gone and this is a different company. That
+constraint is the point of the document, not a footnote to it.
+
+**What we gave up:** consent friction (a line under both magic-link forms), and a small
+maintenance burden — the documents are now something that can go stale.
+
+**Known and accepted:** the contact address the documents name, `privacy@getpoold.app`,
+**does not exist** — `getpoold.app` has no MX records, so mail to it bounces. The privacy
+policy promises deletion on request, so the one channel we advertise for that right is
+currently a dead drop. Founder chose to ship anyway rather than block on DNS; tracked as
+**A7** in `docs/BACKLOG.md` (🟠) with the ~5-minute forwarding fix and a one-line fallback
+(point the docs at the Gmail that does receive mail). This is the weakest line in either
+document.
+
+**Revisit if:** we take payments (see above), incorporate somewhere other than Utah, or
+the user base stops being "friends of friends" — at which point these want a real lawyer,
+not a first draft.
+
+---
+
 ## 2026-07-14 — Column access is a GRANT problem, not an RLS problem
 
 **Decision:** Privileged *columns* on `public.profiles` are protected by column-level

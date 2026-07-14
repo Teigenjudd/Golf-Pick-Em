@@ -44,20 +44,27 @@ regulated real-money operator).
   for the admin.
 - **Pick privacy:** you can't see anyone else's picks until picks lock — enforced in
   the database (RLS), not just the UI.
+- **Identity:** you are your display name, which you choose and can change. **Your email
+  address is never shown to another player** — only to an admin, through an admin-gated
+  RPC. (It used to be: display names were seeded from the email local-part until
+  2026-07-14. See DECISIONS.)
 - **Prize pool (optional, display-only):** stake × participants = pot, split by
   commissioner-defined percentages, shown as whole-dollar payouts per placement.
 
-### Surfaces (11 pages)
+### Surfaces (15 pages)
 | Surface | What the user gets |
 |---|---|
 | **Login** (`/`) | Magic-link email sign-in. No passwords, ever. |
 | **Join** (`/join/:code`) | The invite landing page — the conversion moment. Shows pool name + CTA; handles signed-out arrivals. |
+| **Welcome** (`/welcome`) | First-run: pick the display name the rest of your pool will see. A wall, not a prompt — a new account cannot reach a pool without one. Carries the join code through, so an invite still lands where it was going. |
 | **Dashboard** (`/dashboard`) | Home base: your pools, pick status per pool, quick links to picks/leaderboard. Admin section for admins. |
+| **You** (`/profile`) | Account surface behind the "You" tab: change your display name, sign out. Shows no email address. |
 | **Leaderboard** (`/tournament/:id`) | The main event. Pick'em standings with the signature expandable scorecard, plus widgets: Prize Pool, PGA Leaders, Most Popular Picks, Tier Value. Weather inline in the header. |
 | **Picks** (`/tournament/:id/picks`) | The tier picker: one player per tier, odds shown as context, resubmittable until lock. |
 | **Admin** (`/admin`) | Ops panel: tournament status controls (lock/reopen/close), join-link copy, manual score refresh, participant management, user roles. |
 | **Create Tournament** (`/admin/create-tournament`) | Two-step wizard: metadata + live field/odds import, then a drag-and-drop tier builder. Auto-builds tiers from odds/rankings. |
 | **Demo** (`/demo`, `/demo/tournament`, `/demo/picks`) | Full product experience — picks and all — with zero sign-up, running on a static snapshot. The "see it before you commit" funnel. |
+| **Privacy / Terms** (`/privacy`, `/terms`) | The legal pages, public and readable without an account. The Terms exist mainly to say the one thing that protects us: Poold never touches money. |
 
 ### Who can do what (today)
 - **Player:** join via code, submit/edit picks until lock, watch the leaderboard.
@@ -107,7 +114,8 @@ a friend ("No cards in yet," "Your picks are in"), never like a sportsbook or ES
 
 **The player (invited):**
 1. Gets a link from a friend → lands on Join, sees the pool name → enters email →
-   clicks magic link → is in. No password, no profile setup, no approval step.
+   clicks magic link → picks a display name (one field, the only setup step there is) →
+   is in the pool it invited them to. No password, no approval step.
 2. Picks one golfer per tier in a couple of minutes; odds shown for context. Card
    auto-confirms; editable until lock.
 3. All weekend: opens the leaderboard on their phone, watches their rank move, expands

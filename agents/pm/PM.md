@@ -64,7 +64,9 @@ writing code.
   (that was the point of the migration), but no NFL/NBA tables, adapters, or UI yet
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
-- No social features beyond the pool context (no global feeds, no profiles outside a pool)
+- No social features beyond the pool context (no global feeds, no *social* profiles
+  outside a pool — `/profile`, shipped 2026-07-14, is an account settings page: change
+  your display name, sign out. It is not a public profile and shouldn't grow into one)
 
 ---
 
@@ -129,6 +131,13 @@ writing code.
   string. The Open went from 11 unpriced players to 0. (`docs/NAME_MATCHING.md`)
 - Security audit criticals C1–C4 (pick integrity, pre-lock pick privacy, email
   exposure, committed cron secret) — fixed.
+- **User-set display names + legal pages — shipped 2026-07-14 (PR #25).** Display names
+  were being seeded from the email local-part, so leaderboards published part of every
+  player's email to their pool. Names are now chosen: new accounts are walled at
+  `/welcome` until they pick one; existing users are nudged toward `/profile` (the "You"
+  tab) rather than force-renamed. `/privacy` and `/terms` shipped alongside, stating
+  plainly that Poold never processes, holds, or transfers money — **the Terms now describe
+  the code, so any future payments feature has to change them first.**
 - **A1 + A2 — fixed 2026-07-14 (PR #24).** The privilege-escalation hole is closed
   (`profiles` is column-locked; role changes go through the `admin_set_role()` RPC) and
   the Odds API key now lives behind the `odds-proxy` edge function. **The governing
@@ -151,6 +160,12 @@ grant that no longer permits it. Rotating the old Odds API key is a manual step;
 public in the bundle for the life of the project and must be assumed burned.
 
 **Open — significant rough edges:**
+- 🟠 **`privacy@getpoold.app` doesn't exist** (BACKLOG A7, new 2026-07-14). Both legal
+  pages name it as the contact and data-deletion address, and `getpoold.app` has no MX
+  record — so mail to it *bounces*, it doesn't merely go unread. The privacy policy
+  promises deletion on request, which makes this the weakest line in either document.
+  ~5 minutes to fix with an email forwarder; one line to mitigate (point the docs at the
+  founder's Gmail).
 - Phase 5 cleanup not done: legacy `public.tournaments/tiers/picks/...` tables still
   exist (dead but a foot-gun); `public.pool_standings` is scaffolded but never
   written/read — populate or drop. (BACKLOG F1)
