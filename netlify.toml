@@ -7,9 +7,8 @@
   # zero build minutes. `git diff --quiet` exits 0 when the given paths are unchanged.
   ignore = "git diff --quiet HEAD^ HEAD -- src public index.html package.json package-lock.json vite.config.js eslint.config.js netlify.toml netlify/ scripts/"
 
-# Invite links unfurl as rich cards in iMessage/WhatsApp/Slack: this function runs in
-# front of the CDN response on /join/*, looks the pool up by its join code, and writes
-# real OG tags into the HTML before a crawler (which never runs our JavaScript) sees it.
-[[edge_functions]]
-  function = "join-preview"
-  path = "/join/*"
+# Links unfurl as rich cards in iMessage/WhatsApp/Slack/Discord: netlify/edge-functions/
+# link-preview.js runs in front of the CDN response and writes real OG tags into the HTML
+# before a crawler (which never runs our JavaScript) sees it. Its routes are declared in
+# the function itself (`export const config`), next to the code that branches on them —
+# deliberately not duplicated here, where the two could drift apart.
