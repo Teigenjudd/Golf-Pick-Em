@@ -1,4 +1,4 @@
-import { normalizeName } from '../utils/scoring'
+import { canonicalName } from '../utils/playerMatch'
 
 const BASE_URL = 'https://api.the-odds-api.com/v4/sports'
 
@@ -35,16 +35,16 @@ export async function getGolfOdds(sportKey) {
 
   const event = data[0]
 
-  // Books spell names inconsistently, so key on the normalized name — the same key
-  // CreateTournament uses to join odds onto the Slash Golf field. Keep the first
-  // spelling seen for display.
+  // Books spell names inconsistently — even between each other — so collapse them
+  // onto the canonical name before pooling prices, or the same player lands in two
+  // buckets. Keep the first spelling seen for display.
   const byPlayer = new Map()
 
   for (const bookmaker of event.bookmakers ?? []) {
     const market = bookmaker.markets?.find(m => m.key === 'outrights')
     for (const outcome of market?.outcomes ?? []) {
       if (!outcome?.name || typeof outcome.price !== 'number') continue
-      const key = normalizeName(outcome.name)
+      const key = canonicalName(outcome.name)
       if (!key) continue
       if (!byPlayer.has(key)) byPlayer.set(key, { name: outcome.name, prices: [] })
       byPlayer.get(key).prices.push(outcome.price)

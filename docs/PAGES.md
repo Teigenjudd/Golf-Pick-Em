@@ -284,6 +284,7 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 *Step 1 fetched data:*
 - Tournament field (player list with IDs) via Slash Golf
 - Odds by player name via The Odds API — outcomes are unioned across **every** US bookmaker the API returns (books differ in field depth, so one book alone under-covers the field) and each player keeps the **median** posted price. Median is an order statistic, so the stored value is always a price a book actually posted and a single stale line can't shift a player's tier.
+- Odds and OWGR are joined onto the field **by name** (the two APIs share no player ID), via the layered resolver in `src/utils/playerMatch.js` — normalize → surname + first-initial fallback → alias table. An ambiguous fallback is refused rather than guessed, so a player may legitimately show `N/A`; that is recoverable by dragging, whereas a wrong price would silently mis-tier the field. See `docs/NAME_MATCHING.md`.
 - OWGR rankings via Slash Golf
 - Course location → lat/lon via Nominatim geocoding
 
