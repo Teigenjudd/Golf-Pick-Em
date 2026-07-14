@@ -16,14 +16,16 @@ export function validateDisplayName(raw) {
 // mounts, so the empty state has a bit of the group-chat energy the pools do.
 // Keep every entry inside NAME_MAX so it can't suggest a name that won't save.
 const NAME_PLACEHOLDERS = [
-  'Sunday Sandbagger',
-  'Bogey Bandit',
-  'Cart Path Cowboy',
-  'Range Rat',
-  'Chunk & Run',
-  'Fairway Villain',
-  'Mulligan Enthusiast',
-  'Three-Putt Terror',
+  'Tiger Woods',
+  'Scottie Scheffler',
+  'Arnold Palmer',
+  'Jack Nicklaus',
+  'Rory McIlroy',
+  'Annika Sorenstam',
+  'Phil Mickelson',
+  'Seve Ballesteros',
+  'Nelly Korda',
+  'Ben Hogan',
 ]
 
 export function randomNamePlaceholder() {
