@@ -199,17 +199,36 @@
   Two loose ends from `docs/MULTI_SPORT_MIGRATION.md`:
   - **Legacy tables still live.** `public.tournaments / tiers / tier_players / picks /
     leaderboard_cache / pga_event_badges` still exist with their old RLS policies.
-    Nothing in `src/` reads them (verified — all golf reads go through `lib/golf.js`
-    into the `golf` schema), but they're dead weight and a foot-gun (someone could
-    write to the wrong `picks`). Phase 5 cleanup (drop them) is not done.
+    Phase 5 cleanup (drop them) is not done — they're dead weight and a foot-gun
+    (someone could write to the wrong `picks`).
+
+    ⚠️ **Correction (2026-07-13): `public.pga_event_badges` is NOT dead — do not drop
+    it blind.** An earlier version of this item claimed "nothing in `src/` reads them."
+    That is true for five of the six tables, but **`createGolfPool` still reads
+    `public.pga_event_badges`** (`src/lib/golf.js` — the one call in the golf seam that
+    uses the plain `supabase` client instead of `golf()`), to copy `badge_config` onto
+    `golf.event_details` at pool creation. It is the seed source for every tournament's
+    badge art, keyed by Slash Golf `tourn_id`.
+
+    Dropping it would **fail silently, not loudly**: that call discards its `{ error }`
+    (`const { data: badgeRow } = await supabase...`), so `badgeRow` would just come back
+    null, `badge_config` would be null, and every newly created pool would quietly fall
+    back to the generic "GO/GOLF" badge — with no error anywhere. The other five tables
+    are genuinely unreferenced and safe to drop.
+
+    **Fix before Phase 5:** move the badge seed into the `golf` schema (e.g.
+    `golf.event_badges`, or fold it into a lookup that `createGolfPool` reads via
+    `golf()`), repoint `createGolfPool`, and stop discarding that call's error — *then*
+    drop `pga_event_badges` with the rest. Tracked together with F1 rather than split
+    out, since it's a precondition for the same cleanup.
   - **`public.pool_standings` is scaffolded but never used.** It was created to cache
     normalized standings so shared UI needn't compute; `submitPicks` writes
     `pool_participants` but nothing ever writes `pool_standings`, and no reader exists.
     Either wire it (removes D3's client compute) or drop it and note it as future work.
 
-  **Fix:** confirm zero references to the legacy tables in prod (query
-  `pg_stat_user_tables` for row activity), then run Phase 5. Decide `pool_standings`:
-  populate-or-drop.
+  **Fix:** resolve the `pga_event_badges` dependency above first, confirm zero
+  references to the remaining legacy tables in prod (query `pg_stat_user_tables` for row
+  activity), then run Phase 5. Decide `pool_standings`: populate-or-drop.
 
 - [ ] 🟡 **F2 — Vestigial `profiles.status` column + `pga_name` duplication.**
   Approval was removed (`20260616000005`) but `status` still exists, defaults to

@@ -173,12 +173,18 @@ When files disagree, trust them in this order (most current first):
    are superseded by BACKLOG.md.
 8. **`TODO.md`, `README.md`** — light, mostly accurate, partially duplicated by BACKLOG.
 
-**PM working files** live in this directory (`agents/Project Manager/`). Only `PM.md`
-(this file) exists today. When you need a roadmap, backlog-triage, or decision log
-beyond what fits here, create `roadmap.md` / `decisions.md` alongside this file — do
-**not** write to `agents/pm/` (that path was never created) and do **not** fork a
-second backlog that competes with `docs/BACKLOG.md`; product-priority calls go in
-`decisions.md`, engineering items go in the dev backlog.
+**PM working files** live in this directory (`agents/Project Manager/`):
+- **`PRODUCT.md`** — the product inventory: what Poold is, does, looks like, the user
+  journeys, positioning vs competitors, and how we work. Keep it describing the product
+  *as deployed*.
+- **`ROADMAP.md`** — the prioritized roadmap (P0–P3 with impact + ease estimates),
+  market snapshot, and sequencing logic. Update statuses as items ship; log changes in
+  its status log.
+- Create `decisions.md` alongside these when a decision log is needed.
+
+Do **not** write to `agents/pm/` (that path was never created) and do **not** fork a
+second backlog that competes with `docs/BACKLOG.md`; product-priority calls go in the
+PM files, engineering items go in the dev backlog.
 
 ---
 
@@ -225,27 +231,12 @@ second backlog that competes with `docs/BACKLOG.md`; product-priority calls go i
 
 ---
 
-## Current roadmap (working snapshot)
+## Current roadmap
 
-**Now (active):**
-- 🔴 Fix A1 privilege escalation — before anything else user-facing
-- Finish the migration tail: Phase 5 legacy-table cleanup + decide `pool_standings`
-  (populate or drop); update stale docs (CLAUDE.md architecture, migration doc status)
-
-**Next:**
-- A2: move the Odds API key behind an edge function (pre-marketing gate)
-- Reliability pass: error states instead of blank screens (C1/C2), refresh-count
-  fix (B2), unmatched-pick flagging (B1)
-- Join-link polish: OG tags / preview card for invites (H3) — the growth loop deserves it
-- Polish commissioner tools (configurable tier format G1, admin UX)
-
-**Later:**
-- Multiple pools per event (UI surface — schema already supports it)
-- Second sport (TBD — NFL most likely; game-winner/spread format, own schema)
-- Bar/golf club onboarding flow (commissioner acquisition)
-- Test coverage for `scoring.js` / `tierBuilder.js` (F4)
-
-**Someday / maybe:**
-- Native mobile app
-- Notifications (pick deadline reminders, leaderboard moves)
-- Survivor format support
+The full prioritized roadmap — market research, where we win, P0–P3 with impact and
+ease estimates — lives in **`ROADMAP.md`** in this directory. Headline as of
+2026-07-10: **P0 = fix A1, build self-serve pool creation (pool creation is currently
+founder-only, which contradicts the whole commissioner acquisition strategy), move the
+Odds key server-side, and replace silent failures with real error states — before any
+public push.** Then sharpen the growth loop (invite previews, deadline reminders,
+live-feel leaderboard), then season-long formats for retention.
