@@ -13,6 +13,39 @@
 
 ---
 
+## 2026-07-14 — The crawler gets an RPC, not a service-role key
+
+**Decision:** Link previews are rendered by a Netlify **edge function** that rewrites the
+OG tags in the served HTML. To read pool data it calls `public.pool_preview(code)` — a
+`SECURITY DEFINER` RPC with a fixed, five-field projection, granted to `anon`. We
+explicitly **did not** give the edge function a Supabase service-role key.
+
+**Why an edge function at all (and not React):** crawlers — iMessage, WhatsApp, Slack,
+Discord, Signal, Twitter — fetch the URL and read `<head>` **without running JavaScript**.
+We are an SPA: every route serves the same `index.html` and React paints afterwards, long
+after the crawler has gone. Meta tags set from React are *structurally* invisible to the
+thing that needs them. This is not a preference; it is the only place the fix can live.
+
+**Why not the service-role key:** it is the obvious way to let an anonymous request read a
+row that RLS protects, and it would have taken ten minutes. It also bypasses RLS on *every
+table in the database*, and it would have been sitting in Netlify's environment — reachable
+by any future build script, any dependency in the build, anyone with dashboard access — in
+order to serve a preview card. The blast radius of losing that key is the entire database;
+the value it was buying is a nicer link. That trade is not close.
+
+**What the RPC gives up instead:** it discloses pool name, organizer display name, course,
+pick count, lock time, and badge to anyone holding a **valid join code**. That is not a new
+leak — holding the code already lets you join the pool and see all of it, and then some.
+
+**The pattern, stated generally:** when something *outside* the app needs to read something
+*inside* it, give it a narrow function, not a wide key. Same instinct as `admin_list_users()`
+and `admin_set_role()`; same reasoning as the column-GRANT entry below.
+
+**Revisit if:** a preview ever needs data that can't live behind a safe projection — at
+which point the answer is still not the service-role key, it's a signed request.
+
+---
+
 ## 2026-07-14 — Nobody plays under a name derived from their email
 
 **Decision:** `profiles.display_name` is chosen by the user, never generated from their

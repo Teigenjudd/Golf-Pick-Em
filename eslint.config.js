@@ -18,4 +18,22 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // Netlify edge functions run on Deno, not in the browser: `Netlify.env` is the
+    // runtime's own global, and there is no React here.
+    files: ['netlify/edge-functions/**/*.js'],
+    languageOptions: {
+      globals: { ...globals.deno, Netlify: 'readonly' },
+    },
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    // Build-time scripts run on Node.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ])

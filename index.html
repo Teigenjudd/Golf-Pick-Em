@@ -4,7 +4,29 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Golf Pick'Em</title>
+
+    <!--
+      Link-preview tags. A crawler (iMessage, WhatsApp, Slack, Discord, Twitter)
+      reads these without running JavaScript, so they must be in the served HTML —
+      React is far too late. These are the defaults, used for every route.
+
+      On /join/*, the `join-preview` edge function replaces everything between the
+      markers below with the real pool's name and pick count. Keep the markers.
+    -->
+    <!-- og:start -->
+    <title>Poold — Make it interesting.</title>
+    <meta name="description" content="Drop your picks. Jump in the pool. Make it interesting. Private pick'em pools for your friend group — no app, no password, no download." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Poold" />
+    <meta property="og:title" content="Poold — Make it interesting." />
+    <meta property="og:description" content="Private pick'em pools for your friend group. No app, no password, no download." />
+    <meta property="og:url" content="https://getpoold.app/" />
+    <meta property="og:image" content="https://getpoold.app/og-default.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- og:end -->
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
