@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { saveDisplayName, validateDisplayName, randomNamePlaceholder, NAME_MAX } from '../lib/profile'
+import Footer from '../components/Footer'
 
 // Only ever bounce back to a path inside the app — "//evil.com" is a valid URL,
 // so checking for a leading "/" alone is not enough.
@@ -85,6 +86,8 @@ export default function Welcome() {
             You can change it any time from the You tab.
           </p>
         </div>
+
+        <Footer />
 
       </div>
     </div>

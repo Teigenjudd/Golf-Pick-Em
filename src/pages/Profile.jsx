@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { saveDisplayName, validateDisplayName, randomNamePlaceholder, NAME_MAX } from '../lib/profile'
 import { getInitials } from '../utils/format'
 import BottomNav from '../components/BottomNav'
+import Footer from '../components/Footer'
 
 export default function Profile() {
   const { user, profile, loading, signOut, refreshProfile } = useAuth()
@@ -111,6 +112,8 @@ export default function Profile() {
             Sign out
           </button>
         </div>
+
+        <Footer />
 
       </div>
 

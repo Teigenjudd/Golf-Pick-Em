@@ -7,6 +7,8 @@ import Join from './pages/Join'
 import Picks from './pages/Picks'
 import Welcome from './pages/Welcome'
 import Profile from './pages/Profile'
+import Privacy from './pages/legal/Privacy'
+import Terms from './pages/legal/Terms'
 import CreateTournament from './pages/admin/CreateTournament'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import TournamentDetail from './pages/TournamentDetail'
@@ -48,6 +50,10 @@ function App() {
           <Route path="/" element={<Login />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/join/:code" element={<Join />} />
+
+          {/* Public on purpose — a policy you must sign in to read is not a policy */}
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
 
           {/* Public demo — no auth, sample data (DemoProvider persists picks across /demo/*) */}
           <Route path="/demo" element={<DemoProvider><DemoLayout /></DemoProvider>}>

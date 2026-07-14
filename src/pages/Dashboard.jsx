@@ -6,6 +6,7 @@ import { computeScores, assignRanks, formatScore } from '../utils/scoring'
 import { getInitials } from '../utils/format'
 import SportBadge from '../components/SportBadge'
 import BottomNav from '../components/BottomNav'
+import Footer from '../components/Footer'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -312,6 +313,8 @@ export default function Dashboard() {
             Sign out
           </button>
         </div>
+
+        <Footer />
 
       </div>
 

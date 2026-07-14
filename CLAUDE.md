@@ -112,6 +112,7 @@ Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` he
   - Open-Meteo geocoding API — course location lookup at tournament creation time only. No key required. (A switch to Nominatim structured search is backlogged — F3 in `docs/BACKLOG.md`.)
 - **Weather:** `latitude`/`longitude` stored on `golf.event_details`, geocoded at creation. Open-Meteo forecast called client-side on TournamentDetail load. Omitted silently if `latitude`/`longitude` is null.
 - **Cron schedule:** 4 pg_cron jobs (`poll-thursday` through `poll-sunday`), each polling every 20 minutes (`*/20 11-23`) during the 7am–8pm ET window. SQL lives in `supabase/cron-schedule.sql`. Run manually before tournament weekend, unschedule after.
+- **Legal:** `/privacy` and `/terms` are public static pages (`src/pages/legal/`, sharing a `LegalPage` shell), linked from a `Footer` on every landable page and from a consent line under both magic-link forms. The load-bearing clause: **Poold never processes, holds, escrows, or transfers money.** `stake_amount` / `payout_structure` are a convenience calculator over numbers the organizer typed in; settling happens between participants, off-platform. Keep any future payments work honest with that, or change the Terms first. Governing law is Utah; contact is `privacy@getpoold.app`.
 - **Security:** Audit items C1–C4 and backlog items A1–A2 are fixed. The pattern to know: **RLS is row-level and cannot restrict columns, so column access is controlled by GRANTs, which are evaluated *before* any policy runs.** `profiles` is column-locked in both directions — `anon`/`authenticated` can SELECT only (`id, display_name, role, status, created_at`) and UPDATE only (`display_name`). Anything privileged goes through a `SECURITY DEFINER` RPC that re-checks `is_admin()` itself: `admin_list_users()` (reads email), `admin_set_role()` (writes role; also refuses a self-role-change so a sole admin can't lock themselves out). **Never add a plain `.update()` on `profiles.role` — it will fail, by design.** Still open: A3 (manual-refresh cap is client-side only), A4 (edge functions allow all origins), A5 (`join_code` readable for any non-draft pool). The full ranked backlog lives in `docs/BACKLOG.md` (supersedes `docs/AUDIT.md`).
 
 ## Routes
@@ -121,6 +122,8 @@ Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` he
 | `/` | Login.jsx | Public |
 | `/auth/callback` | AuthCallback.jsx | Public |
 | `/join/:code` | Join.jsx | Public |
+| `/privacy` | legal/Privacy.jsx | Public |
+| `/terms` | legal/Terms.jsx | Public |
 | `/demo` | DemoLanding.jsx (in DemoLayout) | Public |
 | `/demo/tournament` | DemoTournament.jsx | Public |
 | `/demo/picks` | DemoPicks.jsx | Public |

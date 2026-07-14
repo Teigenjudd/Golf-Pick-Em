@@ -348,6 +348,24 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 
 ---
 
+### 10b. Privacy Policy — `/privacy` and Terms of Use — `/terms`
+
+**Theme:** General (utility)
+
+**What they do:** Static legal documents. **Public on purpose** — a policy you have to sign in to read is not a policy. Both render through the shared `LegalPage` shell (`src/pages/legal/LegalPage.jsx`), which applies all typography from the wrapper so the documents themselves stay close to plain prose and are easy to edit.
+
+**Data available:** None — no Supabase call, no auth check.
+
+**What must be on these pages:**
+- Privacy: what we collect (email for magic-link auth, display name, picks, host logs), that **email is never shown to other players**, service providers (Supabase, Netlify), that sports-data API calls carry no user data, deletion on request, cookies, 18+, contact.
+- Terms: what Poold is; **that Poold never processes, holds, escrows, or transfers money** (stakes are a calculator, settling is between participants, we are not a party to it); accounts and display-name conduct; that third-party score data can be wrong and the organizer has the final say; fair play; as-is warranty; limitation of liability; Utah governing law; contact.
+
+**Design notes:**
+- The money clause is the point of the whole exercise. If a future feature ever *does* touch money, the Terms must change before it ships.
+- Contact address is `privacy@getpoold.app` — the mailbox must exist.
+
+---
+
 ### 11. Demo Landing — `/demo`
 
 **Theme:** General (with golf pool tile)
@@ -424,6 +442,10 @@ fixture); the shells are identical. **When restyling a pool/picks page, edit the
 The signed-in shell's sticky bottom nav (Pools · Board · You). Takes one prop, `active` (`'pools'` | `'you'`), and is rendered by Dashboard and Profile. "Board" is still a placeholder tab.
 
 It also owns the **display-name nudge**: a small bubble that points at the "You" tab when `profiles.display_name_set_at` is NULL — meaning the user has never chosen a name and is still wearing the one derived from their email. It shows once, auto-hides after 9 seconds, and is suppressed for good once dismissed (`localStorage`) or once a name is saved (which stamps `display_name_set_at` via a DB trigger). The nudge lives here rather than at login because sessions persist — most users go straight to `/dashboard` and would never see a login-time prompt.
+
+### `Footer` — `src/components/Footer.jsx`
+
+Privacy · Terms · © line. Rendered on every page a user can land on: Login, Join, Welcome, Dashboard, Profile, and the legal pages themselves. Both magic-link forms (Login, Join) additionally carry a consent line above it — "By signing in you agree to our Terms and Privacy Policy" — so agreement attaches to an action, not just to a link in a footer.
 
 ### `SportBadge` — `src/components/SportBadge.jsx`
 
