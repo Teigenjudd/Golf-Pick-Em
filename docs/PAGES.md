@@ -76,7 +76,7 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 
 **Theme:** General (utility)
 
-**What it does:** Handles the magic link redirect from email. Checks session, redirects to dashboard or back to a join flow if a `?join=` query param is present.
+**What it does:** Handles the magic link redirect from email. Checks session, then routes: a brand-new account (`display_name` is NULL) goes to `/welcome?next=…`; everyone else goes to the dashboard, or back to a join flow if a `?join=` query param is present.
 
 **Data available:** None displayed.
 
@@ -84,7 +84,45 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 
 ---
 
-### 4. Dashboard — `/dashboard`
+### 4. Welcome — `/welcome`
+
+**Theme:** General (auth)
+
+**What it does:** First-run display-name capture. The signup trigger leaves `profiles.display_name` NULL on purpose, and `ProtectedRoute` bounces any signed-in user without one here — so this is the wall every new account hits before it can reach a pool. Saving the name redirects to `?next=` (validated to be an app-internal path) or `/dashboard`.
+
+**Data available:** `profiles.display_name` (writing it).
+
+**What must be on this page:**
+- POOLD wordmark + tagline (same centered auth layout as Login / Join)
+- Card: "What should we call you?" + one text input + submit
+- Explanation that this name is what the rest of the pool sees
+- Validation errors (2–24 characters, enforced again by a DB `CHECK`)
+
+**Design notes:**
+- No skip link. An unnamed account would otherwise show up on a leaderboard as "Participant."
+- Not wrapped in `ProtectedRoute` — it is where `ProtectedRoute` sends people, so wrapping it would loop.
+
+---
+
+### 5. Profile ("You") — `/profile`
+
+**Theme:** General
+
+**What it does:** The "You" tab in the bottom nav. Lets an existing user change their display name; also the sign-out surface. Deliberately shows **no email address** — see the note under Dashboard.
+
+**Data available:**
+- `profiles.display_name`, `profiles.display_name_set_at`, `profiles.role`
+
+**What must be on this page:**
+- Avatar (initials) + current display name + role label (Player / Admin)
+- Display name field + Save (disabled until the value actually changes; "Saved." confirmation)
+- Gold callout when `display_name_set_at` is NULL — i.e. the user still has the name that was auto-derived from their email before onboarding existed
+- Sign out
+- `BottomNav` with the "You" tab active
+
+---
+
+### 6. Dashboard — `/dashboard`
 
 **Theme:** General
 
@@ -111,8 +149,10 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 - Empty state when no pools joined
 - Admin section (visible to admins only): list of all tournaments with status badges, links to admin panel and create flow
 - Sign out
+- `BottomNav` with the "Pools" tab active — carries the display-name nudge (see Shared Components)
 
 **Design notes:**
+- **No email addresses on this or any other player-facing page.** Display names used to be seeded from the email local-part, which published it to every pool member; the signup trigger no longer does that, and `/welcome` + the nudge exist to retire the names that were. `/admin` is the only screen that shows email, via the admin-gated `admin_list_users()` RPC.
 - Dashboard pool tiles are the primary surface for **sport-specific theming**. A golf pool tile should look like golf; a football pool tile should look like football.
 - Each tile now carries the event's `SportBadge` (`md`, 40×46) in its per-tournament colors, so the tiles already read as *which* event, not just which sport — the Masters tile is green, The Open's is navy. Extending that flavor to the rest of the row (score snapshot, sport-tinted chrome) is the remaining opportunity.
 - Consider a card-based layout where each pool tile shows the sport, status, and maybe a quick score snapshot.
@@ -120,7 +160,7 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 
 ---
 
-### 5. Tournament Detail (Leaderboard) — `/tournament/:id`
+### 7. Tournament Detail (Leaderboard) — `/tournament/:id`
 
 **Theme:** Sport-specific (currently: Golf)
 
@@ -184,7 +224,7 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 
 ---
 
-### 6. Picks — `/tournament/:id/picks`
+### 8. Picks — `/tournament/:id/picks`
 
 **Theme:** Sport-specific (currently: Golf)
 
@@ -219,7 +259,7 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 
 ---
 
-### 7. Admin Dashboard — `/admin`
+### 9. Admin Dashboard — `/admin`
 
 **Theme:** General
 
@@ -264,7 +304,7 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 
 ---
 
-### 8. Create Tournament — `/admin/create-tournament`
+### 10. Create Tournament — `/admin/create-tournament`
 
 **Theme:** General (admin utility)
 
@@ -308,7 +348,7 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 
 ---
 
-### 9. Demo Landing — `/demo`
+### 11. Demo Landing — `/demo`
 
 **Theme:** General (with golf pool tile)
 
@@ -327,7 +367,7 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 
 ---
 
-### 10. Demo Tournament — `/demo/tournament`
+### 12. Demo Tournament — `/demo/tournament`
 
 **Theme:** Sport-specific (Golf), static data
 
@@ -346,7 +386,7 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 
 ---
 
-### 11. Demo Picks — `/demo/picks`
+### 13. Demo Picks — `/demo/picks`
 
 **Theme:** Sport-specific (Golf), static data
 
@@ -378,6 +418,12 @@ fixture); the shells are identical. **When restyling a pool/picks page, edit the
 | `PicksSubmitBar` | `selectedCount`, `totalCount`, `onSubmit`, `submitting`, `hasExistingPicks` | Picks, DemoPicks |
 | `StandingsCard` | `children` (standings table or empty state) | TournamentDetail, DemoTournament |
 | `WidgetGrid` | `leaderboardData`, `picks`, `stakeAmount`, `participantCount`, `payoutStructure` | TournamentDetail, DemoTournament |
+
+### `BottomNav` — `src/components/BottomNav.jsx`
+
+The signed-in shell's sticky bottom nav (Pools · Board · You). Takes one prop, `active` (`'pools'` | `'you'`), and is rendered by Dashboard and Profile. "Board" is still a placeholder tab.
+
+It also owns the **display-name nudge**: a small bubble that points at the "You" tab when `profiles.display_name_set_at` is NULL — meaning the user has never chosen a name and is still wearing the one derived from their email. It shows once, auto-hides after 9 seconds, and is suppressed for good once dismissed (`localStorage`) or once a name is saved (which stamps `display_name_set_at` via a DB trigger). The nudge lives here rather than at login because sessions persist — most users go straight to `/dashboard` and would never see a login-time prompt.
 
 ### `SportBadge` — `src/components/SportBadge.jsx`
 
