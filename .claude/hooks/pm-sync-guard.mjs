@@ -12,10 +12,16 @@
 
 import { execSync } from 'node:child_process'
 
-const DOC_RE = /\.md$/i
+// The PM's own strategy docs. Touching one of these is our only observable proxy for
+// "/pm-sync actually ran" — the hook can read a diff, but it can't see whether a skill
+// executed. An earlier version of this guard accepted ANY .md as proof, and PR #22
+// sailed through on CLAUDE.md + docs/PAGES.md while agents/pm/ went stale. Doc updates
+// that happen to be adjacent to the code are not the same as the PM reconciling.
+const PM_DOCS = /^agents\/pm\//
 
-// Paths that are docs-adjacent but don't count as "the docs were updated".
-const NOT_REAL_DOCS = /^(docs\/design_prototype\/|node_modules\/)/
+// Page/component changes must update the page inventory. Hard rule in CLAUDE.md.
+const UI_CODE = /^src\/(pages|components)\//
+const PAGES_DOC = 'docs/PAGES.md'
 
 // Changes that never need a doc update, so a PR touching only these isn't suspicious.
 const NO_DOC_NEEDED = /^(\.claude\/|\.github\/|package-lock\.json$|\.gitignore$|.*\.test\.[jt]sx?$)/
@@ -65,14 +71,33 @@ try {
 
 if (changed.length === 0) allow()
 
-const docs = changed.filter(f => DOC_RE.test(f) && !NOT_REAL_DOCS.test(f))
-if (docs.length > 0) allow()
-
 const substantive = changed.filter(f => !NO_DOC_NEEDED.test(f))
 if (substantive.length === 0) allow()
 
+const problems = []
+
+if (!changed.some(f => PM_DOCS.test(f))) {
+  problems.push(`• agents/pm/ is untouched — no sign /pm-sync ran.
+    Walk the ownership index in agents/pm/PM.md against the real diff:
+      ROADMAP.md   — shipped something, or revealed a risk? Add a status-log line.
+      DECISIONS.md — made a call future-us would re-litigate? Append an entry.
+      PRODUCT.md   — changed what a user can see or do?
+      PM.md        — shipped or blocked something on the status board?`)
+}
+
+if (substantive.some(f => UI_CODE.test(f)) && !changed.includes(PAGES_DOC)) {
+  problems.push(`• ${PAGES_DOC} is untouched, but this PR changes pages/components.
+    CLAUDE.md makes this a hard rule: page data, layout, or functionality changes
+    update the page inventory in the same PR.`)
+}
+
+if (problems.length === 0) allow()
+
 block(
-  `BLOCKED by pm-sync-guard: this PR changes ${substantive.length} file(s) but updates no documentation.
+  `BLOCKED by pm-sync-guard: this PR changes ${substantive.length} file(s), but the docs
+that own those changes were not updated.
+
+${problems.join('\n\n')}
 
 Changed:
 ${substantive.slice(0, 12).map(f => `  ${f}`).join('\n')}${substantive.length > 12 ? `\n  …and ${substantive.length - 12} more` : ''}
@@ -80,12 +105,10 @@ ${substantive.slice(0, 12).map(f => `  ${f}`).join('\n')}${substantive.length > 
 Docs must ride in the same PR as the change they describe — syncing after the merge costs
 a second PR and a second deploy, and leaves the docs briefly lying.
 
-Run the /pm-sync skill now: read this branch's real diff, walk the ownership index in
-agents/pm/PM.md, update every doc the change made untrue (and grep for claims it
-falsified), then commit onto this branch and retry the merge.
+Run the /pm-sync skill now, then commit onto this branch and retry the merge.
 
-If no doc genuinely needs updating, say so explicitly, name what you checked, and merge
-with the escape hatch:
+If nothing above genuinely applies, that is a legitimate outcome — but make it a claim,
+not an oversight. Say out loud what you checked and why it doesn't apply, then:
   PM_SYNC_SKIP=1 ${cmd}
 `
 )

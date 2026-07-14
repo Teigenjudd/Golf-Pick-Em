@@ -13,6 +13,85 @@
 
 ---
 
+## 2026-07-13 — The merge guard checks `agents/pm/`, not "any .md"
+
+**Decision:** `pm-sync-guard.mjs` now blocks `gh pr merge` when a substantive diff leaves
+`agents/pm/` untouched (and separately, when `src/pages|components` changes without
+`docs/PAGES.md`). It previously allowed the merge if **any** `.md` file had changed.
+Supersedes the enforcement half of *"Doc sync runs before the merge"* (same date); the
+principle there is unchanged.
+
+**Why:** The old check was a proxy that PR #22 walked straight through. That PR updated
+`CLAUDE.md`, `docs/PAGES.md`, and added `docs/NAME_MATCHING.md` — three docs, so the
+guard saw a well-documented branch and allowed it. But `/pm-sync` never ran, and the PM
+docs went stale: two genuinely re-litigable decisions went unlogged and the ROADMAP
+status log missed a ship. **Docs written *alongside* the code are not the same as the PM
+reconciling the strategy docs against it**, and only the second one is what this hook
+exists to force. It failed silently, which is the worst way to fail.
+
+**Gave up:** More merges will now be gated, including small ones where nothing in
+`agents/pm/` genuinely applies. That is the intended cost — it converts "no PM docs
+needed" from an accident into a claim you have to make out loud via `PM_SYNC_SKIP=1`.
+
+**Known false positive (accepted):** the guard matches the *string* `gh pr merge`
+anywhere in a Bash command, so a command that merely mentions it (a test harness, an
+echoed payload) is also gated. Deliberately conservative — a spurious block is
+recoverable in seconds, a spurious allow is how we got here.
+
+**Revisit if:** The escape hatch starts getting used routinely. That would mean the rule
+is miscalibrated and is training us to bypass it, which is worse than no rule at all.
+
+---
+
+## 2026-07-13 — An ambiguous player-name match is refused, not guessed
+
+**Decision:** When joining bookmaker odds onto the Slash Golf field, a fallback match
+(same surname + same first initial) is only accepted when **exactly one** candidate
+matches. If two players collide, we decline the match and the player shows `N/A` rather
+than receiving a best-guess price. `src/utils/playerMatch.js`.
+
+**Why:** The two failure modes are not symmetric. A **missing** price is loud and
+cheap — the admin sees `N/A` in the tier builder and drags the player where he belongs.
+A **wrong** price is silent: it flows into `impliedProbability` in `tierBuilder.js`,
+mis-sorts the player into the wrong tier, and nobody ever finds out. We would rather
+under-match and be corrected by a human than over-match and be quietly wrong.
+
+**Gave up:** 100% automatic coverage. Some fields will always have a residual `N/A`, and
+that is the intended resting state, not a bug to chase.
+
+**Watch for:** Someone seeing an `N/A` and "fixing" it by loosening the match rule.
+That trades a visible gap for an invisible error. If coverage needs improving, add an
+alias (`src/utils/nameAliases.js`) — a fact — rather than weakening the rule.
+
+**Revisit if:** We ever get a shared player ID across the two APIs, at which point all
+name matching becomes unnecessary.
+
+---
+
+## 2026-07-13 — No LLM for cross-source name resolution
+
+**Decision:** Player names are reconciled between Slash Golf and The Odds API by a
+deterministic three-layer resolver — normalize/transliterate → surname + first-initial
+fallback → hand-maintained alias table. We considered and **rejected** an LLM fallback
+for the names the rules can't reach.
+
+**Why:** The idea is genuinely appealing — the residue is exactly "arbitrary world
+knowledge" (Tom Kim is legally Joohyung Kim), which is what an LLM is good at, and the
+join runs once per pool creation so cost and latency would be irrelevant. What killed it
+was the measurement: after the first two layers, **exactly one name in the entire Open
+field still needed help.** Standing up an edge function (the key can't go in the browser
+— see A2), plus prompt, schema, and a hallucination-guard for a one-row problem, is not
+a trade worth making. A table with one entry beats a model call.
+
+**Gave up:** Automatic coverage of future unknown names. New aliases are manual — that's
+a per-season chore, documented in `docs/NAME_MATCHING.md`.
+
+**Revisit if:** The alias table grows past roughly 30 entries, or a season opens with a
+double-digit residual after layers 1–2. That would mean the rules stopped generalizing,
+and the economics flip.
+
+---
+
 ## 2026-07-13 — Docs live where their readers look; PM owns them centrally
 
 **Decision:** PM owns every doc in the repo, but only strategy artifacts (`PM.md`,
