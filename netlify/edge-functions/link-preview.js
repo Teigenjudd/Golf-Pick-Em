@@ -25,9 +25,11 @@
 
 const TIMEOUT_MS = 1200  // a crawler will not wait, and neither should a human
 
+// Truthfully: /demo is a static snapshot with made-up rivals. Don't imply it's live —
+// the promise is "try it", not "watch it".
 const DEMO = {
-  title: 'See a Poold pool in action — no sign-up',
-  description: 'Real field, real leaderboard. Fill out a full card in 30 seconds. No app, no password, no sign-up.',
+  title: 'Try a Poold pool — no sign-up',
+  description: 'A sample pool you can actually play. Make your picks, see where you land. No app, no password, no sign-up.',
 }
 
 export default async (request, context) => {
