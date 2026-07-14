@@ -1,3 +1,5 @@
+import { canonicalName } from '../utils/playerMatch'
+
 const BASE_URL = 'https://api.the-odds-api.com/v4/sports'
 
 export const GOLF_SPORT_KEYS = [
@@ -7,7 +9,22 @@ export const GOLF_SPORT_KEYS = [
   { key: 'golf_the_open_championship_winner', label: 'The Open Championship' },
 ]
 
-// Returns array of { name, price } using American odds from the first available bookmaker.
+// American odds sort monotonically by implied probability (more negative = likelier,
+// more positive = longer shot), so the median is taken as an order statistic — it
+// always returns a price a bookmaker actually posted. On an even count we keep the
+// lower of the two middle prices rather than averaging them: no valid American price
+// exists between -100 and +100, and averaging can land there (-110 and +110 → 0).
+function medianPrice(prices) {
+  const sorted = [...prices].sort((a, b) => a - b)
+  return sorted[Math.ceil(sorted.length / 2) - 1]
+}
+
+// Returns array of { name, price } using American odds.
+//
+// Bookmakers differ in how deep they price a field — some list only the top few dozen
+// players, others the full field — so we union the outcomes across every book the API
+// returns and keep each player's median price. Reading a single book would cap the
+// field at whatever that one book happened to list.
 export async function getGolfOdds(sportKey) {
   const url = `${BASE_URL}/${sportKey}/odds?apiKey=${import.meta.env.VITE_ODDS_API_KEY}&regions=us&markets=outrights&oddsFormat=american`
   const res = await fetch(url)
@@ -17,8 +34,25 @@ export async function getGolfOdds(sportKey) {
   if (!Array.isArray(data) || !data.length) return []
 
   const event = data[0]
-  const bookmaker = event.bookmakers?.[0]
-  const market = bookmaker?.markets?.find(m => m.key === 'outrights')
 
-  return market?.outcomes ?? []
+  // Books spell names inconsistently — even between each other — so collapse them
+  // onto the canonical name before pooling prices, or the same player lands in two
+  // buckets. Keep the first spelling seen for display.
+  const byPlayer = new Map()
+
+  for (const bookmaker of event.bookmakers ?? []) {
+    const market = bookmaker.markets?.find(m => m.key === 'outrights')
+    for (const outcome of market?.outcomes ?? []) {
+      if (!outcome?.name || typeof outcome.price !== 'number') continue
+      const key = canonicalName(outcome.name)
+      if (!key) continue
+      if (!byPlayer.has(key)) byPlayer.set(key, { name: outcome.name, prices: [] })
+      byPlayer.get(key).prices.push(outcome.price)
+    }
+  }
+
+  return [...byPlayer.values()].map(({ name, prices }) => ({
+    name,
+    price: medianPrice(prices),
+  }))
 }

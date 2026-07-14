@@ -10,11 +10,26 @@ export function parseScore(total) {
   return isNaN(n) ? null : n
 }
 
+// Letters that NFD does NOT decompose — they are atomic codepoints, not
+// base + combining accent — so the [^a-z] strip below would silently delete
+// them. "Højgaard" would become "hjgaard" and never match a book's "Hojgaard".
+const TRANSLITERATIONS = {
+  ø: 'o', æ: 'ae', œ: 'oe', ð: 'd', þ: 'th',
+  ł: 'l', đ: 'd', ß: 'ss', ı: 'i', ħ: 'h',
+}
+
 export function normalizeName(name) {
+  if (!name) return ''
   return name
     .toLowerCase()
+    .replace(/[øæœðþłđßıħ]/g, c => TRANSLITERATIONS[c])
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
+    // Periods and apostrophes close up ("J.J." → "jj", "O'Connor" → "oconnor");
+    // hyphens open out, so a hyphenated surname still matches a spaced one
+    // ("Neergaard-Petersen" and "Neergaard Petersen" both → "neergaard petersen").
+    .replace(/['’.]/g, '')
+    .replace(/[-–—_]/g, ' ')
     .replace(/[^a-z\s]/g, '')
     .replace(/\s+/g, ' ')
     .trim()

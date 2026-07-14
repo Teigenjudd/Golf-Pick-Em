@@ -16,7 +16,8 @@ import { getTournaments, getTournamentField, getRankings } from '../../lib/slash
 import { getGolfOdds, GOLF_SPORT_KEYS } from '../../lib/oddsApi'
 import { buildTiers } from '../../utils/tierBuilder'
 import { ordinal } from '../../utils/format'
-import { normalizeName, unwrapNumber } from '../../utils/scoring'
+import { unwrapNumber } from '../../utils/scoring'
+import { buildPlayerIndex, resolvePlayer } from '../../utils/playerMatch'
 
 function formatOdds(odds) {
   if (odds == null) return 'N/A'
@@ -141,19 +142,21 @@ export default function CreateTournament() {
         player_name: `${p.firstName} ${p.lastName}`.trim(),
       }))
 
-    const oddsMap = {}
-    oddsOutcomes.forEach(o => { oddsMap[normalizeName(o.name)] = o.price })
+    // The books and Slash Golf spell plenty of names differently, so both joins go
+    // through the resolver rather than a raw name lookup. See docs/NAME_MATCHING.md.
+    const oddsIndex = buildPlayerIndex(oddsOutcomes)
 
-    const rankMap = {}
-    const rawRankings = rankingsData?.rankings ?? []
-    rawRankings.forEach(r => {
-      rankMap[normalizeName(`${r.firstName} ${r.lastName}`)] = unwrapNumber(r.rank)
-    })
+    const rankIndex = buildPlayerIndex(
+      (rankingsData?.rankings ?? []).map(r => ({
+        name: `${r.firstName} ${r.lastName}`.trim(),
+        rank: unwrapNumber(r.rank),
+      }))
+    )
 
     const players = fieldPlayers.map(p => ({
       ...p,
-      odds: oddsMap[normalizeName(p.player_name)] ?? null,
-      owgr_rank: rankMap[normalizeName(p.player_name)] ?? null,
+      odds: resolvePlayer(p.player_name, oddsIndex)?.price ?? null,
+      owgr_rank: resolvePlayer(p.player_name, rankIndex)?.rank ?? null,
     }))
 
     const { tiers: builtTiers } = buildTiers(players, pickCount)
