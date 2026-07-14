@@ -180,7 +180,7 @@ door between frontend and golf data is `src/lib/golf.js`. Shared "pool shell"
 components keep the live pages and `/demo` pixel-identical by construction.
 
 **Team:** solo founder (data scientist — explain web/infra plainly) + Claude agents
-(dev, PM). PM working files live in `agents/Project Manager/`.
+(dev, PM). PM working files live in `agents/pm/`.
 
 **Process rules that matter:**
 - Branch → PR → merge for everything; Netlify serves `main`.
