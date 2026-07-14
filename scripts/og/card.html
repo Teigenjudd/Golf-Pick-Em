@@ -1,0 +1,126 @@
+<!doctype html>
+<!--
+  Source art for the link-preview image (public/og-default.png).
+
+  Rendered to PNG by scripts/og/build-og.mjs via headless Chrome, which is why this is
+  HTML and not SVG: Chrome loads the real Barlow Condensed / Inter webfonts, so the card
+  is set in the actual brand faces. Crawlers won't render SVG, and iMessage needs a PNG.
+
+  Edit this file, re-run `npm run og`, commit the PNG.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        width: 1200px;
+        height: 630px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 26px;
+        padding: 0 96px;
+        background: linear-gradient(105deg, #1B4332, #0D1F18);
+        font-family: 'Inter', system-ui, sans-serif;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* the gold rule, same accent the app uses on the scorecard expand */
+      .rule {
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 14px;
+        background: #C9A368;
+      }
+
+      .wordmark {
+        font-family: 'Barlow Condensed', sans-serif;
+        font-weight: 800;
+        font-size: 132px;
+        letter-spacing: .07em;
+        line-height: .9;
+        color: #F8F5EE;
+      }
+
+      .tagline {
+        font-family: 'Barlow Condensed', sans-serif;
+        font-weight: 700;
+        font-style: italic;
+        font-size: 40px;
+        color: #C9A368;
+        letter-spacing: .01em;
+      }
+
+      .promise {
+        font-size: 26px;
+        font-weight: 500;
+        color: rgba(248, 245, 238, .72);
+        letter-spacing: .01em;
+      }
+
+      .badges {
+        position: absolute;
+        right: 96px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        gap: 18px;
+      }
+
+      /* the shield, at og scale — same geometry as SportBadge */
+      .badge {
+        width: 104px;
+        height: 120px;
+        border-radius: 26px 26px 52px 52px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+      }
+
+      .badge .l1 {
+        font-family: 'Barlow Condensed', sans-serif;
+        font-weight: 800;
+        font-size: 38px;
+        line-height: .82;
+        letter-spacing: .02em;
+        color: #F8F5EE;
+      }
+
+      .badge .l2 {
+        font-family: 'Barlow Condensed', sans-serif;
+        font-weight: 700;
+        font-size: 15px;
+        letter-spacing: .06em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="rule"></div>
+
+    <div>
+      <div class="wordmark">POOLD</div>
+      <div class="tagline">Make it interesting.</div>
+    </div>
+
+    <div class="promise">No app. No password. No download.</div>
+
+    <div class="badges">
+      <div class="badge" style="background:#162258; border:5px solid #C9A368">
+        <span class="l1">THE</span>
+        <span class="l2" style="color:#C9A368">OPEN</span>
+      </div>
+      <div class="badge" style="background:#004F2D; border:5px solid #E8C872">
+        <span class="l1">MAS</span>
+        <span class="l2" style="color:#E8C872">AUGUSTA</span>
+      </div>
+    </div>
+  </body>
+</html>
