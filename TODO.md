@@ -17,8 +17,10 @@
 ## Migration tail
 
 - [ ] **F1:** Phase 5 cleanup — drop the legacy `public.tournaments/tiers/tier_players/
-  picks/leaderboard_cache/pga_event_badges` tables; decide `public.pool_standings`
-  (populate or drop). See `docs/MULTI_SPORT_MIGRATION.md`.
+  picks/leaderboard_cache` tables; decide `public.pool_standings` (populate or drop).
+  ⚠️ **`public.pga_event_badges` is NOT droppable** — it's the live badge-art seed and
+  `createGolfPool` still reads it. Move the seed into the `golf` schema first, or new
+  pools silently lose their badges. See `docs/MULTI_SPORT_MIGRATION.md` + BACKLOG F1.
 
 ## Tournament Format
 

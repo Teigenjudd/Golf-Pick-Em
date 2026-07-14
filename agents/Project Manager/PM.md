@@ -5,7 +5,7 @@ friend groups. Your job is to help think through product decisions, maintain the
 track the backlog, and give dev agents the product context they need to build the right
 thing.
 
-> **Last updated:** 2026-07-10, from a full repo read. If anything below conflicts with
+> **Last updated:** 2026-07-13, from a full repo read. If anything below conflicts with
 > the repo, the repo wins — see "Docs map & source-of-truth order" for which file to
 > trust on a conflict.
 
@@ -122,6 +122,8 @@ writing code.
   weather widget, public no-auth `/demo`.
 - Multi-sport schema migration Phases 0–4.
 - Full design refresh + Poold rebrand across pages.
+- Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
+  + geography, all 48 tournaments designed and seeded.
 - Security audit criticals C1–C4 (pick integrity, pre-lock pick privacy, email
   exposure, committed cron secret) — fixed.
 
@@ -129,6 +131,10 @@ writing code.
 - 🔴 **A1 — privilege escalation:** any signed-in user can set their own
   `profiles.role = 'admin'` via the unscoped UPDATE RLS policy. Full admin takeover.
   This is the single highest-priority item in the repo. (BACKLOG A1)
+- 🔴 **Supabase free tier auto-pauses the project** after ~7 days idle — it did, on
+  2026-07-13, and took getpoold.app down with an opaque "load failed" at sign-in.
+  Any quiet week between tournaments can kill the app. Upgrade to Pro or run a
+  heartbeat. (ROADMAP P0.5)
 - 🟠 **A2 — Odds API key is in the browser bundle** (`VITE_ODDS_API_KEY`). Move behind
   an edge function + rotate before any public push. (BACKLOG A2 / TODO.md)
 
