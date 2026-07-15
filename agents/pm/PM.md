@@ -179,8 +179,8 @@ public in the bundle for the life of the project and must be assumed burned.
   exist (dead but a foot-gun); `public.pool_standings` is scaffolded but never
   written/read — populate or drop. (BACKLOG F1)
 - Reliability gaps: swallowed query errors render blank screens that look like empty
-  states; AuthCallback can dead-end on the sign-in spinner; failed manual score
-  refreshes still burn one of the 3 per-event refreshes. (BACKLOG C1, C2, B2)
+  states; failed manual score refreshes still burn one of the 3 per-event refreshes.
+  (BACKLOG C2, B2. **C1 — AuthCallback sign-in dead-end — fixed 2026-07-15, PR #27.**)
 - Scoring: unmatched picks silently score as null ("benched") instead of being flagged;
   DQ/DNS states unhandled. (BACKLOG B1, B3)
 - Zero test coverage anywhere. (BACKLOG F4)

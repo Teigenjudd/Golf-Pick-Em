@@ -6,8 +6,9 @@
 > lives in `PRODUCT.md`; engineering-level defects live in `docs/BACKLOG.md` (IDs like
 > A1/B2 below point there).
 >
-> **Last updated:** 2026-07-14 (P0.1 + P0.3 shipped — the security blockers are closed;
-> P0.2 self-serve creation is now the whole critical path. See the status log.)
+> **Last updated:** 2026-07-15 (C1 sign-in dead-end fixed, PR #27. Shipped roadmap items
+> moved out of the P0–P3 tables into a "✅ Shipped" list; P0.2 self-serve creation is still
+> the whole critical path. See the status log.)
 >
 > **Ease scale:** 🟢 Easy (a session or two) · 🟡 Moderate (several sessions, one
 > surface) · 🔴 Hard (multi-PR, schema + UI + new moving parts)
@@ -73,17 +74,14 @@ critical path, with P0.5 (Supabase auto-pause) as the remaining infrastructure f
 
 | # | Item | Why | Impact | Ease |
 |---|---|---|---|---|
-| 0.1 | ~~**Fix A1 privilege escalation**~~ ✅ **SHIPPED 2026-07-14 (PR #24)** — `profiles` is column-locked (GRANTs, not RLS — policies can't restrict columns); role changes go through the `admin_set_role()` SECURITY DEFINER RPC | One curious user away from full takeover (all emails, all pools). Blocked everything. | Critical | 🟢 |
 | 0.2 | **Self-serve pool creation** — any user can create a pool and becomes its commissioner; per-pool commissioner powers (lock/close/refresh/manage participants for *their* pool); global admin stays for ops | Turns the product from founder-run to commissioner-run. THE strategic unlock — without it there is no growth loop. | Very High | 🔴 (roles model + RLS + admin-UI split into "my pools"; the create wizard itself already exists and mostly just needs un-gating) |
-| 0.3 | ~~**A2: move Odds API key server-side**~~ ✅ **SHIPPED 2026-07-14 (PR #24)** — `odds-proxy` edge function; key is now a Supabase secret. ⚠️ **The rotation is a manual deploy step** — the old key was public in the bundle and must be assumed burned | Key was in the public JS bundle; anyone could burn our quota. Pre-marketing gate. | High (risk removal) | 🟢 |
-| 0.4 | **Error states instead of blank screens** (C1, C2, B2) | A commissioner's first bad experience shouldn't look like a broken product. Silent failures are trust killers for exactly the audience we can't afford to lose. | High | 🟡 (thread errors through `lib/golf.js` + a few UI states) |
+| 0.4 | **Error states instead of blank screens** (C2, B2; ~~C1~~ ✅ done) | A commissioner's first bad experience shouldn't look like a broken product. Silent failures are trust killers for exactly the audience we can't afford to lose. | High | 🟡 (thread errors through `lib/golf.js` + a few UI states) |
 | 0.5 | **Stop Supabase auto-pausing the project** — upgrade to Pro (~$25/mo), or run a year-round heartbeat so the DB never idles out | **Proven failure, 2026-07-13:** the free tier paused after ~7 days idle, Supabase pulled the project's DNS, and getpoold.app died at sign-in with an opaque "load failed." Any gap between tournaments is long enough to trigger it — so an invite that lands in a quiet week reaches a dead app. This is the single cheapest way to stop losing users we've already acquired. | High (risk removal) | 🟢 (Pro is a billing toggle; the heartbeat is a scheduled function) |
 
 ### P1 — Sharpen the growth loop *(make every invite and every weekend better)*
 
 | # | Item | Why | Impact | Ease |
 |---|---|---|---|---|
-| 1.1 | ✅ **Invite link preview (OG tags)** — **shipped 2026-07-14, PR #26.** Went straight to the per-pool dynamic card rather than stopping at static: a Netlify edge function rewrites the OG block on `/join/*` with the organizer's name, the pool name, and the pick count. `/demo` gets its own pitch; every other route gets a branded default. Tab title is Poold. Per-*event* card images remain open (H5). | The join link IS the funnel and it was unfurling as a bare URL in the group chat. Cheapest conversion win available. | High | 🟢 |
 | 1.2 | **Pick-deadline reminder emails** — "picks lock in 24h and you haven't submitted" | The #1 commissioner pain in every pool is chasing stragglers. Automating the nudge is a retention AND commissioner-love feature. Table stakes at competitors. | High | 🟡 (Supabase scheduled edge function + email; magic-link infra means we already send email) |
 | 1.3 | **Live-feel leaderboard** — auto-refetch on interval/focus while an event is in progress, subtle "updated Xm ago" | Users park on this page all weekend; today they must hard-refresh. The product's core moment should feel alive. | Medium-High | 🟢 (client-side refetch of the existing cache; no new infra) |
 | 1.4 | **Score-swing / final-result email or share moment** — "You moved to 2nd" or a shareable final-standings card | Brings people back mid-weekend and gives winners something to rub in — trash talk is the product. | Medium | 🟡 |
@@ -114,6 +112,13 @@ Phase 5 legacy-table cleanup + `pool_standings` decision (F1) · tests for
 `scoring.js`/`tierBuilder.js` (F4) · Nominatim geocoding switch (F3) · a11y pass (E3)
 · 404 route (C3). Pull one in whenever a PR is in the neighborhood.
 
+### ✅ Shipped (pulled out of the P0–P3 tables above)
+IDs kept so other docs' references still resolve; the tables above now show only open
+work. Full narrative is in §5 Status log.
+- **0.1 — Fix A1 privilege escalation** — PR #24, 2026-07-14. `profiles` column-locked via GRANTs; role changes go through the `admin_set_role()` SECURITY DEFINER RPC.
+- **0.3 — A2: move Odds API key server-side** — PR #24, 2026-07-14. `odds-proxy` edge function; key is now a Supabase secret. ⚠️ old key assumed burned (rotation is a manual deploy step).
+- **1.1 — Invite link preview (OG tags)** — PR #26, 2026-07-14. Per-pool dynamic card rewritten on `/join/*` by a Netlify edge function; `/demo` gets its own pitch. Per-event images remain open (H5).
+
 ---
 
 ## 4. Sequencing logic (why this order)
@@ -140,6 +145,7 @@ Phase 5 legacy-table cleanup + `pool_standings` decision (F1) · tests for
 | 2026-07-14 | **Logged, not shipped: `docs/BRAINSTORM.md`** — a ~120-idea product dump (multi-sport, formats, social, live UI, data, brand, growth, retention, monetization) with an anti-ideas list. It is deliberately **not** a roadmap; it's the pile this roadmap can pull from. Four of its ideas challenge things written here and want an explicit decision: that the second sport should be a *field* sport (F1/UFC — which reuse golf's schema) rather than NFL (which reuses none of it); that a **Crew** object would make season pools (2.1, rated 🔴) mostly a query; that "run it back" is a 🟢 retention win we're leaving on the table; and that the tagline implies a category ("make it interesting") much larger than *sports*. |
 | 2026-07-14 | **Shipped: P1.1 — invite links unfurl as a real card** (PR #26). The join link is the entire funnel and it was arriving in group chats as a bare URL. The cause was structural, not cosmetic: crawlers read `<head>` without running JavaScript, and an SPA has nothing in `<head>` — no amount of React could have fixed it. A Netlify edge function now rewrites the OG tags before the HTML is sent, so an invite reads *"Judd invited you to The Open Championship — 8 picks. No app, no password, no download."* We went past the 🟢 static version straight to the per-pool dynamic card, and `/demo` got its own pitch. **Two things worth carrying forward.** (1) This is the first thing we ship that puts a user's display name in front of *people who aren't in the app yet* — which retroactively makes the same morning's display-name work part of the growth loop, not just a privacy fix. (2) We declined to give the edge function a service-role key and built a narrow `SECURITY DEFINER` RPC instead (see DECISIONS) — the pattern to reuse the next time something outside the app needs to read something inside it. Remaining: per-event card images (**H5**). |
 | 2026-07-14 | **Shipped: user-set display names + the legal pages** (PR #25). Two things, one PR. **(1)** Display names had been auto-seeded from the email local-part since June, so every leaderboard was publishing part of each player's email address to their pool. New accounts now hit a `/welcome` wall and choose a name; existing users get a nudge on the "You" tab (`/profile`) rather than a forced rename — sessions persist, so a login-time prompt would never have reached them. This adds a step to the invite funnel, which is the growth loop, so watch it. **(2)** `/privacy` and `/terms` now exist and say the thing that protects us: Poold never touches money. That was a product principle with no document behind it; now the Terms describe the code — which means **any future payments feature must change the Terms before it ships.** New risk logged: the contact address in both documents (`privacy@getpoold.app`) **doesn't exist yet** — the domain has no MX record, so mail bounces (**BACKLOG A7**, 🟠, accepted knowingly). |
+| 2026-07-15 | **Shipped: C1 — AuthCallback sign-in dead-end** (PR #27). A friend joining via a shared Instagram-story link got stranded on the "Signing you in…" spinner; his account *was* created, he just couldn't get off the page. Root cause was a race, not the browser: on a fresh signup the `profiles` row is created by a DB trigger a beat after the session exists, so the first read came back null, and `AuthCallback` only advanced once `profile` was non-null — with no retry and no timeout. Fix: `fetchProfile` now retries through the trigger gap, and the callback advances on the *session* and shows a "Back to sign in" fallback after 8s so it can't spin silently. **Worth carrying forward:** this is a live cost of the invite→magic-link funnel we just polished (P1.1) — the first thing a *new* invitee does is exactly the path that was broken, and in-app browsers (Instagram, etc.) make the race easier to lose. A durable fix for social traffic is OTP-code login (type a 6-digit code) instead of a click-through link that can open in a different browser — not built; flag if signup drop-off shows up. |
 | 2026-07-13 | **Shipped: odds coverage fix** (PR #22). Odds were read from one bookmaker and joined to the field by exact name — 11 of 100 players in The Open had no price (incl. Tom Kim, both Højgaards) and silently fell back to OWGR interpolation for tiering. Now unions all books (median price) and matches names in layers. **100/100 priced.** Not a roadmap item, but it was quietly degrading the tier builder — the admin's first real impression of the product — and the diagnosis exposed that we have no test coverage on this path (**F4**). |
 
 ---
