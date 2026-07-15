@@ -157,11 +157,14 @@
 
 ## C. Reliability & UX States
 
-- [ ] 🟠 **C1 — AuthCallback can dead-end on the "Signing you in…" spinner.**
-  `src/pages/AuthCallback.jsx` navigates only when `profile` is non-null. On the
+- [x] 🟠 **C1 — AuthCallback can dead-end on the "Signing you in…" spinner.** ✅ Fixed.
+  `src/pages/AuthCallback.jsx` navigated only when `profile` was non-null. On the
   new-signup trigger race (profile row not readable yet) or any profile fetch error,
-  the user is stuck forever. **Fix:** navigate on `user` (not `profile`), and handle
-  the null-profile case with a retry/timeout. (AUDIT M2.)
+  the user was stuck forever. **Fix (shipped):** `AuthContext.fetchProfile` now retries
+  the read through the signup-trigger gap (5× 400ms, `maybeSingle`) instead of settling
+  on null; `AuthCallback` advances on `user` (not `profile`) and shows a "Back to sign in"
+  fallback after 8s so it can never spin silently. Downstream `ProtectedRoute` still
+  enforces the display-name gate once the row loads. (AUDIT M2.)
 
 - [ ] 🟠 **C2 — Swallowed query errors → silent blank screens.**
   `TournamentDetail.load` only error-checks the pool lookup; `getPoolPicks` /
