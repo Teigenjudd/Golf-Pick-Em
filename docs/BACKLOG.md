@@ -148,6 +148,20 @@
   (can `setState` after unmount). Fine at current scale (handful of pools); revisit
   if a user is in many.
 
+- [ ] ⚪ **C6 — Magic-link login is fragile in in-app browsers; consider OTP-code login.**
+  `signInWithOtp` sends a click-through magic link. When a join link is opened in an
+  in-app browser (Instagram, TikTok, Facebook, etc.), the email link often opens in a
+  *different* browser than the one that started the login, so the session/verifier
+  doesn't carry across and the sign-in silently fails or dead-ends. This is a live cost
+  of the invite→magic-link funnel: the first thing a brand-new invitee does is exactly
+  the path most exposed to it. **C1's fix (PR #27) removed the infinite-spinner
+  symptom**, but not the underlying fragility. **Fix (durable):** offer a **6-digit OTP
+  code** the user types (Supabase `verifyOtp` with `type: 'email'`) instead of / alongside
+  the link — the code works in whatever browser they're already in, so there's no
+  cross-browser handoff. Bigger change (new verify UI + flow), hence low priority; pull
+  it forward if signup drop-off shows up on social channels. See the ROADMAP status log
+  (2026-07-15) and the C1 Closed entry.
+
 ---
 
 ## D. Performance
