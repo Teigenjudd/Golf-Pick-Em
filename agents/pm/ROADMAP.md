@@ -6,8 +6,9 @@
 > lives in `PRODUCT.md`; engineering-level defects live in `docs/BACKLOG.md` (IDs like
 > A1/B2 below point there).
 >
-> **Last updated:** 2026-07-14 (P0.1 + P0.3 shipped — the security blockers are closed;
-> P0.2 self-serve creation is now the whole critical path. See the status log.)
+> **Last updated:** 2026-07-15 (C1 sign-in dead-end fixed, PR #27. Shipped roadmap items
+> moved out of the P0–P3 tables into a "✅ Shipped" list; P0.2 self-serve creation is still
+> the whole critical path. See the status log.)
 >
 > **Ease scale:** 🟢 Easy (a session or two) · 🟡 Moderate (several sessions, one
 > surface) · 🔴 Hard (multi-PR, schema + UI + new moving parts)
@@ -73,9 +74,7 @@ critical path, with P0.5 (Supabase auto-pause) as the remaining infrastructure f
 
 | # | Item | Why | Impact | Ease |
 |---|---|---|---|---|
-| 0.1 | ~~**Fix A1 privilege escalation**~~ ✅ **SHIPPED 2026-07-14 (PR #24)** — `profiles` is column-locked (GRANTs, not RLS — policies can't restrict columns); role changes go through the `admin_set_role()` SECURITY DEFINER RPC | One curious user away from full takeover (all emails, all pools). Blocked everything. | Critical | 🟢 |
 | 0.2 | **Self-serve pool creation** — any user can create a pool and becomes its commissioner; per-pool commissioner powers (lock/close/refresh/manage participants for *their* pool); global admin stays for ops | Turns the product from founder-run to commissioner-run. THE strategic unlock — without it there is no growth loop. | Very High | 🔴 (roles model + RLS + admin-UI split into "my pools"; the create wizard itself already exists and mostly just needs un-gating) |
-| 0.3 | ~~**A2: move Odds API key server-side**~~ ✅ **SHIPPED 2026-07-14 (PR #24)** — `odds-proxy` edge function; key is now a Supabase secret. ⚠️ **The rotation is a manual deploy step** — the old key was public in the bundle and must be assumed burned | Key was in the public JS bundle; anyone could burn our quota. Pre-marketing gate. | High (risk removal) | 🟢 |
 | 0.4 | **Error states instead of blank screens** (C2, B2; ~~C1~~ ✅ done) | A commissioner's first bad experience shouldn't look like a broken product. Silent failures are trust killers for exactly the audience we can't afford to lose. | High | 🟡 (thread errors through `lib/golf.js` + a few UI states) |
 | 0.5 | **Stop Supabase auto-pausing the project** — upgrade to Pro (~$25/mo), or run a year-round heartbeat so the DB never idles out | **Proven failure, 2026-07-13:** the free tier paused after ~7 days idle, Supabase pulled the project's DNS, and getpoold.app died at sign-in with an opaque "load failed." Any gap between tournaments is long enough to trigger it — so an invite that lands in a quiet week reaches a dead app. This is the single cheapest way to stop losing users we've already acquired. | High (risk removal) | 🟢 (Pro is a billing toggle; the heartbeat is a scheduled function) |
 
@@ -83,7 +82,6 @@ critical path, with P0.5 (Supabase auto-pause) as the remaining infrastructure f
 
 | # | Item | Why | Impact | Ease |
 |---|---|---|---|---|
-| 1.1 | ✅ **Invite link preview (OG tags)** — **shipped 2026-07-14, PR #26.** Went straight to the per-pool dynamic card rather than stopping at static: a Netlify edge function rewrites the OG block on `/join/*` with the organizer's name, the pool name, and the pick count. `/demo` gets its own pitch; every other route gets a branded default. Tab title is Poold. Per-*event* card images remain open (H5). | The join link IS the funnel and it was unfurling as a bare URL in the group chat. Cheapest conversion win available. | High | 🟢 |
 | 1.2 | **Pick-deadline reminder emails** — "picks lock in 24h and you haven't submitted" | The #1 commissioner pain in every pool is chasing stragglers. Automating the nudge is a retention AND commissioner-love feature. Table stakes at competitors. | High | 🟡 (Supabase scheduled edge function + email; magic-link infra means we already send email) |
 | 1.3 | **Live-feel leaderboard** — auto-refetch on interval/focus while an event is in progress, subtle "updated Xm ago" | Users park on this page all weekend; today they must hard-refresh. The product's core moment should feel alive. | Medium-High | 🟢 (client-side refetch of the existing cache; no new infra) |
 | 1.4 | **Score-swing / final-result email or share moment** — "You moved to 2nd" or a shareable final-standings card | Brings people back mid-weekend and gives winners something to rub in — trash talk is the product. | Medium | 🟡 |
@@ -113,6 +111,13 @@ critical path, with P0.5 (Supabase auto-pause) as the remaining infrastructure f
 Phase 5 legacy-table cleanup + `pool_standings` decision (F1) · tests for
 `scoring.js`/`tierBuilder.js` (F4) · Nominatim geocoding switch (F3) · a11y pass (E3)
 · 404 route (C3). Pull one in whenever a PR is in the neighborhood.
+
+### ✅ Shipped (pulled out of the P0–P3 tables above)
+IDs kept so other docs' references still resolve; the tables above now show only open
+work. Full narrative is in §5 Status log.
+- **0.1 — Fix A1 privilege escalation** — PR #24, 2026-07-14. `profiles` column-locked via GRANTs; role changes go through the `admin_set_role()` SECURITY DEFINER RPC.
+- **0.3 — A2: move Odds API key server-side** — PR #24, 2026-07-14. `odds-proxy` edge function; key is now a Supabase secret. ⚠️ old key assumed burned (rotation is a manual deploy step).
+- **1.1 — Invite link preview (OG tags)** — PR #26, 2026-07-14. Per-pool dynamic card rewritten on `/join/*` by a Netlify edge function; `/demo` gets its own pitch. Per-event images remain open (H5).
 
 ---
 

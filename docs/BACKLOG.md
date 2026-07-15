@@ -3,46 +3,15 @@
 > Full-codebase scan on **2026-07-09**, post multi-sport migration (Phase 4 shipped).
 > Ranked most-important → least within each category. This supersedes the medium/low
 > sections of `docs/AUDIT.md` (that audit predates the multi-sport cutover — several of
-> its items are now resolved; see the "Audit reconciliation" note at the bottom).
+> its items are now resolved).
 >
 > Severity: 🔴 critical · 🟠 high · 🟡 medium · ⚪ low
 > Each item points at a file + symbol; line numbers drift, names are stable.
+> **Resolved items are archived in the "Closed" section at the bottom**, not deleted.
 
 ---
 
 ## A. Security
-
-- [x] 🔴 **A1 — Privilege escalation: any user can make themselves admin.** *(Fixed 2026-07-14, PR #24 — `20260714000000_a1_lock_profile_role.sql`. Took fix option (a): `REVOKE UPDATE ON profiles FROM anon, authenticated` — **both** held the grant — then `GRANT UPDATE (display_name)`. Column privileges are evaluated before RLS, so `role` is now unreachable from the Data API regardless of policy. Role changes go through `admin_set_role(target_user, new_role)`, a SECURITY DEFINER RPC that re-checks `is_admin()` and refuses a self-role-change (a sole admin can no longer demote themselves into a lockout). Also added the missing `WITH CHECK` to the self-update policy, and pinned `search_path` on `is_admin()`, which was SECURITY DEFINER without one. Verified by a rolled-back dry-run against the linked project: `display_name` is the only UPDATE-able column, the table grant is gone, the policy has a WITH CHECK, both functions have `search_path` pinned.)*
-  `20260615000000_initial_schema.sql` — policy `"Users can update own profile"`
-  is `FOR UPDATE USING (auth.uid() = id)` with **no `WITH CHECK` and no column
-  restriction**, and it was never scoped by any later migration. `authenticated`
-  holds a table-level UPDATE grant (proven — `AdminDashboard.toggleRole` updates
-  `profiles.role` through a plain `.update()`). So a signed-in user can call
-  `supabase.from('profiles').update({ role: 'admin' }).eq('id', myId)` and the
-  USING check passes. `AdminRoute` + `is_admin()` gate on `role`, so this is a
-  full account-takeover of the admin surface (create/lock tournaments, read all
-  emails via `admin_list_users`, remove participants).
-  **Fix:** split the policy — allow self-update only of safe columns. Postgres RLS
-  can't restrict columns in a policy directly, so either (a) `REVOKE UPDATE` on
-  `profiles` from `authenticated` and route `display_name` edits through a
-  `SECURITY DEFINER` RPC, or (b) add a `WITH CHECK` that pins
-  `role`/`status`/`email`/`id` to their current values via a `BEFORE UPDATE`
-  trigger that rejects changes to privileged columns unless `is_admin()`. Verify
-  in prod with a non-admin JWT before/after.
-
-- [x] 🟠 **A2 — Odds API key shipped in the browser bundle.** *(Fixed 2026-07-14, PR #24.)*
-  `src/lib/oddsApi.js` read `import.meta.env.VITE_ODDS_API_KEY`, which Vite inlines
-  into client JS (visible in DevTools/Netlify bundle). Anyone could lift it and burn
-  the quota. (Was M1 in AUDIT.md.)
-  **Fixed by** `supabase/functions/odds-proxy/` — same pattern as `slash-golf-proxy`
-  (admin-JWT gate, key read from the `ODDS_API_KEY` Supabase secret). `getGolfOdds`
-  now calls `functions.invoke('odds-proxy')`; the median-price / canonical-name
-  pooling stays client-side. The function constrains `sportKey` to `/^golf_[a-z0-9_]+$/`
-  so a leaked admin token can't turn it into a general-purpose proxy against our quota
-  across every sport the key covers. Verified the key appears nowhere in `dist/`.
-  ⚠️ **The old key is burned** — it was public in the bundle for the life of the
-  project. Rotation in The Odds API dashboard + removal of `VITE_ODDS_API_KEY` from
-  `.env`/Netlify is a **deploy step, not a code change** (see the PR checklist).
 
 - [ ] 🟠 **A3 — Manual-refresh limit is client-side only.**
   `AdminDashboard.refreshScores` + `golf.bumpRefreshCount` enforce the 3/tournament
@@ -60,24 +29,12 @@
   an allowlist (`getpoold.app`, localhost) instead of `*`. `odds-proxy` (2026-07-14)
   deliberately matched the existing `*` rather than diverging — fix all three together.
 
-- [ ] ⚪ **A7 — `odds-proxy` doesn't meter the Odds API quota.**
-  `api_usage.slash_golf_calls` counts Slash Golf calls; nothing counts The Odds API.
-  The proxy is admin-only and odds are fetched once per pool creation, so the spend is
-  tiny — but the quota is now invisible, where before it at least failed loudly in the
-  browser. **Fix:** add an `odds_api_calls` column and increment it in `odds-proxy`
-  (fold into B4's atomic-counter fix rather than duplicating the read-then-write bug).
-
 - [ ] 🟡 **A5 — `join_code` readable for every non-draft pool.**
   RLS `"read non-draft pools"` lets any authenticated user `SELECT *` on `public.pools`,
   including `join_code` for pools they're not in. Codes are the access gate and anyone
   can join anyway, so this is minor — but a user can enumerate every pool's invite.
   **Fix:** scope the SELECT to pools the user participates in, or drop `join_code`
   from the readable column set for non-members. (AUDIT L7.)
-
-- [ ] ⚪ **A6 — `.claude/settings.local.json` allows broad `cat .env*`.**
-  Not a production issue, but the local agent permission list auto-allows reading
-  `.env`, `.env.local`, `.env.production`. Fine for solo dev; revisit if the repo is
-  shared. Confirm no real secret ever lands in a committed `.env.example`.
 
 - [ ] 🟠 **A7 — `privacy@getpoold.app` doesn't exist. Mail to it bounces.**
   `/privacy` and `/terms` (shipped 2026-07-14) both name it as the contact and
@@ -96,6 +53,15 @@
   **Interim mitigation if this lingers:** point both documents at `juddteigen@gmail.com`,
   which works today. It's a one-line change in `src/pages/legal/Privacy.jsx` and
   `Terms.jsx` — a personal address that receives mail beats a branded one that doesn't.
+
+- [ ] ⚪ **A8 — `odds-proxy` doesn't meter the Odds API quota.**
+  `api_usage.slash_golf_calls` counts Slash Golf calls; nothing counts The Odds API.
+  The proxy is admin-only and odds are fetched once per pool creation, so the spend is
+  tiny — but the quota is now invisible, where before it at least failed loudly in the
+  browser. **Fix:** add an `odds_api_calls` column and increment it in `odds-proxy`
+  (fold into B4's atomic-counter fix rather than duplicating the read-then-write bug).
+  *(Was labelled A7; renumbered 2026-07-15 to resolve an ID collision with the
+  `privacy@` item above.)*
 
 ---
 
@@ -156,15 +122,6 @@
 ---
 
 ## C. Reliability & UX States
-
-- [x] 🟠 **C1 — AuthCallback can dead-end on the "Signing you in…" spinner.** ✅ Fixed.
-  `src/pages/AuthCallback.jsx` navigated only when `profile` was non-null. On the
-  new-signup trigger race (profile row not readable yet) or any profile fetch error,
-  the user was stuck forever. **Fix (shipped):** `AuthContext.fetchProfile` now retries
-  the read through the signup-trigger gap (5× 400ms, `maybeSingle`) instead of settling
-  on null; `AuthCallback` advances on `user` (not `profile`) and shows a "Back to sign in"
-  fallback after 8s so it can never spin silently. Downstream `ProtectedRoute` still
-  enforces the display-name gate once the row loads. (AUDIT M2.)
 
 - [ ] 🟠 **C2 — Swallowed query errors → silent blank screens.**
   `TournamentDetail.load` only error-checks the pool lookup; `getPoolPicks` /
@@ -329,31 +286,6 @@
 
 ## H. Documentation
 
-- [x] 🟠 **H1 — `docs/AUDIT.md` is stale post-migration; reconcile or retire.** *(Done 2026-07-10 — superseded banner added pointing here.)*
-  It still lists resolved items (L6 dead code — `Pending.jsx` gone, `golf-temp`
-  renamed to `poold`, helpers consolidated) and references `public.picks`/
-  `tournaments` file paths that the multi-sport cutover moved into the `golf` schema.
-  **Fix:** mark AUDIT.md superseded by this file, or prune it to only-still-open items.
-
-- [x] 🟡 **H2 — CLAUDE.md / README describe the pre-migration data model.** *(Done 2026-07-10 — data-model section added to CLAUDE.md; geocoder line, table names, and backlog pointer fixed; README updated. Note: `docs/PAGES.md` still uses some pre-migration field names.)*
-  CLAUDE.md's "Architecture Summary" and Routes still talk in terms of `tournaments`,
-  and says geocoding uses Nominatim while the code uses Open-Meteo (F3). The doc
-  doesn't mention the `public`/`golf` schema split or `lib/golf.js` as the data seam
-  — the single most important thing for an agent to know now. **Fix:** add a short
-  "Data model (post multi-sport)" section pointing at `lib/golf.js` and the schema
-  boundary; fix the geocoder line.
-
-- [x] 🟡 **H3 — `index.html` title/meta still says "Golf Pick'Em"; invite links unfurl bare.** *(Done 2026-07-14, PR #26.)*
-  Title is now "Poold — Make it interesting." and the page carries full OG/Twitter tags.
-  Invite links render a real preview card in iMessage/WhatsApp/Slack/Discord: the
-  `join-preview` edge function (`netlify/edge-functions/`) rewrites the OG block on
-  `/join/*` with the pool's name, organizer, and pick count, read through the
-  `public.pool_preview(code)` RPC — a `SECURITY DEFINER` function with a fixed
-  projection, so the edge never needs a service-role key. Card image is
-  `public/og-default.png`, generated by `npm run og` from `scripts/og/card.html` via
-  headless Chrome (so it renders in real Barlow Condensed, not a fallback).
-  *Not done:* a per-tournament card image — see H5.
-
 - [ ] ⚪ **H5 — Link-preview polish: per-event card image + a branded favicon.**
   Split out of H3, which shipped everything else. Two leftovers:
   (a) the preview image is one shared card for every pool; the badge colors for all 48
@@ -362,26 +294,47 @@
   would pick it by `tourn_id` — the Masters invite would arrive in Augusta green.
   (b) `public/favicon.svg` is still the stock purple Vite logo.
 
-- [x] ⚪ **H4 — `MULTI_SPORT_MIGRATION.md` still says "Planning / not yet executed."** *(Done 2026-07-10 — status header updated.)*
-  Phases 1–4 are done (per git history); the doc header hasn't been updated. **Fix:**
-  update status to "Phases 1–4 shipped; Phase 5 cleanup pending" (ties to F1).
-
 ---
 
-## Audit reconciliation (what changed since `docs/AUDIT.md`, 2026-06-20)
+## Closed (shipped / resolved)
 
-**Resolved since that audit:** L6 dead code (`Pending.jsx`/`/pending` removed,
-`@dnd-kit/utilities` dropped, `parseScore`/`normalizeName`/`unwrapNumber` consolidated
-into `utils/scoring.js`, `package.json` renamed `golf-temp` → `poold`). C1–C4 remain
-fixed and were faithfully re-ported to the `golf` schema in Phase 3.
+Archived here rather than deleted — the resolution detail is the point. Newest first.
+Historical audit-ID mapping (M2→C1, M3→C2, …) is preserved inline on each still-open
+item as an `(AUDIT Mx)` tag.
 
-**Still open (carried forward, re-pathed to the new schema):** M2→C1, M3→C2, M4→B1,
-M5→B2, M6→B3, L1→D2, L2→D1, L3→B4, L4→E1, L5→E2, L7→A5, plus the two Demo items→G2.
+- [x] 🟠 **C1 — AuthCallback dead-ended on the "Signing you in…" spinner.** *(Fixed 2026-07-15, PR #27.)*
+  `AuthCallback` only navigated once `profile` was non-null, so the new-signup trigger
+  race (profile row not yet readable) stranded users forever. `AuthContext.fetchProfile`
+  now retries through the trigger gap (5× 400ms, `maybeSingle`); `AuthCallback` advances
+  on `user` (not `profile`) and shows a "Back to sign in" fallback after 8s.
+  `ProtectedRoute` still enforces the display-name gate once the row loads. (AUDIT M2.)
 
-**New this scan:** A1 (profiles UPDATE privilege escalation — highest priority), A3/A4
-(refresh + CORS), B5 (non-atomic pick submit), C3 (no 404), F1 (migration Phase 5 +
-`pool_standings`), F2/F4/F5, G-series, H-series.
+- [x] 🔴 **A1 — Privilege escalation: any user could make themselves admin.** *(Fixed 2026-07-14, PR #24 — `20260714000000_a1_lock_profile_role.sql`.)*
+  `profiles` is now column-locked via GRANTs (`REVOKE UPDATE … ; GRANT UPDATE (display_name)`)
+  — column privileges run before RLS, so `role` is unreachable from the Data API. Role
+  changes go through `admin_set_role()`, a SECURITY DEFINER RPC that re-checks `is_admin()`
+  and refuses a self-role-change. Also added the missing `WITH CHECK` to the self-update
+  policy and pinned `search_path` on `is_admin()`. Highest-priority item of this scan.
 
-**Closed since this scan (2026-07-14, PR #24):** **A1** (privilege escalation) and
-**A2** (Odds key in the bundle — the carried-forward M1). A7 was opened by that same PR:
-`odds-proxy` doesn't meter the Odds API quota.
+- [x] 🟠 **A2 — Odds API key shipped in the browser bundle.** *(Fixed 2026-07-14, PR #24.)*
+  `VITE_ODDS_API_KEY` was inlined into client JS. Moved behind
+  `supabase/functions/odds-proxy/` (admin-JWT gate, key from the `ODDS_API_KEY` secret);
+  `getGolfOdds` now calls `functions.invoke('odds-proxy')`. ⚠️ The old key was public for
+  the life of the project — **assume burned**; rotating it + removing `VITE_ODDS_API_KEY`
+  from `.env`/Netlify is a deploy step. (Was M1 in AUDIT.) Opened **A8** (odds-quota
+  metering) as the follow-up.
+
+- [x] 🟠 **H3 — `index.html` said "Golf Pick'Em"; invite links unfurled bare.** *(Done 2026-07-14, PR #26.)*
+  Title is now "Poold — Make it interesting." with full OG/Twitter tags; `/join/*` renders
+  a real preview card via the `join-preview` edge function reading `public.pool_preview(code)`.
+  Leftover (per-event card image + favicon) tracked as **H5**.
+
+- [x] 🟠 **H1 — `docs/AUDIT.md` stale post-migration.** *(Done 2026-07-10.)*
+  Superseded banner added pointing at this file.
+
+- [x] 🟡 **H2 — CLAUDE.md / README described the pre-migration data model.** *(Done 2026-07-10.)*
+  Added the "Data model (post multi-sport)" section pointing at `lib/golf.js` and the
+  schema boundary; fixed the geocoder line and table names; updated README.
+
+- [x] ⚪ **H4 — `MULTI_SPORT_MIGRATION.md` said "Planning / not yet executed."** *(Done 2026-07-10.)*
+  Header updated to "Phases 1–4 shipped; Phase 5 cleanup pending" (ties to F1).
