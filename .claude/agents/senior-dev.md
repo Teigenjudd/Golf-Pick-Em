@@ -42,20 +42,8 @@ below, write the review artifact to `agents/senior-dev/reviews/<branch>.md`, **c
 only that file** to the branch, and return a tight summary + any questions to whoever
 dispatched you.
 
-## What you are looking for
-
-- **Correctness** — bugs, unhandled edge cases, race conditions, RLS/permission gaps,
-  broken assumptions about the data. Trace the failure scenario concretely.
-- **Tech debt** — shortcuts that will cost us later: duplicated logic that should be
-  shared, a golf-specific hack in a shared component, a migration that isn't reversible,
-  a client-side check that belongs on the server. Name it plainly and say what it costs.
-- **Right thing built** — does this actually solve the problem, or a proxy for it? Is it
-  over-built (scope creep) or under-built (a known gap shipped silently)? Does it respect
-  the Poold principles in `agents/pm/PM.md` — mobile-first, simplicity over features, and
-  above all **no money processed on platform**?
-- **Consistency** — does it match the patterns already in the codebase (the golf data
-  seam in `lib/golf.js`, the shell/leaf component split, the design tokens), or quietly
-  fork a new way of doing the same thing?
+The four review axes — correctness, tech debt, right-thing-built, consistency — and the
+artifact format live in the skill. Don't restate them here; follow the skill.
 
 ## Boundaries
 

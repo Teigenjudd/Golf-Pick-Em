@@ -220,6 +220,13 @@ through on `CLAUDE.md` alone while these four strategy docs went stale (see DECI
 2026-07-13). If a step genuinely doesn't apply, that's fine — but say what you checked
 and merge with the matching escape hatch: `SENIOR_REVIEW_SKIP=1` and/or `PM_SYNC_SKIP=1`.
 
+**Blind spot — the guard can't gate changes to itself.** Everything under `.claude/`
+(the hook, the agents, the skills) is excluded from what counts as substantive, so a
+branch that edits *only* that machinery merges with no review and no pm-sync — including
+a change that breaks the guard. A hook can't safely review its own edit, so this is a
+**convention, not code**: any PR touching `.claude/hooks|agents|skills` gets a manual
+`/senior-review` before it merges. (Decided 2026-07-15, dogfooding this very flow.)
+
 | Document | Owns (the kind of truth it holds) | Update when a PR… |
 |---|---|---|
 | `agents/pm/PM.md` | How the PM agent works; this index; the status board | …changes how we work, or ships/blocks something on the status board |
