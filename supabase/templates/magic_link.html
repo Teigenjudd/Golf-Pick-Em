@@ -1,0 +1,120 @@
+<!--
+  Poold — Magic Link sign-in email.
+
+  Paste this into: Supabase Dashboard → Authentication → Email Templates → Magic Link
+  (the hosted project's templates are dashboard-managed; this file is the versioned
+  source of truth — keep them in sync).
+
+  Supabase fills {{ .ConfirmationURL }} with the one-tap sign-in link at send time.
+  Written for email clients, not browsers: table layout + inline styles, because
+  Gmail/Outlook strip <style>, flexbox, and most modern CSS. The brand fonts
+  (Barlow Condensed / Inter) are progressive-enhancement only — the font stacks
+  fall back to system fonts everywhere they don't load.
+-->
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>Sign in to Poold</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;500;600&display=swap');
+    body { margin: 0; padding: 0; width: 100% !important; -webkit-text-size-adjust: 100%; }
+    a { text-decoration: none; }
+    .btn:hover { background-color: #163a2a !important; }
+    @media only screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+      .px { padding-left: 24px !important; padding-right: 24px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#EFEAE0;">
+  <!-- Preheader: the grey preview line in the inbox, hidden in the body -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
+    Your one-tap sign-in link for Poold is inside. Drop your picks, jump in the pool.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#EFEAE0;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background-color:#FFFFFF; border:1px solid #E4DDD0; border-radius:16px; overflow:hidden;">
+
+          <!-- Header band -->
+          <tr>
+            <td align="center" style="background-color:#1B4332; padding:34px 24px 30px 24px;">
+              <div style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif; font-size:40px; font-weight:800; letter-spacing:3px; color:#F8F5EE; line-height:1;">
+                POOLD
+              </div>
+              <div style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif; font-size:14px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#C9A368; margin-top:8px;">
+                Make it interesting.
+              </div>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td class="px" style="padding:38px 44px 8px 44px; font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <h1 style="margin:0 0 14px 0; font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif; font-size:30px; font-weight:800; color:#2D2D2A; letter-spacing:-0.3px;">
+                You're one tap in.
+              </h1>
+              <p style="margin:0 0 26px 0; font-size:15.5px; line-height:1.6; color:#4A4440;">
+                Here's your sign-in link for Poold. Tap the button and you'll land right back in your pool — no password, nothing to remember.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Button -->
+          <tr>
+            <td class="px" align="center" style="padding:4px 44px 8px 44px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="center" bgcolor="#1B4332" style="border-radius:10px;">
+                    <a class="btn" href="{{ .ConfirmationURL }}" target="_blank"
+                       style="display:inline-block; padding:15px 40px; font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:16px; font-weight:600; color:#F8F5EE; background-color:#1B4332; border-radius:10px; letter-spacing:0.2px;">
+                      Sign in to Poold
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Reassurance + fallback link -->
+          <tr>
+            <td class="px" style="padding:26px 44px 38px 44px; font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <p style="margin:0 0 20px 0; font-size:13px; line-height:1.6; color:#9E9488;">
+                This link signs you in and expires shortly. If you didn't ask to sign in to Poold, you can ignore this email — no harm done.
+              </p>
+              <p style="margin:0 0 8px 0; font-size:12px; line-height:1.5; color:#9E9488;">
+                Button not working? Paste this into your browser:
+              </p>
+              <p style="margin:0; font-size:12px; line-height:1.5; word-break:break-all;">
+                <a href="{{ .ConfirmationURL }}" target="_blank" style="color:#1B4332; text-decoration:underline;">{{ .ConfirmationURL }}</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+        <!-- Footer -->
+        <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px;">
+          <tr>
+            <td align="center" style="padding:22px 24px 8px 24px; font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+              <p style="margin:0; font-size:12px; color:#9E9488;">
+                <span style="font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif; font-weight:700; letter-spacing:1px; color:#736A5F;">POOLD</span>
+                &nbsp;·&nbsp; <a href="https://getpoold.app" target="_blank" style="color:#9E9488; text-decoration:none;">getpoold.app</a>
+                &nbsp;·&nbsp; Drop your picks. Jump in the pool.
+              </p>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
