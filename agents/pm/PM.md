@@ -80,7 +80,9 @@ writing code.
   references a sport schema; `lib/golf.js` is the only file that calls
   `supabase.schema('golf')`.
 - `public.events` is the hinge: many pools can share one real-world event; the golf
-  field (tiers/players) is event-level, and the leaderboard is polled once per event.
+  field (tiers/players) is event-level, and the leaderboard is polled once per event —
+  though because `createGolfPool` mints a separate event per pool, the poll in practice
+  dedupes by `slash_golf_tournament_id` and fetches once per real tournament (PR #29).
 - Team sports (NFL, CFB, NBA, NHL) will use game-winner/spread format when added, not
   tiered athlete picks — each gets its own schema when the time comes.
 - Split queries across the `public`/`golf` boundary, not PostgREST cross-schema embeds
@@ -222,6 +224,7 @@ you checked and merge with `PM_SYNC_SKIP=1`.
 | `DESIGN_SPEC.md` (root) | Design tokens, component specs, screen map | …changes a token, component, or screen |
 | `CLAUDE.md` (root) | Brand voice, working style, architecture summary, design system, routes | …changes architecture, routes, conventions, or the design system. **Must stay at repo root — Claude Code auto-loads it from there.** |
 | `docs/MULTI_SPORT_MIGRATION.md` | The multi-sport architecture plan + phase status | …advances or changes the migration (Phase 5 is what's left) |
+| `docs/ENTERPRISE_ARCHITECTURE_PROPOSAL.md` | **Reference, not adopted.** Fable's blank-slate ideal architecture for a multi-sport/format platform, plus the review of it against Poold | …basically never. A north-star doc; the actionable takeaway is BACKLOG F6. |
 | `README.md` | The 60-second orientation for a human arriving cold | …changes setup, stack, or a headline architecture decision |
 | `docs/AUDIT.md` | **Historical.** The 2026-06-20 audit; C1–C4 resolution record | …basically never. Superseded by `BACKLOG.md`. Don't add to it. |
 

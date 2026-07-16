@@ -162,6 +162,32 @@
   it forward if signup drop-off shows up on social channels. See the ROADMAP status log
   (2026-07-15) and the C1 Closed entry.
 
+- [ ] 🟡 **C7 — Auth emails use Supabase's default sender (generic + rate-limited).**
+  The magic-link email goes out *from* a shared `…@mail.supabase.io` address, not
+  `@getpoold.app`. Two problems: (1) it looks untrustworthy / unbranded and often lands
+  in spam — the invite doesn't visibly come from Poold; (2) Supabase's built-in email
+  service is deliberately **rate-limited and explicitly not for production**, so at any
+  real traction login emails will silently start dropping.
+  **⚠️ Custom SMTP is the single prerequisite for BOTH fixes.** Current Supabase
+  **gates email-template editing behind custom SMTP** — the dashboard Subject/Body
+  fields are locked with "Set up custom SMTP to edit templates" until SMTP is
+  configured (confirmed 2026-07-15). So there is no content-only path: no SMTP →
+  default template AND default sender.
+  - **Sender + deliverability + template unlock (TODO — the one task):** configure
+    **custom SMTP** (Supabase → Project Settings → Auth → SMTP). Cheapest low-ops path:
+    a provider like **Resend** (free tier ~3k/mo), verify `getpoold.app` (adds SPF/DKIM
+    + a send-subdomain MX/return-path at Netlify DNS), paste the SMTP creds. Then mail
+    comes from `@getpoold.app`, authenticated, no rate cap — *and* template editing
+    unlocks.
+  - **Content (WRITTEN, blocked on SMTP):** a branded Poold Magic Link template already
+    lives at `supabase/templates/magic_link.html` (fairway/cream/gold, "Make it
+    interesting.", `{{ .ConfirmationURL }}` button + fallback). Ready to paste into
+    **Auth → Email Templates → Magic Link** *the moment SMTP is on*. Keep the file and
+    the dashboard in sync.
+  **Overlaps with A7** — the `getpoold.app` domain currently has no mail infra at all
+  (no MX, `privacy@` bounces); standing up a sending domain solves both. Also unblocks
+  putting the 6-digit code (**C6**) in the same template later.
+
 ---
 
 ## D. Performance
@@ -271,6 +297,45 @@
 - [ ] ⚪ **F5 — `MONTHLY_CAP = 1800` duplicated across both edge functions.**
   And `SLASH_GOLF_BASE`. Small, but they can drift. **Fix:** shared constant module
   (`supabase/functions/_shared/`).
+
+- [ ] 🟡 **F6 — No shared "format" contract; extract one before format #2, not before sport #2.**
+  `src/utils/scoring.js` (`computeScores`) and `src/utils/tierBuilder.js` currently encode
+  "golf" and "pick'em-style scoring" as one inseparable unit — there's no boundary between
+  "this is golf" and "this is the pick'em scoring rule." Correct call at 1 sport × 1 format
+  (all Poold runs today); the per-schema split (`public`/`golf`) already handles a second
+  *sport* cleanly (additive, see `docs/MULTI_SPORT_MIGRATION.md`). The gap is a second
+  *format* — survivor, season-long, props, even a second golf-scoring variant — which today
+  would get built by copy-pasting and tweaking those two files, since nothing defines a
+  shared shape to plug a new format into. At 2–3 sports × 3–4 formats that's 6–12 hand-copied
+  scoring implementations that will silently drift from each other — exactly the shape of
+  Poold's existing worst debt class (silent failures — see B1, C2), just multiplied.
+
+  **Trigger: the moment format #2 is being designed** (even a second golf format, before a
+  second sport exists) — not tied to pool count, user count, or traction. Do NOT wait for
+  "we have scale," wait for "we have a second format on the roadmap."
+
+  **Fix (sized down — days, not months):** extract a minimal contract out of
+  `scoring.js`/`tierBuilder.js`, roughly `{ dataContract, validatePick, reduce (the fold),
+  projectStandings }` — see `docs/ENTERPRISE_ARCHITECTURE_PROPOSAL.md` §3.1 for the reference
+  shape (a 4-method `FormatEngine` interface). Goal: one seam a new format implements, not a
+  second copy of two files. Deferring this until 3+ formats have already diverged turns it
+  into forensic untangling under pressure instead of a deliberate days-long extraction.
+
+  **Explicitly out of scope even at that point** (per the same review — see
+  `docs/ENTERPRISE_ARCHITECTURE_PROPOSAL.md`, "What should NOT be built now"): a fact ledger,
+  idempotency/versioned facts, a provider capability registry, correction/supersession
+  semantics, watchdog/failover, Redis, object storage, an event queue. All real and correct
+  at platform scale (many providers, many sports, real corrections); none earned by Poold's
+  traffic today or at "1000 pools." Revisit only if concrete scale signals appear (multiple
+  live providers per sport, recurring real score corrections, or measured — not
+  hypothetical — fan-out strain).
+
+  **Related:** B1 and C2 (silent-failure debt) get *more* expensive with user growth
+  independent of this item — a swallowed error today means the founder sees a blank
+  dashboard; at traction it means a paying stranger's group sees a silently blank leaderboard
+  with no log to check. Fix priority on B1/C2 should track user growth; fix priority on F6
+  should track format count. Full context: `docs/ENTERPRISE_ARCHITECTURE_PROPOSAL.md`
+  (reviewed 2026-07-15).
 
 ---
 

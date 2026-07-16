@@ -38,7 +38,7 @@ supabase functions deploy slash-golf-proxy
 
 ## Cron Schedule
 
-Leaderboard polling runs via pg_cron, every 20 minutes during the 7am–8pm ET window. Before each tournament weekend, run the schedule block in `supabase/cron-schedule.sql` in the Supabase SQL editor. After the final round, run the unschedule block.
+Leaderboard polling runs via pg_cron, every 20 minutes during the 7am–8pm ET window. Arm/disarm it from the **Admin panel** (Tournaments tab → "Leaderboard polling" toggle) before and after each tournament weekend; the toggle calls admin-only RPCs that read the cron secret from Supabase Vault. The raw `supabase/cron-schedule.sql` block still works as a manual fallback in the SQL editor.
 
 ## Key Architecture Decisions
 

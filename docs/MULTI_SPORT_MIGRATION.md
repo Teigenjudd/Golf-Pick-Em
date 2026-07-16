@@ -83,7 +83,11 @@ golf  (owns golf's full contest structure)
 - **Field is event-level:** all pools on the same tournament share one set of
   `tiers`/`tier_players` — no duplication.
 - **Leaderboard is polled once per event,** not per pool — eases the Slash Golf monthly
-  cap when pools-per-event ships.
+  cap when pools-per-event ships. *(Update 2026-07-15, PR #29: since `createGolfPool` still
+  mints one event per pool, "pools-per-event" isn't realized yet; instead `poll-leaderboard`
+  dedupes by `slash_golf_tournament_id`, fetching once per real tournament and fanning the
+  payload to every pool's event — the same monthly-cap benefit, achieved at the poll layer.
+  See DECISIONS 2026-07-15.)*
 
 ### Source mapping (today → target)
 - `tournaments` **splits**: generic pool config → `public.pools`; golf event detail

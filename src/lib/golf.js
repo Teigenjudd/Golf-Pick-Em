@@ -286,3 +286,25 @@ export async function removePoolParticipant(poolId, userId) {
   if (error) throw error
   await supabase.from('pool_participants').delete().eq('pool_id', poolId).eq('user_id', userId)
 }
+
+// ── Leaderboard polling controls (admin) ─────────────────────────────────────
+// The poll-leaderboard cron jobs are turned on/off through admin-only RPCs
+// (20260716000000_admin_polling_controls) instead of hand-run cron SQL. Each RPC
+// re-checks is_admin() server-side; the admin button just calls them. These
+// throw on error (unlike the read helpers above) — the toggle needs to surface
+// failures, not silently no-op.
+export async function getPollingStatus() {
+  const { data, error } = await supabase.rpc('admin_polling_status')
+  if (error) throw error
+  return !!data
+}
+
+export async function startPolling() {
+  const { error } = await supabase.rpc('admin_start_leaderboard_polling')
+  if (error) throw error
+}
+
+export async function stopPolling() {
+  const { error } = await supabase.rpc('admin_stop_leaderboard_polling')
+  if (error) throw error
+}
