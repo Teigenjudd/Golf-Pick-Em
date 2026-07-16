@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import {
   getAdminPools, getAllPools, setPoolStatus, bumpRefreshCount,
   getPoolPicks, removePoolParticipant,
+  getPollingStatus, startPolling, stopPolling,
 } from '../../lib/golf'
 
 const STATUS_BADGE = {
@@ -25,6 +26,83 @@ function StatusBadge({ status }) {
 // ── Tournaments ───────────────────────────────────────────────────────────────
 
 const MANUAL_REFRESH_LIMIT = 3
+
+// Global on/off for the tournament-weekend leaderboard cron jobs. Replaces the
+// old ritual of pasting cron.schedule / cron.unschedule SQL by hand. Calls the
+// admin-only RPCs in lib/golf; the server re-checks is_admin() regardless of UI.
+function PollingControl() {
+  const [on, setOn] = useState(null) // null = still loading status
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+
+  const load = useCallback(async () => {
+    try {
+      setOn(await getPollingStatus())
+    } catch (e) {
+      setError(e.message)
+      setOn(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function toggle() {
+    setBusy(true)
+    setError(null)
+    try {
+      if (on) await stopPolling()
+      else await startPolling()
+      await load()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const loading = on === null
+
+  return (
+    <div className="bg-white border border-[#EAD8C4] rounded-[14px] p-4 mb-[14px]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-[10px] min-w-0">
+          <span className={`w-[9px] h-[9px] rounded-full shrink-0 ${on && !loading ? 'bg-fairway' : 'bg-warm-300'}`} />
+          <div className="min-w-0">
+            <p className="text-[14px] font-semibold text-[#1C1610]">Leaderboard polling</p>
+            <p className="text-[11.5px] text-warm-400 mt-[1px]">
+              {loading
+                ? 'Checking…'
+                : on
+                  ? 'On — pulling scores every 20 min, Thu–Sun'
+                  : 'Off — scores are not updating'}
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={toggle}
+          disabled={loading || busy}
+          className={`shrink-0 text-[12px] font-semibold px-[14px] py-[6px] rounded-[8px] border cursor-pointer transition-colors disabled:opacity-50 ${
+            on
+              ? 'border-birdie/30 text-birdie hover:bg-birdie/5'
+              : 'border-fairway/35 text-fairway hover:bg-fairway/5'
+          }`}
+        >
+          {busy ? '…' : on ? 'Turn off' : 'Turn on'}
+        </button>
+      </div>
+
+      {error && (
+        <p className="text-[11.5px] text-birdie border border-birdie/30 bg-birdie/5 rounded-[8px] px-3 py-2 mt-3">
+          {error}
+        </p>
+      )}
+
+      <p className="text-[11px] text-warm-400 mt-3 leading-snug">
+        Turn on the morning of the first round; turn off after the final round. While on, it spends Slash Golf API calls on the 20-minute cadence.
+      </p>
+    </div>
+  )
+}
 
 function TournamentsTab() {
   const [tournaments, setTournaments] = useState([])
@@ -74,6 +152,8 @@ function TournamentsTab() {
 
   return (
     <div>
+      <PollingControl />
+
       <div className="flex items-center justify-between mb-[14px]">
         <p className="text-[13px] text-warm-400">
           {visible.length} tournament{visible.length !== 1 ? 's' : ''}
