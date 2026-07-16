@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/pm-sync-guard.mjs"
+            "command": "node .claude/hooks/merge-guard.mjs"
           }
         ]
       }
