@@ -61,7 +61,7 @@ regulated real-money operator).
 | **You** (`/profile`) | Account surface behind the "You" tab: change your display name, sign out. Shows no email address. |
 | **Leaderboard** (`/tournament/:id`) | The main event. Pick'em standings with the signature expandable scorecard, plus widgets: Prize Pool, PGA Leaders, Most Popular Picks, Tier Value. Weather inline in the header. |
 | **Picks** (`/tournament/:id/picks`) | The tier picker: one player per tier, odds shown as context, resubmittable until lock. |
-| **Admin** (`/admin`) | Ops panel: tournament status controls (lock/reopen/close), join-link copy, manual score refresh, participant management, user roles. |
+| **Admin** (`/admin`) | Ops panel: tournament status controls (lock/reopen/close), join-link copy, manual score refresh, leaderboard-polling on/off toggle, participant management, user roles. |
 | **Create Tournament** (`/admin/create-tournament`) | Two-step wizard: metadata + live field/odds import, then a drag-and-drop tier builder. Auto-builds tiers from odds/rankings. |
 | **Demo** (`/demo`, `/demo/tournament`, `/demo/picks`) | Full product experience — picks and all — with zero sign-up, running on a static snapshot. The "see it before you commit" funnel. |
 | **Privacy / Terms** (`/privacy`, `/terms`) | The legal pages, public and readable without an account. The Terms exist mainly to say the one thing that protects us: Poold never touches money. |
@@ -206,9 +206,11 @@ components keep the live pages and `/demo` pixel-identical by construction.
 - Docs source-of-truth order on conflicts: code → `docs/BACKLOG.md` → migration doc →
   `docs/PAGES.md` → `DESIGN_SPEC.md` → `CLAUDE.md` → `docs/AUDIT.md` (superseded).
 
-**Operational rhythm:** before a tournament weekend, schedule the cron polls
-(`supabase/cron-schedule.sql`); after the final round, unschedule. Slash Golf is capped
-at 1,800 calls/month — polling cadence and manual refreshes are budgeted against it.
+**Operational rhythm:** before a tournament weekend, flip the **Leaderboard polling**
+toggle on in the Admin panel; after the final round, flip it off (the hand-run
+`supabase/cron-schedule.sql` block still works as a fallback). Slash Golf is capped at
+1,800 calls/month — the poll now costs one call per *tournament* per cycle (not per pool),
+and manual refreshes are budgeted against the same cap.
 
 **Current health, honestly:** product works end-to-end and survived its first live
 event (2026 US Open). **The two security launch-blockers are closed** (2026-07-14, PR

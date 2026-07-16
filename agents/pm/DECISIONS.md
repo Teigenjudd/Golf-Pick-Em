@@ -379,3 +379,32 @@ migration).
 
 **Status:** Phases 0–4 shipped. Phase 5 (drop legacy tables) pending —
 `public.pga_event_badges` is the one legacy table that is NOT droppable.
+
+---
+
+## 2026-07-15 — Share leaderboard polls by tournament; don't merge pools into one event
+
+**Decision:** Fix the "N pools on one tournament = N Slash Golf calls" waste at the *poll*
+layer — `poll-leaderboard` groups active events by `slash_golf_tournament_id`, fetches
+once per tournament, and writes the payload to every event's cache row. We did **not** take
+the "purer" route of making `createGolfPool` reuse one shared event across pools.
+
+**Why:** Sharing the API call is all the problem needs. Merging pools onto one event would
+also force them to share the field (tiers/players), the odds frozen at creation, and the
+scoring params (`pick_count`/`scores_to_keep`) — but pools on the same tournament are created
+at different times, at different odds, and may want different rules. The poll-layer fix keeps
+each pool's frozen odds/field intact (odds live in `golf.tier_players`, never touched by the
+poll) while decoupling API spend from pool count: one isolated edge-function change, no data
+model surgery, no create-flow change. Verified live: The Open, 7 pools → 1 call, 7 cache rows.
+
+**Gave up:** The single-event-per-tournament model stays unrealized (still one event per
+pool). The "many pools share one event" capability (D3 / BACKLOG G3) remains wired-but-unused;
+if a real product need appears (e.g. a commissioner-managed shared field), that's the larger
+Option-B build, tracked separately.
+
+**Revisit if:** we want commissioners to attach pools to a shared, admin-managed tournament
+field — then the event-merge refactor earns its cost.
+
+**Related:** the admin polling toggle in the same PR is gated on `is_admin()`, not a hardcoded
+owner email, on purpose — a future commissioner is a different role, so `is_admin()` already
+excludes it at the server and the split only needs to hide the UI card.
