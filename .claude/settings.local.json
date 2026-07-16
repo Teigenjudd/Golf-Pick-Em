@@ -30,7 +30,8 @@
       "Bash(supabase functions *)",
       "Bash(node *)",
       "Bash(npx vite *)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(git fetch *)"
     ]
   }
 }
