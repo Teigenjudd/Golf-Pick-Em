@@ -204,14 +204,28 @@ is about who keeps them true, not where they sit.
 something, this is how you decide what to update. Keep it current — if you add a doc,
 add a row.
 
-**What the merge guard actually enforces** (`.claude/hooks/pm-sync-guard.mjs`): a PR
-with substantive code changes cannot merge unless it touches **`agents/pm/`**, and a PR
-touching `src/pages|components` cannot merge without **`docs/PAGES.md`**. Those two are
-the only rules a hook can check by reading a diff — the rest of this table is on you.
-The guard used to accept *any* `.md` as proof the PM had run, and PR #22 slipped through
-on `CLAUDE.md` alone while these four strategy docs went stale (see DECISIONS,
-2026-07-13). If nothing in `agents/pm/` genuinely applies, that's fine — but say what
-you checked and merge with `PM_SYNC_SKIP=1`.
+**What the merge guard actually enforces** (`.claude/hooks/merge-guard.mjs`): two agents
+ride with every merge, and the hook checks that both left a committed artifact in the
+branch diff.
+- A PR **that changes code** cannot merge unless it has a **senior-dev review** —
+  `agents/senior-dev/reviews/<branch>.md` — committed on the branch. (Docs/config-only
+  branches skip this; there's nothing for a senior engineer to review.)
+- A PR with substantive changes cannot merge unless it touches **`agents/pm/`** (proof
+  pm-sync ran).
+- A PR touching `src/pages|components` cannot merge without **`docs/PAGES.md`**.
+
+Those are the only rules a hook can check by reading a diff — the rest of this table is
+on you. The guard used to accept *any* `.md` as proof the PM had run, and PR #22 slipped
+through on `CLAUDE.md` alone while these four strategy docs went stale (see DECISIONS,
+2026-07-13). If a step genuinely doesn't apply, that's fine — but say what you checked
+and merge with the matching escape hatch: `SENIOR_REVIEW_SKIP=1` and/or `PM_SYNC_SKIP=1`.
+
+**Blind spot — the guard can't gate changes to itself.** Everything under `.claude/`
+(the hook, the agents, the skills) is excluded from what counts as substantive, so a
+branch that edits *only* that machinery merges with no review and no pm-sync — including
+a change that breaks the guard. A hook can't safely review its own edit, so this is a
+**convention, not code**: any PR touching `.claude/hooks|agents|skills` gets a manual
+`/senior-review` before it merges. (Decided 2026-07-15, dogfooding this very flow.)
 
 | Document | Owns (the kind of truth it holds) | Update when a PR… |
 |---|---|---|
@@ -273,13 +287,26 @@ agent trusts it.
   before the matching frontend ships to `main` (Netlify serves `main`) — violating
   this once caused an admin lockout.
 
-**When a PR is ready to merge:**
-- Run the **`/pm-sync`** skill (`.claude/skills/pm-sync/`). It reads the PR's real diff,
-  walks the ownership index above, updates every doc the change made untrue, and commits
-  into the **same PR** — so docs never lag the code and no second deploy is spent.
-- A `PreToolUse` hook (`.claude/hooks/pm-sync-guard.mjs`) blocks `gh pr merge` when a PR
-  changes code but no documentation. If no doc genuinely needs updating, say so
-  explicitly and merge with `PM_SYNC_SKIP=1 gh pr merge …`.
+**When a PR is ready to merge** — two agents run, in order, and the merge waits for both:
+
+1. **Senior-dev review** (`senior-dev` agent, Opus, or `/senior-review`). A senior
+   engineer reviews the branch diff for correctness bugs, tech debt, and questionable
+   design calls, and surfaces plain-English questions the founder answers to justify we
+   built the right thing. It writes/commits `agents/senior-dev/reviews/<branch>.md`. An
+   APPROVE with no questions is a valid pass — it hands straight to step 2. The founder
+   resolves anything the review raised before moving on.
+2. **PM doc-sync** (`pm` agent, Sonnet, or `/pm-sync`). Reads the PR's real diff, walks
+   the ownership index above, updates every doc the change made untrue, and commits into
+   the **same PR** — so docs never lag the code and no second deploy is spent. Runs on
+   Sonnet so it doesn't hold the merge up.
+
+Prefer dispatching these as **subagents** (Task tool: `subagent_type: "senior-dev"`, then
+`"pm"`) so their work stays off the main session and pm runs cheap/fast; the `/senior-review`
+and `/pm-sync` skills are the inline fallback.
+
+A `PreToolUse` hook (`.claude/hooks/merge-guard.mjs`) blocks `gh pr merge` until both
+artifacts are on the branch. If a step genuinely doesn't apply, say so explicitly and
+merge with the matching escape hatch: `SENIOR_REVIEW_SKIP=1` and/or `PM_SYNC_SKIP=1`.
 
 **When logging decisions:**
 - Append to `agents/pm/DECISIONS.md`: what we decided, why, what we gave up, what would

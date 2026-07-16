@@ -1,6 +1,6 @@
 ---
 name: pm-sync
-description: Update Poold's documentation to reflect the current PR before it merges. Use when a PR is ready to merge, when the pm-sync-guard hook blocks a merge, or when asked to "sync the docs" / "run the PM agent" / "update PM docs". Reads the PR's actual diff, maps it to the owned docs via the ownership index, and commits the updates into the same PR.
+description: Update Poold's documentation to reflect the current PR before it merges. Use when a PR is ready to merge, when the merge-guard hook blocks a merge, or when asked to "sync the docs" / "run the PM agent" / "update PM docs". Reads the PR's actual diff, maps it to the owned docs via the ownership index, and commits the updates into the same PR.
 ---
 
 # PM doc sync

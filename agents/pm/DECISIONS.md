@@ -168,7 +168,7 @@ could collapse into one.
 
 ## 2026-07-13 — The merge guard checks `agents/pm/`, not "any .md"
 
-**Decision:** `pm-sync-guard.mjs` now blocks `gh pr merge` when a substantive diff leaves
+**Decision:** `merge-guard.mjs` (renamed from `pm-sync-guard.mjs` 2026-07-15) now blocks `gh pr merge` when a substantive diff leaves
 `agents/pm/` untouched (and separately, when `src/pages|components` changes without
 `docs/PAGES.md`). It previously allowed the merge if **any** `.md` file had changed.
 Supersedes the enforcement half of *"Doc sync runs before the merge"* (same date); the
@@ -271,7 +271,8 @@ directory layout is the least of the problems.
 
 **Decision:** The `/pm-sync` skill runs while a PR is still open, so doc updates ride in
 the same PR as the change that caused them. A `PreToolUse` hook blocks `gh pr merge`
-until it has run. Enforced by `.claude/hooks/pm-sync-guard.mjs`.
+until it has run. Enforced by `.claude/hooks/merge-guard.mjs` (renamed from
+`pm-sync-guard.mjs` 2026-07-15).
 
 **Why:** The obvious design was to sync *after* merging. But that spawns a second
 docs-only PR for every change — forever — and each PR costs a Netlify build. Syncing
@@ -408,3 +409,40 @@ field — then the event-merge refactor earns its cost.
 **Related:** the admin polling toggle in the same PR is gated on `is_admin()`, not a hardcoded
 owner email, on purpose — a future commissioner is a different role, so `is_admin()` already
 excludes it at the server and the split only needs to hide the UI card.
+
+---
+
+## 2026-07-15 — Merge flow splits into two subagents; the guard can't gate its own edits, and test-only PRs skip review on purpose
+
+**Decision:** The pre-merge flow is now two agents, not one. `senior-dev` (Opus) reviews
+the branch diff for correctness/tech-debt/design and commits
+`agents/senior-dev/reviews/<branch>.md` with plain-English questions for the founder;
+`pm` (Sonnet, this doc-sync) runs second and cheap so it stops holding the merge up. The
+hook (renamed `pm-sync-guard.mjs` → `merge-guard.mjs`) now requires **both** artifacts —
+a review when code changed, and an `agents/pm/` touch — reading committed files as proof,
+since a hook can't observe an agent running. Two narrower calls came with it:
+
+- **The guard cannot gate changes to itself.** Everything under `.claude/` (the hook, the
+  agents, the skills) is excluded from what counts as "substantive," so a branch touching
+  only that machinery — including one that breaks the guard — merges with zero checks. A
+  hook reviewing its own edit is structurally circular, so this isn't a bug to fix in code;
+  it's handled as a **convention**: any PR touching `.claude/hooks|agents|skills` gets a
+  manual `/senior-review` before merging (this branch is the dogfood case — see
+  `agents/senior-dev/reviews/chore-pr-review-and-pm-subagents.md`, Finding 1).
+- **Test-only PRs intentionally skip the senior-dev review.** The guard's `CODE` pattern
+  doesn't match `*.test.[jt]sx?`, so a branch that adds only tests produces no
+  `codeChanged` and merges without a review pass. Treated as an acceptable trade (tests
+  are low-risk, and reviewing test logic wasn't the point of this flow) rather than an
+  oversight — flagged explicitly so it reads as a choice if revisited.
+
+**Why:** The single-agent flow was blocking merges on judgment work (a real code review)
+using the same fast pass meant for keeping docs current. Splitting them lets the
+expensive model do the one thing worth paying for — catching a bad design call before
+it ships — while the doc sync stays fast and never holds the PR hostage.
+
+**Gave up:** A `.claude/`-only edit gets no automatic backstop, and neither does a
+test-only one; both rely on a human doing the right thing rather than a hook enforcing it.
+
+**Revisit if:** the `.claude/` convention gets skipped in practice (that's a sign it needs
+to become a GitHub Action or a separate check outside the repo's own hook), or a test-only
+PR ships a real logic bug that a review would have caught.
