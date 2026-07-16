@@ -189,19 +189,34 @@ export default function CreateTournament() {
       if (hostCourse?.courseName && !courseName.trim()) setCourseName(hostCourse.courseName)
 
       const loc = hostCourse?.location
-      // Nominatim free-text search: the most specific query (course + city + state) pins the
-      // course itself, and gracefully falls back to the town when the course is unknown.
-      // Replaces Open-Meteo's name-only geocoder, which couldn't resolve course names or
-      // "City, State" strings — it returned nothing for UK links courses (docs/BACKLOG.md F3).
-      const geoQuery = [hostCourse?.courseName, loc?.city, loc?.state].filter(Boolean).join(', ')
+      // Nominatim free-text search. Try the most specific query first (course + city + state),
+      // which pins the course itself; fall back to town-level (city, state) if that misses, so
+      // a course name that doesn't fuzzy-match OSM still yields roughly-right weather coords.
+      // email= is Nominatim's policy-compliant caller identifier (we can't set User-Agent from
+      // the browser). Replaces Open-Meteo's name-only geocoder, which couldn't resolve course
+      // names or "City, State" strings — it returned nothing for UK links courses (BACKLOG F3).
+      const geoQueries = [...new Set([
+        [hostCourse?.courseName, loc?.city, loc?.state].filter(Boolean).join(', '),
+        [loc?.city, loc?.state].filter(Boolean).join(', '),
+      ].filter(Boolean))]
+
+      async function geocodeCourse() {
+        for (const q of geoQueries) {
+          try {
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&email=privacy@getpoold.app`
+            )
+            const hit = (await res.json())?.[0]
+            if (hit) return hit
+          } catch { /* try the next query */ }
+        }
+        return null
+      }
 
       const [oddsOutcomes, rankingsData, geoResult] = await Promise.all([
         sportKey ? getGolfOdds(sportKey).catch(() => []) : Promise.resolve([]),
         getRankings().catch(() => null),
-        geoQuery
-          ? fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(geoQuery)}&format=json&limit=1`)
-              .then(r => r.json()).then(d => d?.[0] ?? null).catch(() => null)
-          : Promise.resolve(null),
+        geoQueries.length ? geocodeCourse() : Promise.resolve(null),
       ])
       const geoLat = geoResult ? parseFloat(geoResult.lat) : NaN
       const geoLon = geoResult ? parseFloat(geoResult.lon) : NaN
