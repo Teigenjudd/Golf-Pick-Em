@@ -187,8 +187,9 @@ until golf is won.
 
 **Stack:** React + Vite + Tailwind v4 (Netlify) · Supabase (Postgres + magic-link Auth
 + Edge Functions + RLS) · Slash Golf via RapidAPI and The Odds API (both proxied
-server-side — no third-party key reaches the browser) · Open-Meteo (weather +
-geocoding — keyless, so still called client-side).
+server-side — no third-party key reaches the browser) · Open-Meteo (weather) and
+Nominatim (course geocoding, since 2026-07-16) — both keyless, so still called
+client-side.
 
 **Architecture in one line:** thin sport-agnostic core in the `public` schema (events,
 pools, participants); golf's whole contest structure in the `golf` schema; the only

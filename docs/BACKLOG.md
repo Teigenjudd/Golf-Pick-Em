@@ -281,12 +281,15 @@
   `events.name = pgaName || name`). **Fix:** drop `status`; document the name fields'
   intended roles in `mergePoolView`.
 
-- [ ] 🟡 **F3 — Geocoding still on Open-Meteo, not Nominatim.**
-  `CreateTournament.handleNext` geocodes via `geocoding-api.open-meteo.com`, but the
-  documented plan (and a standing note) is to switch to Nominatim structured
-  city/state search for accuracy (test case: Southampton NY ~lat 40.88). **Fix:**
-  swap to Nominatim structured params; CLAUDE.md already lists Nominatim as the
-  geocoder, so today's code and the docs disagree — see H2.
+- [x] 🟡 **F3 — Geocoding switched from Open-Meteo to Nominatim.** *(Done 2026-07-16,
+  PR #31.)* `CreateTournament.handleNext` now geocodes via Nominatim free-text search:
+  `courseName, city, state` first, falling back to a town-level `city, state` query if
+  the specific query misses, with an `email=` param per Nominatim's usage policy.
+  Fixes the root cause — Open-Meteo geocoded on `name` only and returned null lat/lon
+  for UK links courses (The Open @ Royal Birkdale), leaving the weather widget blank.
+  Royal Birkdale's `event_details` rows were backfilled by hand (53.6217, -3.0325)
+  outside this PR; new tournaments now resolve automatically. C4 (silent geocode
+  failure) is unrelated and still open.
 
 - [ ] ⚪ **F4 — No test coverage anywhere.**
   Zero unit/integration tests. The highest-value targets are pure and easy to cover:

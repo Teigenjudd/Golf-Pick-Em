@@ -290,7 +290,7 @@ Infrastructure notes:
   events to poll, and writes `golf.leaderboard_cache`.
 - **No third-party API key reaches the browser.** Slash Golf and The Odds API are both
   proxied (`slash-golf-proxy`, `odds-proxy` — the latter added 2026-07-14 for A2). Only
-  the keyless APIs (Open-Meteo weather + geocoding) are still called client-side.
+  the keyless APIs (Open-Meteo weather, Nominatim geocoding) are still called client-side.
 - Unchanged from today: magic-link auth, pg_cron cadence.
 
 ---

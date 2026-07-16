@@ -186,10 +186,6 @@ public in the bundle for the life of the project and must be assumed burned.
 - Scoring: unmatched picks silently score as null ("benched") instead of being flagged;
   DQ/DNS states unhandled. (BACKLOG B1, B3)
 - Zero test coverage anywhere. (BACKLOG F4)
-- Docs drift: CLAUDE.md's architecture summary still describes the pre-migration
-  `tournaments` model and says Nominatim geocoding while the code uses Open-Meteo;
-  `docs/AUDIT.md` is superseded; `index.html` title still says "Golf Pick'Em".
-  (BACKLOG H1–H4, F3)
 
 ---
 
