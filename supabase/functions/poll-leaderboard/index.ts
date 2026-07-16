@@ -124,20 +124,36 @@ Deno.serve(async (req) => {
     })
   }
 
+  // Multiple pools can each own their own event while pointing at the SAME real
+  // tournament (same Slash Golf tourn id). Pools are created at different times, so
+  // each freezes its own odds/field at creation — but they all want the identical
+  // LIVE leaderboard. So group active events by tourn id, hit the external API ONCE
+  // per tournament, and fan that one payload out to every event sharing it. Slash
+  // Golf spend now scales with tournaments, not pools. (Odds live in golf.tier_players
+  // and are never touched here — only live scores are shared.)
+  const eventsByTourn = new Map<string, string[]>() // slash tourn id -> event_ids
+  for (const d of active) {
+    const ids = eventsByTourn.get(d.slash_golf_tournament_id) ?? []
+    ids.push(d.event_id)
+    eventsByTourn.set(d.slash_golf_tournament_id, ids)
+  }
+
   const year = new Date().getFullYear()
   const results: Array<{ id: string; ok?: boolean; error?: string }> = []
   let callsThisPoll = 0
 
-  for (const event of active) {
-    // Re-check cap before each call in case we're polling multiple events
+  for (const [tournId, eventIds] of eventsByTourn) {
+    // Re-check cap before each external call (one call per tournament now)
     if (currentCount + callsThisPoll >= MONTHLY_CAP) {
-      results.push({ id: event.event_id, error: 'Monthly cap reached mid-poll' })
+      for (const eid of eventIds) {
+        results.push({ id: eid, error: 'Monthly cap reached mid-poll' })
+      }
       continue
     }
 
     try {
       const res = await fetch(
-        `${SLASH_GOLF_BASE}/leaderboard?orgId=1&tournId=${event.slash_golf_tournament_id}&year=${year}`,
+        `${SLASH_GOLF_BASE}/leaderboard?orgId=1&tournId=${tournId}&year=${year}`,
         {
           headers: {
             'x-rapidapi-key': slashGolfKey,
@@ -146,37 +162,45 @@ Deno.serve(async (req) => {
         },
       )
 
-      console.log('[poll] fetch tournId=', event.slash_golf_tournament_id, 'year=', year, 'status=', res.status)
+      console.log('[poll] fetch tournId=', tournId, 'year=', year,
+        'status=', res.status, 'events=', eventIds.length)
 
       if (!res.ok) {
-        results.push({ id: event.event_id, error: `Slash Golf ${res.status}` })
+        for (const eid of eventIds) {
+          results.push({ id: eid, error: `Slash Golf ${res.status}` })
+        }
         continue
       }
 
       const data = await res.json()
-      callsThisPoll++
+      callsThisPoll++ // one external call served every event on this tournament
       console.log('[poll] leaderboardRows=', (data?.leaderboardRows?.length ?? 'none'))
 
-      await supabase
-        .schema('golf')
-        .from('leaderboard_cache')
-        .delete()
-        .eq('event_id', event.event_id)
+      // Same payload written to each event that shares this tournament.
+      for (const eid of eventIds) {
+        await supabase
+          .schema('golf')
+          .from('leaderboard_cache')
+          .delete()
+          .eq('event_id', eid)
 
-      const { error: insertError } = await supabase
-        .schema('golf')
-        .from('leaderboard_cache')
-        .insert({ event_id: event.event_id, data })
+        const { error: insertError } = await supabase
+          .schema('golf')
+          .from('leaderboard_cache')
+          .insert({ event_id: eid, data })
 
-      console.log('[poll] cache write err=', insertError?.message ?? 'none')
-      results.push(
-        insertError
-          ? { id: event.event_id, error: insertError.message }
-          : { id: event.event_id, ok: true },
-      )
+        console.log('[poll] cache write event=', eid, 'err=', insertError?.message ?? 'none')
+        results.push(
+          insertError
+            ? { id: eid, error: insertError.message }
+            : { id: eid, ok: true },
+        )
+      }
     } catch (err) {
       console.error('[poll] threw', (err as Error).message)
-      results.push({ id: event.event_id, error: (err as Error).message })
+      for (const eid of eventIds) {
+        results.push({ id: eid, error: (err as Error).message })
+      }
     }
   }
 
