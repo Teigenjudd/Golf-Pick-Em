@@ -189,17 +189,26 @@ export default function CreateTournament() {
       if (hostCourse?.courseName && !courseName.trim()) setCourseName(hostCourse.courseName)
 
       const loc = hostCourse?.location
-      const geoQuery = loc?.city && loc?.state ? `${loc.city}, ${loc.state}` : (hostCourse?.courseName || '')
+      // Nominatim free-text search: the most specific query (course + city + state) pins the
+      // course itself, and gracefully falls back to the town when the course is unknown.
+      // Replaces Open-Meteo's name-only geocoder, which couldn't resolve course names or
+      // "City, State" strings — it returned nothing for UK links courses (docs/BACKLOG.md F3).
+      const geoQuery = [hostCourse?.courseName, loc?.city, loc?.state].filter(Boolean).join(', ')
 
       const [oddsOutcomes, rankingsData, geoResult] = await Promise.all([
         sportKey ? getGolfOdds(sportKey).catch(() => []) : Promise.resolve([]),
         getRankings().catch(() => null),
         geoQuery
-          ? fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(geoQuery)}&count=1`)
-              .then(r => r.json()).then(d => d.results?.[0] ?? null).catch(() => null)
+          ? fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(geoQuery)}&format=json&limit=1`)
+              .then(r => r.json()).then(d => d?.[0] ?? null).catch(() => null)
           : Promise.resolve(null),
       ])
-      setGeoCoords({ lat: geoResult?.latitude ?? null, lon: geoResult?.longitude ?? null })
+      const geoLat = geoResult ? parseFloat(geoResult.lat) : NaN
+      const geoLon = geoResult ? parseFloat(geoResult.lon) : NaN
+      setGeoCoords({
+        lat: Number.isFinite(geoLat) ? geoLat : null,
+        lon: Number.isFinite(geoLon) ? geoLon : null,
+      })
       if (sportKey && oddsOutcomes.length === 0) {
         setCachedData({ fieldData, rankingsData })
         setRetryIn(180)
