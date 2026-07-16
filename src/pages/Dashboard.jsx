@@ -62,9 +62,10 @@ export default function Dashboard() {
 
   // Fetch rank + score for locked/complete tournaments
   useEffect(() => {
-    const targets = myTournaments.filter(t =>
-      t.tournamentStatus === 'locked' || t.tournamentStatus === 'complete'
-    )
+    const targets = myTournaments.filter(t => {
+      const pastLockTime = t.lockTime && new Date(t.lockTime) <= new Date()
+      return t.tournamentStatus === 'locked' || t.tournamentStatus === 'complete' || pastLockTime
+    })
     if (!targets.length || !user) return
 
     targets.forEach(async t => {
