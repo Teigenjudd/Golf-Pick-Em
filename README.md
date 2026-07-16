@@ -9,7 +9,7 @@ A social sports pick'em platform for friend groups. Currently focused on PGA gol
 - **Frontend:** React + Vite + Tailwind CSS v4
 - **Backend:** Supabase (Postgres + Auth + Edge Functions + RLS)
 - **Hosting:** Netlify — [getpoold.app](https://getpoold.app)
-- **APIs:** Slash Golf via RapidAPI (proxied), The Odds API, Open-Meteo (weather + geocoding)
+- **APIs:** Slash Golf via RapidAPI (proxied), The Odds API, Open-Meteo (weather), Nominatim (course geocoding)
 
 ## Local Development
 

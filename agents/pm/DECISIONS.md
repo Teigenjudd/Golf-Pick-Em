@@ -446,3 +446,37 @@ test-only one; both rely on a human doing the right thing rather than a hook enf
 **Revisit if:** the `.claude/` convention gets skipped in practice (that's a sign it needs
 to become a GitHub Action or a separate check outside the repo's own hook), or a test-only
 PR ships a real logic bug that a review would have caught.
+
+---
+
+## 2026-07-16 — Course geocoding stays direct-to-Nominatim, town-level fallback over precision
+
+**Decision:** `CreateTournament` now geocodes courses via Nominatim's free-text search
+instead of Open-Meteo's name-only match (BACKLOG F3), called directly from the browser —
+same pattern as the geocoder it replaces — rather than routed through an edge-function
+proxy. The query tries the specific `courseName, city, state` string first (pins the
+actual course), and falls back to a town-level `city, state` query if that misses, so a
+course name that doesn't fuzzy-match OpenStreetMap's data still resolves to roughly the
+right weather. Requests carry Nominatim's policy-compliant `email=` identifier param
+(the browser can't set a custom `User-Agent`).
+
+**Why:** Weather only needs to be regionally right, not GPS-precise, so a resolvable
+town-level fallback is worth more than a precise query that can silently return nothing —
+the senior-dev review flagged this as the one real regression risk (a course string that
+doesn't match OSM would have gone from "geocodes the town" under the old Open-Meteo query
+to "resolves nothing" under a courseName-only Nominatim query). On proxying: this is one
+lookup at tournament-creation time against a free public endpoint with no API key to
+protect, unlike Slash Golf/Odds (`slash-golf-proxy`, `odds-proxy`) where a leaked key was
+the actual risk being defended against — so a proxy would add infra with no matching
+threat. The `email=` param is the cheap, correct way to be a good citizen of that public
+endpoint instead.
+
+**Gave up:** No fallback ladder finer than "specific query, then town" — a course whose
+*town* also fails to geocode (unlikely, but possible for very small towns) still gets no
+weather, same as before. Geocoding also stays inline in `CreateTournament.jsx` rather than
+factored into a `src/lib/` helper like the other third-party calls — flagged as a nit, not
+worth a refactor for one call site.
+
+**Revisit if:** Nominatim's public server starts rate-limiting or blocking Poold's traffic
+(the `email=` param is the mitigation, not a guarantee), or a second geocoding call site
+appears and the inline-vs-helper tradeoff changes.
