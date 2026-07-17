@@ -1,0 +1,10 @@
+{
+  "comment": "design-sync-only tsconfig. esbuild's tsconfig-paths plugin uses these paths to swap the throwing supabase client for a no-op stub in the preview bundle. Not used by the app build.",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "../lib/supabase": ["./supabase-stub.js"],
+      "../../utils/scoring": ["./scoring-preview.js"]
+    }
+  }
+}

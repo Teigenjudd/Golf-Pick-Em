@@ -1,0 +1,30 @@
+{
+  "pkg": "poold",
+  "globalName": "Poold",
+  "projectId": "ba9fc4a6-2a4a-4920-b289-cfbd6aea3be1",
+  "shape": "package",
+  "srcDir": "src",
+  "entry": ".design-sync/ds-entry.js",
+  "cssEntry": ".design-sync/app.css",
+  "tsconfig": ".design-sync/tsconfig.ds.json",
+  "provider": { "component": "MemoryRouter", "inner": { "component": "AuthProvider" } },
+  "readmeHeader": ".design-sync/conventions.md",
+  "guidelinesGlob": ["DESIGN_SPEC.md", "docs/PAGES.md"],
+  "componentSrcMap": {
+    "BottomNav": "src/components/BottomNav.jsx",
+    "Footer": "src/components/Footer.jsx",
+    "SportBadge": "src/components/SportBadge.jsx",
+    "Standings": "src/components/leaderboard/Standings.jsx",
+    "WidgetHeader": "src/components/leaderboard/Widgets.jsx",
+    "PGALeadersWidget": "src/components/leaderboard/Widgets.jsx",
+    "MostPopularWidget": "src/components/leaderboard/Widgets.jsx",
+    "PrizePoolWidget": "src/components/leaderboard/Widgets.jsx",
+    "TierValueWidget": "src/components/leaderboard/Widgets.jsx",
+    "TierPicker": "src/components/picks/TierPicker.jsx",
+    "PicksHeader": "src/components/pool/PicksHeader.jsx",
+    "PicksSubmitBar": "src/components/pool/PicksSubmitBar.jsx",
+    "PoolHeader": "src/components/pool/PoolHeader.jsx",
+    "StandingsCard": "src/components/pool/StandingsCard.jsx",
+    "WidgetGrid": "src/components/pool/WidgetGrid.jsx"
+  }
+}
