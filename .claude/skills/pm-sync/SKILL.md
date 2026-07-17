@@ -9,8 +9,20 @@ You are acting as Poold's PM agent. A PR is about to merge. Your job is to make 
 documentation true again **in that same PR**, so docs never lag the code and no
 follow-up PR (and no extra Netlify build) is needed.
 
-Read `agents/pm/PM.md` first — it holds the **ownership index**, which is the contract
-you run on. This skill is the procedure; that table is the data.
+**Size the sync to the diff.** A one-file change gets a one-file-shaped reconciliation,
+not a full doc audit. Most of your cost is wasted when you read whole docs to fix a line
+or walk every index row for a change that touches one area. Two habits keep you fast
+without losing accuracy:
+
+- **Grep, then read the slice — not the whole file.** To fix a stale claim, `grep -rn`
+  the changed term, then `Read` only the region around the hit (`offset`/`limit`), edit,
+  move on. Only read a doc end-to-end when you genuinely need its whole shape.
+- **Let the diff pick the docs.** Start from what changed and pull in only the index rows
+  and docs those paths actually touch (see the trigger table in §2). Don't deliberate over
+  index rows the diff can't have affected.
+
+Read `agents/pm/PM.md` first for the **ownership index** — but consult the rows the diff
+implicates, not all 300+ lines. This skill is the procedure; that table is the data.
 
 ## 1. Read what actually changed
 
@@ -28,8 +40,9 @@ carries the *why*, which is what `DECISIONS.md` wants.
 
 ## 2. Map changes to owned docs
 
-Walk the ownership index in `agents/pm/PM.md` and ask, for each row, whether this diff
-made it untrue. Some reliable triggers:
+Start from the changed paths and let this trigger table pull in the docs that own them —
+that's your working set. Only then open the matching `agents/pm/PM.md` rows to confirm.
+Don't walk the whole index row by row; consult the rows the diff implicates.
 
 | If the diff touched… | Then check |
 |---|---|
@@ -45,11 +58,15 @@ made it untrue. Some reliable triggers:
 **Then do the reverse pass, which is the one that catches real bugs:** search the docs
 for claims this PR just *falsified*. A doc that is confidently wrong is worse than one
 that's merely stale, because the next agent trusts it. Grep for the names of things you
-touched:
+touched, then read only the matched lines and their surrounding paragraph — not the
+whole file:
 
 ```bash
 grep -rn "<table/component/flag you changed>" --include=*.md . | grep -v node_modules
 ```
+
+Each hit line already tells you the file and line number — jump straight there with a
+bounded `Read` (`offset`/`limit`) and fix the claim in place.
 
 This is how we caught `BACKLOG.md` claiming `pga_event_badges` was dead when
 `createGolfPool` still reads it — a claim that would have caused a silent data loss in
@@ -102,5 +119,8 @@ PM_SYNC_SKIP=1 gh pr merge <n> --merge --delete-branch
 - **`CLAUDE.md` stays at the repo root.** Claude Code auto-loads it from there.
 - **Don't recreate `TODO.md`.** It was deleted on 2026-07-13 as a stale duplicate of
   `BACKLOG.md`.
-- Docs-only changes don't trigger a Netlify build (`netlify.toml` ignore rule), so
-  thoroughness here is free.
+- Docs-only changes don't trigger a Netlify build (`netlify.toml` ignore rule), so a doc
+  fix never costs a deploy. But it still costs time and tokens on the merge path — so be
+  **proportionate, not exhaustive**: size the sync to the diff, read slices over whole
+  files, and stop once the docs the change touched are true. Thoroughness means "no false
+  claim survives," not "every doc re-read from the top."
