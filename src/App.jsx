@@ -18,6 +18,17 @@ import DemoLanding from './demo/DemoLanding'
 import DemoTournament from './demo/DemoTournament'
 import DemoPicks from './demo/DemoPicks'
 
+function RootRoute() {
+  // The landing page at "/". If you already have a session, skip the login
+  // screen and go straight to your dashboard (ProtectedRoute there still
+  // handles the unnamed-profile → /welcome bounce). While the session is
+  // still being read, render nothing so the login form doesn't flash first.
+  const { user, loading } = useAuth()
+  if (loading) return null
+  if (user) return <Navigate to="/dashboard" replace />
+  return <Login />
+}
+
 function ProtectedRoute({ children }) {
   const { user, profile, loading } = useAuth()
   const location = useLocation()
@@ -47,7 +58,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/" element={<RootRoute />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/join/:code" element={<Join />} />
 
