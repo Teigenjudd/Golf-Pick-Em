@@ -58,7 +58,7 @@ export default function Login() {
           ) : (
             <form onSubmit={handleSubmit}>
               <p className="text-[13px] text-warm-400 text-center mb-[22px] leading-[1.55]">
-                Sign in with your email.<br />No password — we&apos;ll send a magic link.
+                Sign in with your email.<br />No password — we&apos;ll email you a sign-in link.
               </p>
               <div className="mb-[14px]">
                 <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-warm-400 mb-[7px]">
@@ -79,7 +79,7 @@ export default function Login() {
                 disabled={loading}
                 className="w-full bg-brand text-white font-bold text-[15px] py-[14px] rounded-[11px] border-none cursor-pointer disabled:opacity-50"
               >
-                {loading ? 'Sending…' : 'Send Magic Link'}
+                {loading ? 'Sending…' : 'Email me a sign-in link'}
               </button>
               <p className="text-[11px] text-warm-300 leading-[1.5] text-center mt-3 mb-0">
                 By signing in you agree to our{' '}

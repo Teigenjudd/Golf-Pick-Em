@@ -12,7 +12,7 @@ export default function Privacy() {
 
       <h2>What we collect</h2>
       <ul>
-        <li><strong>Your email address.</strong> It is how you sign in — we email you a magic link instead of using passwords. We never sell it, rent it, or use it to market anything to you.</li>
+        <li><strong>Your email address.</strong> It is how you sign in — we email you a sign-in link instead of using passwords. We never sell it, rent it, or use it to market anything to you.</li>
         <li><strong>Your display name.</strong> You choose it, and you can change it at any time from the You tab. This is the only thing other people in your pools see.</li>
         <li><strong>Your picks and scores.</strong> The players you select and the results that follow from them.</li>
         <li><strong>Basic technical logs.</strong> Our host keeps standard server logs (IP address, browser type, timestamps) for security and reliability. We do not use advertising trackers or third-party analytics.</li>

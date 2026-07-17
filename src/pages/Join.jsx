@@ -60,7 +60,7 @@ export default function Join() {
     )
   }
 
-  /* ── Unauthenticated: show magic link form ── */
+  /* ── Unauthenticated: show sign-in link form ── */
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-sand px-5 py-10">
@@ -108,7 +108,7 @@ export default function Join() {
                   disabled={sending}
                   className="w-full bg-brand text-white font-bold text-[15px] py-[14px] rounded-[11px] border-none cursor-pointer disabled:opacity-50"
                 >
-                  {sending ? 'Sending…' : 'Send Magic Link'}
+                  {sending ? 'Sending…' : 'Email me a sign-in link'}
                 </button>
                 <p className="text-[11px] text-warm-300 leading-[1.5] text-center mt-3 mb-0">
                   By signing in you agree to our{' '}
