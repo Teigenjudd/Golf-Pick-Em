@@ -120,7 +120,7 @@ Pages with a primary subject (TournamentDetail, Dashboard) use a `bg-fairway` he
 
 | Route | Component | Access |
 |---|---|---|
-| `/` | Login.jsx | Public |
+| `/` | RootRoute → Login.jsx | Public (signed-in visitors redirect to `/dashboard`) |
 | `/auth/callback` | AuthCallback.jsx | Public |
 | `/join/:code` | Join.jsx | Public |
 | `/privacy` | legal/Privacy.jsx | Public |

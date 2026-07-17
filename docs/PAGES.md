@@ -24,7 +24,7 @@ The dividing line: **does this page belong to a specific pool?** If yes → spor
 
 **Theme:** General
 
-**What it does:** Entry point for new and returning users. Sends a magic link to the supplied email. No passwords.
+**What it does:** Entry point for new and returning users. Sends a magic link to the supplied email. No passwords. `/` is gated by a `RootRoute` guard in `src/App.jsx`: while the session is resolving it renders nothing (avoids a login-form flash), an already-authenticated visitor is redirected straight to `/dashboard`, and everyone else sees the form below. (Fixed 2026-07-16 — previously `/` always rendered `<Login />`, even for signed-in visitors.)
 
 **Data available:**
 - None — pure form, no server data displayed.
