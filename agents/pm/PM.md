@@ -146,6 +146,12 @@ writing code.
   "sign-in link" across Login, Join, and Privacy (see `agents/pm/DECISIONS.md`,
   2026-07-17). Supabase's own dashboard template label ("Magic Link") is unaffected —
   it's their fixed internal name, never user-facing.
+  **Follow-up, shipped 2026-07-17 (PR #37):** the footer lived in its own trailing
+  `<table>` below the card, and Gmail-app/Outlook-mobile read it as a signature/quoted
+  block and collapsed it behind a "…" expander. Folded it into the main card table as
+  the final row with a `border-top` divider instead — one cohesive block, nothing left
+  to collapse. Template-only resync; the dashboard paste was already live and verified
+  on a real mobile client before this PR landed.
 - **Claude Design sync scaffolding — shipped 2026-07-17 (PR #35).** All 15 shared UI
   components (`src/components/**`) are now wired into a claude.ai/design project under
   `.design-sync/` (config, barrel, compiled CSS, preview cards, generated preview data),
