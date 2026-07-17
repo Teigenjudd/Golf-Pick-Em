@@ -42,9 +42,11 @@
   right now the one channel we advertise for exercising that right is a dead drop.
   Accepted knowingly to unblock the launch; it is the weakest line in either document
   and should not sit here long.
-  **State today:** `getpoold.app` DNS is hosted at Netlify (nameservers `nsone.net`)
-  and has **no MX records at all**, which is why mail bounces rather than merely
-  going unread.
+  **State today (2026-07-16):** still open — this is the **receiving** half of
+  `getpoold.app` mail and is a separate DNS concern from C7 (closed below). C7 stood
+  up **outbound** auth mail via Resend/custom SMTP (SPF/DKIM/DMARC on the sending
+  side); it did not add **inbound** MX records, so `privacy@getpoold.app` still
+  bounces. Queued as the next task.
   **Fix (cheapest path, ~5 min, no nameserver change):** sign up at ImprovMX (or
   ForwardEmail) with `getpoold.app`, alias `privacy@` → `juddteigen@gmail.com`, then
   add the 2 MX records + 1 SPF TXT record they issue to Netlify DNS. Receive-only —
@@ -62,6 +64,13 @@
   (fold into B4's atomic-counter fix rather than duplicating the read-then-write bug).
   *(Was labelled A7; renumbered 2026-07-15 to resolve an ID collision with the
   `privacy@` item above.)*
+
+- [ ] ⚪ **A9 — Privacy policy's service-provider list is now stale (new 2026-07-16).**
+  `src/pages/legal/Privacy.jsx` lists only Supabase and Netlify as service providers.
+  Since C7 (closed below), auth emails also pass through **Resend** (custom SMTP,
+  `smtp.resend.com`) — a third party that now handles player email addresses in
+  transit. **Fix:** add a one-line Resend entry alongside Supabase/Netlify. Source
+  file, not a doc — flagged here per the ownership index, not fixed in this PR.
 
 ---
 
@@ -161,32 +170,6 @@
   cross-browser handoff. Bigger change (new verify UI + flow), hence low priority; pull
   it forward if signup drop-off shows up on social channels. See the ROADMAP status log
   (2026-07-15) and the C1 Closed entry.
-
-- [ ] 🟡 **C7 — Auth emails use Supabase's default sender (generic + rate-limited).**
-  The magic-link email goes out *from* a shared `…@mail.supabase.io` address, not
-  `@getpoold.app`. Two problems: (1) it looks untrustworthy / unbranded and often lands
-  in spam — the invite doesn't visibly come from Poold; (2) Supabase's built-in email
-  service is deliberately **rate-limited and explicitly not for production**, so at any
-  real traction login emails will silently start dropping.
-  **⚠️ Custom SMTP is the single prerequisite for BOTH fixes.** Current Supabase
-  **gates email-template editing behind custom SMTP** — the dashboard Subject/Body
-  fields are locked with "Set up custom SMTP to edit templates" until SMTP is
-  configured (confirmed 2026-07-15). So there is no content-only path: no SMTP →
-  default template AND default sender.
-  - **Sender + deliverability + template unlock (TODO — the one task):** configure
-    **custom SMTP** (Supabase → Project Settings → Auth → SMTP). Cheapest low-ops path:
-    a provider like **Resend** (free tier ~3k/mo), verify `getpoold.app` (adds SPF/DKIM
-    + a send-subdomain MX/return-path at Netlify DNS), paste the SMTP creds. Then mail
-    comes from `@getpoold.app`, authenticated, no rate cap — *and* template editing
-    unlocks.
-  - **Content (WRITTEN, blocked on SMTP):** a branded Poold Magic Link template already
-    lives at `supabase/templates/magic_link.html` (fairway/cream/gold, "Make it
-    interesting.", `{{ .ConfirmationURL }}` button + fallback). Ready to paste into
-    **Auth → Email Templates → Magic Link** *the moment SMTP is on*. Keep the file and
-    the dashboard in sync.
-  **Overlaps with A7** — the `getpoold.app` domain currently has no mail infra at all
-  (no MX, `privacy@` bounces); standing up a sending domain solves both. Also unblocks
-  putting the 6-digit code (**C6**) in the same template later.
 
 ---
 
@@ -383,6 +366,21 @@
 Archived here rather than deleted — the resolution detail is the point. Newest first.
 Historical audit-ID mapping (M2→C1, M3→C2, …) is preserved inline on each still-open
 item as an `(AUDIT Mx)` tag.
+
+- [x] 🟡 **C7 — Auth emails now send from `@getpoold.app` via custom SMTP.**
+  *(Done 2026-07-16, PR #34.)* Resend is verified on `getpoold.app` (SPF/DKIM/DMARC
+  all green) and wired into Supabase as custom SMTP — auth mail now sends from
+  `login@getpoold.app` (host `smtp.resend.com`, user `resend`) instead of the
+  rate-limited default `…@mail.supabase.io` sender. Custom SMTP also unlocked
+  dashboard template editing, so the branded Magic Link template (fairway/cream/gold,
+  "Make it interesting.") is live and tested end-to-end (send + sign-in); its
+  versioned source stays at `supabase/templates/magic_link.html`, kept in sync with
+  the dashboard by hand (this PR's only code change was that copy sync — "You're one
+  tap in." → "Tap in."). Poold only ever calls `signInWithOtp` (`Login.jsx`,
+  `Join.jsx`) — no signUp/reset/reauth/invite/email-change — so the Magic Link
+  template is the only one of Supabase's six auth templates that's ever sent; the
+  other five are dead weight in the dashboard. **A7 (inbound `privacy@` forwarder) is
+  separate and still open** — this closed outbound mail only, not inbound MX.
 
 - [x] 🟠 **C1 — AuthCallback dead-ended on the "Signing you in…" spinner.** *(Fixed 2026-07-15, PR #27.)*
   `AuthCallback` only navigated once `profile` was non-null, so the new-signup trigger

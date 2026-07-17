@@ -135,6 +135,14 @@ writing code.
   string. The Open went from 11 unpriced players to 0. (`docs/NAME_MATCHING.md`)
 - Security audit criticals C1–C4 (pick integrity, pre-lock pick privacy, email
   exposure, committed cron secret) — fixed.
+- **Branded auth email — shipped 2026-07-16 (PR #34, closes BACKLOG C7).** Supabase
+  now sends auth mail through custom SMTP (Resend, verified on `getpoold.app` —
+  SPF/DKIM/DMARC green) instead of the rate-limited default sender, so magic links
+  arrive from `login@getpoold.app` and look like Poold instead of spam. The branded
+  Magic Link template is live in the dashboard, versioned at
+  `supabase/templates/magic_link.html`. This is send-side only — the receive-side
+  gap (`privacy@getpoold.app` still bounces, BACKLOG A7) is unrelated DNS and still
+  open, queued next.
 - **Invite link previews (P1.1) — shipped 2026-07-14 (PR #26).** A join link pasted into a
   group chat now unfurls as a branded card with the organizer's name, the pool, and the
   pick count; `/demo` has its own "no sign-up" pitch; everything else gets a default card.
