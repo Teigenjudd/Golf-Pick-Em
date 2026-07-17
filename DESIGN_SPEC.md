@@ -21,7 +21,7 @@ Everything else (backgrounds, text, borders) is shared across both registers.
 
 | Token name | Hex | Usage |
 |---|---|---|
-| **brand** | `#C14A18` | Wordmark, primary CTA (general register), active nav tab, magic link button, progress bar |
+| **brand** | `#C14A18` | Wordmark, primary CTA (general register), active nav tab, sign-in link button, progress bar |
 | **fairway** | `#1B4332` | Golf header gradient, selected state, primary CTA (sport register), prize amounts, tier circles |
 | **fairway-deep** | `#0F241B` / `#0D1F18` | Golf header gradient end (dark) |
 | **fairway-mid** | `#1F6F47` | Default/fallback badge field (also the U.S. Open's signature field) — badge colors are otherwise per-tournament, see §Sport badge |

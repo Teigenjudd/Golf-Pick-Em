@@ -1,0 +1,61 @@
+<!doctype html>
+<!--
+  Source art for the magic-link email's header band (public/email-header.png).
+
+  Why an image and not HTML: aggressive mobile mail clients (Gmail app, Outlook mobile)
+  force-invert colors in dark mode and ignore the template's color-scheme meta tags —
+  they flip the fairway-green band to light mint and the cream wordmark to dark. Baking
+  the whole band into a PNG makes it immune: dark-mode inversion never recolors image
+  pixels, so POOLD renders in the real brand colors everywhere. See supabase/templates/
+  magic_link.html for how it's wired in.
+
+  Rendered to PNG by scripts/og/build-email-header.mjs via headless Chrome (loads the real
+  Barlow Condensed webfont). Edit this file, re-run `npm run og:email`, commit the PNG.
+
+  Rendered at 2x (1200x296) and displayed at 600x148 in the email, so it stays crisp on
+  retina screens.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap" rel="stylesheet" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        width: 1200px;
+        height: 296px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        background: #1B4332;
+        font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
+        overflow: hidden;
+      }
+
+      .wordmark {
+        font-weight: 800;
+        font-size: 80px;
+        letter-spacing: 6px;
+        line-height: 1;
+        color: #F8F5EE;
+      }
+
+      .tagline {
+        font-weight: 700;
+        font-size: 28px;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        color: #C9A368;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wordmark">POOLD</div>
+    <div class="tagline">Make it interesting.</div>
+  </body>
+</html>
