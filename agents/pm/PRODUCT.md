@@ -114,7 +114,7 @@ a friend ("No cards in yet," "Your picks are in"), never like a sportsbook or ES
 
 **The player (invited):**
 1. Gets a link from a friend → lands on Join, sees the pool name → enters email →
-   clicks magic link → picks a display name (one field, the only setup step there is) →
+   clicks the sign-in link → picks a display name (one field, the only setup step there is) →
    is in the pool it invited them to. No password, no approval step.
 2. Picks one golfer per tier in a couple of minutes; odds shown for context. Card
    auto-confirms; editable until lock.

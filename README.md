@@ -42,7 +42,7 @@ Leaderboard polling runs via pg_cron, every 20 minutes during the 7am–8pm ET w
 
 ## Key Architecture Decisions
 
-- **No passwords** — magic link auth only via Supabase `signInWithOtp`
+- **No passwords** — sign-in link auth only via Supabase `signInWithOtp` (user-facing copy says "sign-in link"; Supabase's own dashboard template is still labeled "Magic Link" internally)
 - **Join code is the access gate** — no admin approval step for new users
 - **No third-party API key touches the browser** — Slash Golf and The Odds API are both proxied through edge functions; leaderboard data is cached in Supabase
 - **WD/CUT players penalized +20** — kept in the scoring pool rather than dropped

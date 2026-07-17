@@ -95,8 +95,11 @@ writing code.
 - Multiple pools per event is wired in the schema but **not surfaced in UI** — the app
   still assumes one pool per event. Future feature, not a bug (BACKLOG G3).
 - Commissioner tools are a first-class surface, not an afterthought.
-- Picks auto-confirm on submit; join code + magic link is the entire access gate (no
-  approval step, no passwords).
+- Picks auto-confirm on submit; join code + sign-in link is the entire access gate (no
+  approval step, no passwords). User-facing copy says "sign-in link" (not "magic link,"
+  and deliberately not "invite" — that word names the pool join-code flow); Supabase's
+  own dashboard template is still fixed-labeled "Magic Link" internally (PR #36,
+  2026-07-17).
 - WD/CUT players are penalized +20 and stay in the scoring pool; best N of M scores count.
 - Tier format is currently hardcoded (6 regular tiers of 6 + 2 wildcard tiers);
   making it commissioner-configurable is backlogged (G1).
@@ -135,6 +138,14 @@ writing code.
   string. The Open went from 11 unpriced players to 0. (`docs/NAME_MATCHING.md`)
 - Security audit criticals C1–C4 (pick integrity, pre-lock pick privacy, email
   exposure, committed cron secret) — fixed.
+- **Sign-in email dark-mode fix + copy rename — shipped 2026-07-17 (PR #36).** The
+  auth email's fairway header band is now a baked PNG (`public/email-header.png`,
+  `npm run og:email`) instead of live HTML text, because Gmail-app/Outlook-mobile
+  force-invert colors in dark mode and flipped the band to light mint — image pixels
+  don't get recolored. Alongside it, user-facing copy renamed "magic link" →
+  "sign-in link" across Login, Join, and Privacy (see `agents/pm/DECISIONS.md`,
+  2026-07-17). Supabase's own dashboard template label ("Magic Link") is unaffected —
+  it's their fixed internal name, never user-facing.
 - **Claude Design sync scaffolding — shipped 2026-07-17 (PR #35).** All 15 shared UI
   components (`src/components/**`) are now wired into a claude.ai/design project under
   `.design-sync/` (config, barrel, compiled CSS, preview cards, generated preview data),

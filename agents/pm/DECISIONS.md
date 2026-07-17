@@ -13,6 +13,43 @@
 
 ---
 
+## 2026-07-17 — Sign-in email header baked as PNG; user copy renamed "magic link" → "sign-in link"
+
+**Decision:** Two calls in PR #36. (1) The auth email's fairway header band is now a
+baked PNG (`public/email-header.png`, served from `getpoold.app/email-header.png`,
+rendered by `npm run og:email` → `scripts/og/build-email-header.mjs` +
+`scripts/og/email-header.html`, cloned from the existing OG-card toolchain) instead of
+live HTML text. (2) All user-facing copy that named this flow ("Send Magic Link" button,
+Login/Join subtext, the Privacy collection bullet) is renamed to "sign-in link."
+Supabase's own dashboard template category stays labeled "Magic Link" — that's their
+fixed, admin-only internal name and is out of our control; it is never shown to a player.
+
+**Why:** (1) Gmail-app and Outlook-mobile force-invert colors in dark mode and ignore
+the template's `color-scheme` meta tags, flipping the fairway header to light mint and
+the cream wordmark to dark — a real, industry-standard workaround, since image pixels
+aren't recolored by that inversion. (2) "Magic link" is Supabase's marketing term, not
+ours, and it was starting to collide with "invite" in casual usage; "sign-in link" is
+plainer and leaves "invite" free to mean only the pool join-code flow.
+
+**What we gave up:** (1) The header is now pixels, not text — any future tagline or
+brand-color change requires re-running `npm run og:email`, re-committing the PNG, and
+re-verifying `getpoold.app/email-header.png` resolves *before* the updated template is
+pasted into the Supabase dashboard (pasting first 404s the header for every email sent
+in the gap; deploy-order note lives in
+`agents/senior-dev/reviews/feat-email-dark-mode-header-and-copy.md`). It's also slightly
+less accessible to screen readers than live text (mitigated by alt text on the `<img>`).
+(2) The primary sign-in button is intentionally left as real HTML (a tappable link, not
+an image map) — it can still flip under the same forced dark-mode inversion the header
+fix defends against; that's accepted as cosmetic-only since the button stays functional
+either way.
+
+**What would make us revisit:** If Gmail/Outlook stop force-inverting dark mode (drops
+the reason for the PNG), or if the brand header needs to change often enough that
+"regenerate + recommit + reverify" becomes a real workflow tax — at that point live HTML
+text plus better dark-mode-safe CSS would be worth another look.
+
+---
+
 ## 2026-07-17 — Design-sync gets shims, not source changes
 
 **Decision:** Wiring Poold's 15 shared UI components into a claude.ai/design project
