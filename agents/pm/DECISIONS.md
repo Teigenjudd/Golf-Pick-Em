@@ -13,6 +13,37 @@
 
 ---
 
+## 2026-07-17 — Design-sync gets shims, not source changes
+
+**Decision:** Wiring Poold's 15 shared UI components into a claude.ai/design project
+(`.design-sync/`, PR #35) required two preview-only shims — a stub for
+`src/lib/supabase.js` (the real client throws at import with no env in the bundle) and an
+ASCII-safe shadow of `src/utils/scoring.js` (the real file writes regex character classes
+with literal non-ASCII characters, which crashes if the design-sync bundler ever loads it
+as non-UTF-8). Both are swapped in only via `.design-sync/tsconfig.ds.json` path remaps —
+the app's own `vite.config.js` never reads that file, so the shims cannot affect
+`npm run build`/`npm run dev` (verified in senior review). We chose to **add the shims and
+leave `src/` untouched**, rather than fix `scoring.js`'s regexes (a real, cheap, harmless
+fix — see BACKLOG F7) as part of this PR.
+
+**Why:** This PR's stated boundary was zero `src/` changes — a pure tooling/scaffolding
+PR should not be the vehicle for an unrelated source edit, even a trivial one, because it
+blurs what the PR did and what it touched. The scoring.js bug is real but cannot reach
+production (ES modules are always UTF-8-decoded by the browser, regardless of server
+headers) — so there was no urgency forcing the two together.
+
+**What we gave up:** `.design-sync/scoring-preview.js` now has to be kept behaviorally in
+sync with `src/utils/scoring.js` by hand (NOTES.md documents this as a re-sync risk). If
+`computeScores`'s public behavior changes and the shadow isn't updated, design previews
+could silently drift from real scoring — cosmetic risk only, previews don't feed anything
+back into the app.
+
+**Revisit if:** `src/utils/scoring.js` ever gets touched for an unrelated reason — fold
+the `\u`-escape fix (BACKLOG F7) into that PR and delete the shadow, since the two-line
+change is free once the file is already open. Don't open a PR solely for this.
+
+---
+
 ## 2026-07-14 — The crawler gets an RPC, not a service-role key
 
 **Decision:** Link previews are rendered by a Netlify **edge function** that rewrites the

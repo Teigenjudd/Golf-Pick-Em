@@ -323,6 +323,21 @@
   should track format count. Full context: `docs/ENTERPRISE_ARCHITECTURE_PROPOSAL.md`
   (reviewed 2026-07-15).
 
+- [ ] ⚪ **F7 — `scoring.js` writes regexes with literal non-ASCII characters (new
+  2026-07-17, found by the design-sync tooling PR #35).** `src/utils/scoring.js`
+  (`ATOMIC_CODES`/`ATOMIC_VALUES`, the combining-mark range, punctuation/dash classes,
+  ~lines 25-32) writes its character classes with literal accented characters instead of
+  `\u` escapes. Confirmed (senior review, PR #35): under a non-UTF-8 decode (e.g.
+  Windows-1252) the combining-mark range mojibakes into a "Range out of order"
+  `SyntaxError` at parse time. **Cannot reach production** — the deployed app is loaded
+  as ES modules, which browsers must decode as UTF-8 regardless of server headers — so
+  this only bites a tool that loads the file outside that guarantee. It already bit one:
+  the design-sync bundler (`.design-sync/`) hits it and works around it with an
+  ASCII-safe shadow, `.design-sync/scoring-preview.js` (rebuilds identical regexes via
+  `String.fromCharCode`). **Fix:** rewrite the literal characters in `scoring.js` as `\u`
+  escapes (2-line, behavior identical) — then the shadow can be deleted. Deliberately not
+  fixed in PR #35, which touches zero `src/` by design (see DECISIONS, 2026-07-17).
+
 ---
 
 ## G. Product / Feature Gaps

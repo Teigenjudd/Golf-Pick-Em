@@ -135,6 +135,14 @@ writing code.
   string. The Open went from 11 unpriced players to 0. (`docs/NAME_MATCHING.md`)
 - Security audit criticals C1–C4 (pick integrity, pre-lock pick privacy, email
   exposure, committed cron secret) — fixed.
+- **Claude Design sync scaffolding — shipped 2026-07-17 (PR #35).** All 15 shared UI
+  components (`src/components/**`) are now wired into a claude.ai/design project under
+  `.design-sync/` (config, barrel, compiled CSS, preview cards, generated preview data),
+  so future design work happens against the real components + brand tokens instead of a
+  from-scratch mock — no `src/` app code, build config, or user-facing behavior changed.
+  Two preview-only shims exist so the components render in isolation outside the app's
+  Vite build (see `agents/pm/DECISIONS.md`, 2026-07-17); one of them works around a real
+  but production-unreachable latent bug in `scoring.js` (BACKLOG F7).
 - **Branded auth email — shipped 2026-07-16 (PR #34, closes BACKLOG C7).** Supabase
   now sends auth mail through custom SMTP (Resend, verified on `getpoold.app` —
   SPF/DKIM/DMARC green) instead of the rate-limited default sender, so magic links
