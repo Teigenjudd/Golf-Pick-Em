@@ -54,9 +54,15 @@
             names the brand. Regenerate the PNG with `npm run og:email`.
           -->
           <tr>
-            <td align="center" bgcolor="#1B4332" style="background-color:#1B4332; font-size:0; line-height:0;">
+            <td align="center" bgcolor="#1B4332" style="background-color:#1B4332;">
+              <!--
+                Font styles live on the <img>, not the <td>: display:block already removes
+                the gap under the image, and when a client blocks remote images these style
+                the alt text so "POOLD — Make it interesting." still shows in cream on the
+                fairway band (a zeroed font-size on the td would render it invisible).
+              -->
               <img src="https://getpoold.app/email-header.png" width="600" alt="POOLD — Make it interesting."
-                   style="display:block; width:100%; max-width:600px; height:auto; border:0;">
+                   style="display:block; width:100%; max-width:600px; height:auto; border:0; font-family:'Barlow Condensed','Arial Narrow',Arial,sans-serif; font-size:26px; font-weight:800; letter-spacing:2px; color:#F8F5EE;">
             </td>
           </tr>
 
