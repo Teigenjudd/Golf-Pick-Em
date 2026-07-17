@@ -13,6 +13,33 @@
 
 ---
 
+## 2026-07-17 — Auth email footer lives in the card table, not a trailing table
+
+**Decision:** In `supabase/templates/magic_link.html`, the brand footer (POOLD ·
+getpoold.app · address line) is now the final `<tr>` of the same card `<table>` the
+body content sits in, set off by a `border-top` divider, instead of a second
+`<table class="container">` positioned below the card. PR #37, a same-day follow-up to
+PR #36.
+
+**Why:** Gmail-app and Outlook-mobile were reading the detached trailing table as a
+signature/quoted-content block and collapsing it behind a "…" expander, leaving a stray
+ellipsis and an oddly separate box under the message — a second, independent rendering
+bug from the PR #36 dark-mode fix below, caught after that PR's dashboard paste was
+already live. Folding the footer into the card as its last row removes the thing mail
+clients pattern-match on; there is no visual loss since the divider already implied a
+section break.
+
+**What we gave up:** Nothing — this also removed a duplicated `class="container"`
+responsive-width table, so the footer now inherits the card's mobile width for free.
+
+**What would make us revisit:** If the auth email template is ever restructured again,
+keep the footer as the card table's last row, not a separate trailing table — that shape
+is what mail clients collapse. `supabase/templates/magic_link.html` is the versioned
+source; the live copy is pasted into the Supabase dashboard by hand and was confirmed on
+a real mobile client in dark mode before this PR's resync.
+
+---
+
 ## 2026-07-17 — Sign-in email header baked as PNG; user copy renamed "magic link" → "sign-in link"
 
 **Decision:** Two calls in PR #36. (1) The auth email's fairway header band is now a
