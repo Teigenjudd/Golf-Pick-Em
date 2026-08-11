@@ -172,6 +172,32 @@ slope.
 
 ---
 
+## Design direction & the two sport pages
+
+Both CFB sport pages are **functionally new**, not reskins of golf — size PR6/7 accordingly:
+- **Picks page** — a full rebuild (no `TierPicker` reuse): a weekly slate builder with 5 ATS
+  selections, a double-down flag, and a separate-game underdog, with live validity.
+- **Pool detail / leaderboard** — reuses the shell + the scorecard-expand *pattern*, but adds a
+  **week dimension golf never had** (week selector, cumulative-across-weeks scoring, all-new
+  widgets), and the expand shows 6 typed picks with per-pick points, not tiers.
+
+**Week vs season IA (decided):** the season-cumulative standings are the hero and stay ranked by
+season total; the **week selector scopes the expand + widgets to a chosen week** — it does NOT
+re-rank the standings to that week's points. A "Live — scores update as games go final" line sets
+the in-progress expectation.
+
+**Visual direction (exploratory — from a Claude Design pass, NOT locked into tokens yet):**
+midnight-navy ground + brick-red accent over the existing warm-cream neutrals, golf's
+scorecard-expand carried over with a red bar. Reads collegiate-Saturday, distinct from fairway
+green, coherent with the Poold system. Two fixes to carry into the real build:
+1. Use a neutral sample pool name in mocks — avoid "Warpath"-style Native American war imagery.
+2. Double-down copy must reflect the **strict** rule: "cover by more than N · win by X+" — the
+   buffer is a strictly-greater threshold, so an inclusive "N+" is wrong for spreads whose buffer
+   lands on a half-point (e.g. an 8.5 line → 4.5 buffer, which a 13-point win lands exactly on).
+   Build the buffer→"win by X" helper in the scoring engine (PR4) and unit-test it.
+
+---
+
 ## Sport-dispatch wiring + CFB pool creation
 
 - **`src/lib/pools.js`** (new, neutral) — sport-agnostic reads that only touch `public.*`:
