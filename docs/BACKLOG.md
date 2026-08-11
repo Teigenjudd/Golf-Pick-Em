@@ -36,25 +36,26 @@
   **Fix:** scope the SELECT to pools the user participates in, or drop `join_code`
   from the readable column set for non-members. (AUDIT L7.)
 
-- [ ] 🟠 **A7 — `privacy@getpoold.app` doesn't exist. Mail to it bounces.**
-  `/privacy` and `/terms` (shipped 2026-07-14) both name it as the contact and
-  data-deletion address, and the privacy policy promises deletion on request — so
-  right now the one channel we advertise for exercising that right is a dead drop.
-  Accepted knowingly to unblock the launch; it is the weakest line in either document
-  and should not sit here long.
-  **State today (2026-07-16):** still open — this is the **receiving** half of
-  `getpoold.app` mail and is a separate DNS concern from C7 (closed below). C7 stood
-  up **outbound** auth mail via Resend/custom SMTP (SPF/DKIM/DMARC on the sending
-  side); it did not add **inbound** MX records, so `privacy@getpoold.app` still
-  bounces. Queued as the next task.
-  **Fix (cheapest path, ~5 min, no nameserver change):** sign up at ImprovMX (or
-  ForwardEmail) with `getpoold.app`, alias `privacy@` → `juddteigen@gmail.com`, then
-  add the 2 MX records + 1 SPF TXT record they issue to Netlify DNS. Receive-only —
-  replies come from Gmail. A real sending mailbox (Zoho free, or Google Workspace at
-  ~$7/mo) is the upgrade if it ever needs to look like a support desk.
-  **Interim mitigation if this lingers:** point both documents at `juddteigen@gmail.com`,
-  which works today. It's a one-line change in `src/pages/legal/Privacy.jsx` and
-  `Terms.jsx` — a personal address that receives mail beats a branded one that doesn't.
+- [ ] 🟡 **A7 — `privacy@getpoold.app` has no inbound MX; permanent forwarder not built.**
+  `/privacy` and `/terms` (shipped 2026-07-14) originally named it as the contact and
+  data-deletion address, and the privacy policy promises deletion on request — so the
+  channel advertised for exercising that right was a dead drop. **The advertised-address
+  half of this is now fixed (see interim mitigation below); what's open is standing up
+  real inbound mail for the branded `privacy@getpoold.app` address itself.** Downgraded
+  from 🟠 now that the bounce risk to end users is closed.
+  **Interim mitigation — shipped 2026-08-10 (PR #38).** The data-deletion line and
+  Contact sections in `Privacy.jsx` and `Terms.jsx` (both text and `mailto:` hrefs)
+  now point at `tljvllc@gmail.com` — a monitored business/LLC mailbox, not the
+  founder's personal `juddteigen@gmail.com` this item originally proposed as the
+  fallback — so the advertised channel reaches a live inbox today.
+  `privacy@getpoold.app` is unchanged and still has no inbound MX; only the
+  published contact moved.
+  **Permanent fix — still open, deliberately not built.** Real inbound mail for
+  `privacy@getpoold.app` (ImprovMX/ForwardEmail MX + SPF TXT to Netlify DNS, or a
+  Resend-inbound webhook) was considered and rejected for now — a standing 8th
+  vendor or a bespoke webhook isn't worth it for a low-traffic legal-contact address.
+  Revisit if volume or professionalism ever makes a raw Gmail contact untenable. See
+  `agents/pm/DECISIONS.md`, 2026-08-10.
 
 - [ ] ⚪ **A8 — `odds-proxy` doesn't meter the Odds API quota.**
   `api_usage.slash_golf_calls` counts Slash Golf calls; nothing counts The Odds API.

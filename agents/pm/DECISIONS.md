@@ -13,6 +13,34 @@
 
 ---
 
+## 2026-08-10 — A7 interim: publish the LLC Gmail, not the founder's personal one; decline to build permanent inbound mail now
+
+**Decision:** The legal-page contact (`Privacy.jsx` data-deletion line + Contact
+section, `Terms.jsx` Contact section — text and `mailto:` hrefs both) now points at
+`tljvllc@gmail.com`, a monitored business/LLC mailbox — not `juddteigen@gmail.com`,
+the founder's personal address that BACKLOG A7's original interim plan (and `PM.md`)
+had named. Separately, the permanent fix (real inbound mail for
+`privacy@getpoold.app` via an ImprovMX/ForwardEmail MX forwarder, or a Resend-inbound
+webhook) was considered and **not** built. PR #38.
+
+**Why:** `tljvllc@gmail.com` is the better address to put on a Privacy/Terms page as
+the legal contact of record — it reads as the business, not a founder's personal
+inbox, and it's monitored, which is the actual bar (an advertised contact that bounces
+is worse than an unbranded one that's read). On the permanent fix: both routes on the
+table (a third-party forwarding vendor, or a bespoke inbound-webhook integration)
+add a standing dependency — an 8th vendor, or code to build and maintain — for a
+low-traffic legal-contact mailbox. Not worth it yet.
+
+**What we gave up:** A branded `@getpoold.app` address on the legal pages, in favor of
+a working raw Gmail one — a small professionalism hit the senior review flagged and
+accepted as an explicit interim trade-off, not a defect.
+
+**Revisit if:** contact volume grows enough to justify inbound infra, or the raw-Gmail
+look becomes a credibility problem worth ~5 minutes of DNS + a forwarder vendor to fix
+(BACKLOG A7 keeps the permanent-fix path documented).
+
+---
+
 ## 2026-07-17 — Auth email footer lives in the card table, not a trailing table
 
 **Decision:** In `supabase/templates/magic_link.html`, the brand footer (POOLD ·

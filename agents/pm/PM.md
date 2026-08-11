@@ -166,8 +166,18 @@ writing code.
   arrive from `login@getpoold.app` and look like Poold instead of spam. The branded
   Magic Link template is live in the dashboard, versioned at
   `supabase/templates/magic_link.html`. This is send-side only — the receive-side
-  gap (`privacy@getpoold.app` still bounces, BACKLOG A7) is unrelated DNS and still
-  open, queued next.
+  gap (`privacy@getpoold.app` still bounces, BACKLOG A7) is unrelated DNS; the
+  permanent fix is still open, but see the interim mitigation below (PR #38).
+- **A7 interim mitigation — shipped 2026-08-10 (PR #38).** `privacy@getpoold.app`
+  still has no inbound MX and still bounces — that part of A7 is unchanged. What
+  shipped instead: the three user-facing legal contacts (`Privacy.jsx` data-deletion
+  line + Contact section, `Terms.jsx` Contact section — visible text and `mailto:`
+  hrefs both) now point at `tljvllc@gmail.com`, a monitored business/LLC mailbox, so
+  the address Poold actually advertises reaches a live inbox. `CreateTournament.jsx`'s
+  Nominatim `email=` param is a separate, non-user-facing use and was left alone. A
+  real inbound forwarder (ImprovMX/ForwardEmail, or a Resend-inbound webhook) was
+  considered and declined for now — not worth an 8th vendor or bespoke integration for
+  a low-traffic legal-contact address (see `agents/pm/DECISIONS.md`, 2026-08-10).
 - **Invite link previews (P1.1) — shipped 2026-07-14 (PR #26).** A join link pasted into a
   group chat now unfurls as a branded card with the organizer's name, the pool, and the
   pick count; `/demo` has its own "no sign-up" pitch; everything else gets a default card.
@@ -204,12 +214,13 @@ grant that no longer permits it. Rotating the old Odds API key is a manual step;
 public in the bundle for the life of the project and must be assumed burned.
 
 **Open — significant rough edges:**
-- 🟠 **`privacy@getpoold.app` doesn't exist** (BACKLOG A7, new 2026-07-14). Both legal
-  pages name it as the contact and data-deletion address, and `getpoold.app` has no MX
-  record — so mail to it *bounces*, it doesn't merely go unread. The privacy policy
-  promises deletion on request, which makes this the weakest line in either document.
-  ~5 minutes to fix with an email forwarder; one line to mitigate (point the docs at the
-  founder's Gmail).
+- 🟡 **`privacy@getpoold.app` still has no inbound MX and still bounces** (BACKLOG A7,
+  opened 2026-07-14). No longer the weakest line in either legal document: as of
+  2026-08-10 (PR #38) both pages advertise `tljvllc@gmail.com` instead, a monitored
+  mailbox, so the deletion-request channel the Privacy policy promises actually works.
+  What's left is the permanent fix (real inbound mail for the branded address) —
+  deliberately not built; a real forwarder vendor or webhook wasn't worth it for this
+  address's traffic. Downgraded from 🟠 accordingly; revisit if that changes.
 - Phase 5 cleanup not done: legacy `public.tournaments/tiers/picks/...` tables still
   exist (dead but a foot-gun); `public.pool_standings` is scaffolded but never
   written/read — populate or drop. (BACKLOG F1)
