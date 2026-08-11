@@ -45,7 +45,7 @@ export default function Privacy() {
       <h2>Keeping it, and deleting it</h2>
       <p>
         We keep your account for as long as you have one. If you want it gone, email{' '}
-        <a href="mailto:privacy@getpoold.app">privacy@getpoold.app</a> and we will delete your
+        <a href="mailto:tljvllc@gmail.com">tljvllc@gmail.com</a> and we will delete your
         profile, your picks, and your email address. Scores already recorded in a completed
         pool may remain visible to that pool&rsquo;s other members, with your entry anonymized.
       </p>
@@ -72,7 +72,7 @@ export default function Privacy() {
       <h2>Contact</h2>
       <p>
         Questions, or want your data deleted? Email{' '}
-        <a href="mailto:privacy@getpoold.app">privacy@getpoold.app</a>.
+        <a href="mailto:tljvllc@gmail.com">tljvllc@gmail.com</a>.
       </p>
 
     </LegalPage>

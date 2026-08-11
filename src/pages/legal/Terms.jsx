@@ -87,7 +87,7 @@ export default function Terms() {
 
       <h2>Contact</h2>
       <p>
-        Questions? Email <a href="mailto:privacy@getpoold.app">privacy@getpoold.app</a>.
+        Questions? Email <a href="mailto:tljvllc@gmail.com">tljvllc@gmail.com</a>.
       </p>
 
     </LegalPage>
