@@ -60,8 +60,11 @@ writing code.
 ## What we are NOT doing (scope guard)
 
 - No real-money entry fees or payouts through the app (display-only prize pools are OK)
-- No second sport built until golf is proven and stable — the schema seam exists
-  (that was the point of the migration), but no NFL/NBA tables, adapters, or UI yet
+- No second sport **built** until golf is proven and stable — the schema seam exists
+  (that was the point of the migration). **CFB is now the committed sport #2 direction**:
+  format decided, full build plan sequenced into ~11 PRs (`docs/CFB_FORMAT.md`,
+  `docs/CFB_BUILD_PLAN.md`, planning-only PR0 shipped 2026-08-11) — but PR1 (the `cfb`
+  schema scaffold) has not started. No `cfb` tables, adapters, or UI exist yet.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -84,7 +87,14 @@ writing code.
   though because `createGolfPool` mints a separate event per pool, the poll in practice
   dedupes by `slash_golf_tournament_id` and fetches once per real tournament (PR #29).
 - Team sports (NFL, CFB, NBA, NHL) will use game-winner/spread format when added, not
-  tiered athlete picks — each gets its own schema when the time comes.
+  tiered athlete picks — each gets its own schema when the time comes. **CFB is now
+  concretely that:** chosen as sport #2 (2026-08-11, deliberately against every strategy
+  doc's own recommendation to pick a golf-shaped sport first — see DECISIONS). Format =
+  weekly against-the-spread, season-cumulative; full sport-layer siloing (own `cfb`
+  schema, `lib/cfb.js`, scoring engine, picks UI, `cfd-proxy` data provider) over a
+  shared neutral `public` core, with only the `pool_standings` `{rank,total,display}`
+  output shape shared between sports. Planning-only PR0 shipped; build sequenced into
+  ~11 PRs starting with the schema scaffold (`docs/CFB_BUILD_PLAN.md`).
 - Split queries across the `public`/`golf` boundary, not PostgREST cross-schema embeds
   (Phase 0 spike decision).
 
@@ -130,6 +140,20 @@ writing code.
   tournament weekends), scoring with WD/CUT penalties, optional prize-pool display,
   weather widget, public no-auth `/demo`.
 - Multi-sport schema migration Phases 0–4.
+- **CFB (sport #2) planning — shipped 2026-08-11 (PR0, docs-only, PR #39).**
+  `docs/CFB_FORMAT.md` is the rules-of-record: weekly against-the-spread, season-cumulative
+  — 5 ATS picks + 1 optional double-down (+1 bonus for clearing a `max(50% spread, 4)`
+  buffer) + 1 mandatory tiered underdog on a separate game; all-or-nothing submission with
+  full random auto-fill (double-down forfeited) on a missed deadline; single join cutoff
+  before Week 1 (no mid-season entry in v1); data from the CollegeFootballData API.
+  `docs/CFB_BUILD_PLAN.md` sequences the build into ~11 PRs, grounded in a full read of the
+  golf implementation: full sport-layer siloing (own `cfb` schema, `lib/cfb.js`, scoring
+  engine, picks UI, `cfd-proxy` data provider) over the shared neutral `public` core, with
+  only the `pool_standings` output shape shared between sports — finally putting that
+  scaffolded-but-unused table to work (BACKLOG F1). No FormatEngine abstraction extracted
+  at two formats (BACKLOG F6 stays deferred, revisit at format #3). **Execution has not
+  started** — PR1 (the `cfb` schema scaffold) is next. See `agents/pm/DECISIONS.md`,
+  2026-08-11.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.
@@ -278,6 +302,8 @@ a change that breaks the guard. A hook can't safely review its own edit, so this
 | `DESIGN_SPEC.md` (root) | Design tokens, component specs, screen map | …changes a token, component, or screen |
 | `CLAUDE.md` (root) | Brand voice, working style, architecture summary, design system, routes | …changes architecture, routes, conventions, or the design system. **Must stay at repo root — Claude Code auto-loads it from there.** |
 | `docs/MULTI_SPORT_MIGRATION.md` | The multi-sport architecture plan + phase status | …advances or changes the migration (Phase 5 is what's left) |
+| `docs/CFB_FORMAT.md` | College football (sport #2) rules-of-record — the weekly ATS card, scoring, worked examples, join model. What the `cfb` schema, `cfb_submit_week_picks` RPC, and scoring-engine tests are built against | …changes a CFB rule, scoring boundary, or the join model |
+| `docs/CFB_BUILD_PLAN.md` | CFB's PR-sliced implementation plan — architecture decisions, schema sketch, PR sequence (PR1–PR10), open questions for the founder | …changes CFB build sequencing/architecture, or a PR in its sequence ships |
 | `docs/ENTERPRISE_ARCHITECTURE_PROPOSAL.md` | **Reference, not adopted.** Fable's blank-slate ideal architecture for a multi-sport/format platform, plus the review of it against Poold | …basically never. A north-star doc; the actionable takeaway is BACKLOG F6. |
 | `README.md` | The 60-second orientation for a human arriving cold | …changes setup, stack, or a headline architecture decision |
 | `docs/AUDIT.md` | **Historical.** The 2026-06-20 audit; C1–C4 resolution record | …basically never. Superseded by `BACKLOG.md`. Don't add to it. |
