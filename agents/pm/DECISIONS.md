@@ -13,6 +13,67 @@
 
 ---
 
+## 2026-08-11 — CFB chosen as sport #2, against the docs' own recommendation; full sport-layer siloing; FormatEngine still deferred
+
+**Decision:** Six calls, made in one planning pass (PR0, PR #39, `docs/CFB_FORMAT.md` +
+`docs/CFB_BUILD_PLAN.md`, both docs-only — no code shipped):
+
+1. **College football is sport #2**, format = weekly against-the-spread, season-cumulative
+   (5 ATS picks + 1 optional double-down + 1 mandatory tiered underdog, all-or-nothing
+   submission, full random auto-fill on a missed deadline, single join cutoff before Week 1).
+2. **Full siloing of the sport layer** — CFB gets its own `cfb` Postgres schema, its own
+   `src/lib/cfb.js` seam, its own scoring engine, picks UI, theme/badge, and data-provider
+   proxy. CFB code never imports golf and vice versa. The one shared shape is the standings
+   **output**: both sports write the normalized `{ rank, total, display }` projection into
+   `public.pool_standings`, so the dashboard renders either sport with zero sport-specific
+   branches. This finally puts `pool_standings` to work — scaffolded but unused since Phase 1
+   (BACKLOG F1).
+3. **No FormatEngine abstraction (BACKLOG F6) extracted now**, even though F6's own stated
+   trigger — "the moment format #2 is being designed" — has technically fired. Two dissimilar
+   formats (golf's best-N-relative-to-par vs. CFB's weekly ATS grading, sharing zero logic) is
+   judged too few examples to derive the right interface from; extracting now risks the
+   wrong-abstraction-from-too-few-examples failure mode. Revisit at format #3.
+4. **Single data vendor:** the CollegeFootballData API supplies schedule, scores, *and*
+   lines — The Odds API is not used for CFB. Spreads are frozen per pick (`locked_spread`)
+   at submission for grading, since the line can move before kickoff.
+5. **Three findings from reading the golf code, adopted as build constraints:** (a) the
+   "shared" pool shells (`PoolHeader`, `PicksHeader`, `WidgetGrid`, `StandingsCard`) hardcode
+   golf styling today and must be prop-ified before CFB can reuse them; (b) golf's row-by-row
+   `golf.picks` RLS can validate one pick at a time but cannot express CFB's whole-card set
+   constraint (5 distinct ATS games + 1 distinct underdog game + ≤1 double-down), so CFB's
+   submit path is a `SECURITY DEFINER` RPC, `cfb_submit_week_picks`, not row policies; (c)
+   `Join.jsx` — which looks a pool up by join code alone and hardcodes golf's copy/route
+   today — is the real forcing function for sport-dispatch, resolved via a new thin neutral
+   `src/lib/pools.js` that reads only `public.*` to learn a pool's `sport_id` before either
+   sport module is imported.
+6. **Structural note:** a CFB pool spans a season of weekly pick windows with cumulative
+   scoring — golf's one-lock-per-pool model has no week concept, so `cfb.weeks`/a per-week
+   pick-window model is genuinely net-new, not a golf pattern reused.
+
+**Why:** Every strategy doc that has weighed in on sport #2 — `docs/BRAINSTORM.md`
+(Obs.1/§A: "NFL is the second sport" is backwards; team sports are the *most expensive*
+second sport and reuse zero lines of golf) and `docs/MULTI_SPORT_MIGRATION.md` (D1: team
+sports "won't reuse the golf shape") — recommends a golf-shaped sport first (F1, UFC, the
+Derby, awards shows) specifically because it's cheap: same tiered-pick shape, same schema
+pattern, same scoring family. CFB is the opposite of that recommendation on every axis: new
+schema, new format, new data provider, new theme, zero golf reuse. **The founder is
+proceeding with CFB anyway.** This entry exists so that choice reads as a deliberate,
+eyes-open call — not a case of the docs' own advice being missed.
+
+**What we gave up:** The cheap-second-sport path (F1/UFC/Derby/awards) that would have
+validated multi-sport for a fraction of the cost and proved the schema seam before taking on
+a genuinely new contest shape. Also: F6's extraction is deferred a second time, at the exact
+moment its own trigger condition says not to — a conscious bet that two data points still
+isn't enough to abstract from, weighed against the forensic-untangling cost F6 warns about if
+deferred past 3+ formats.
+
+**Revisit if:** CFB's build reveals the golf/CFB scoring engines share more structure than
+expected (then F6 might be worth doing at 2 formats after all, not 3) — or if the schema/UI
+work turns out cheaper or more expensive than the ~11-PR estimate, which should feed back into
+whether "expensive team sport first" was the right call for future retrospective honesty.
+
+---
+
 ## 2026-08-10 — A7 interim: publish the LLC Gmail, not the founder's personal one; decline to build permanent inbound mail now
 
 **Decision:** The legal-page contact (`Privacy.jsx` data-deletion line + Contact

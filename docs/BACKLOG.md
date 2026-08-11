@@ -308,6 +308,12 @@
   second copy of two files. Deferring this until 3+ formats have already diverged turns it
   into forensic untangling under pressure instead of a deliberate days-long extraction.
 
+  **Update (2026-08-11):** the trigger fired — CFB (`docs/CFB_BUILD_PLAN.md`) is format #2
+  being designed — and the founder consciously deferred the extraction instead of doing it
+  now: two dissimilar formats (golf's best-N-relative-to-par vs. CFB's weekly ATS grading)
+  is judged too few examples to derive the right interface from. Revisit at format #3, not
+  this one. See `agents/pm/DECISIONS.md`, 2026-08-11.
+
   **Explicitly out of scope even at that point** (per the same review — see
   `docs/ENTERPRISE_ARCHITECTURE_PROPOSAL.md`, "What should NOT be built now"): a fact ledger,
   idempotency/versioned facts, a provider capability registry, correction/supersession

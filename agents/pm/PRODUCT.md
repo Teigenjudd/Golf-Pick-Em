@@ -179,7 +179,9 @@ betting.
 
 **What we are NOT (scope guards):** no money processed on platform, ever; no public
 pool discovery; no native app yet; no social graph outside the pool; no second sport
-until golf is won.
+**built** until golf is won — though as of 2026-08-11, CFB (college football) is the
+committed sport #2 *direction*: format decided and build sequenced (`docs/CFB_FORMAT.md`,
+`docs/CFB_BUILD_PLAN.md`), nothing built yet. See `ROADMAP.md` item 3.4.
 
 ---
 
