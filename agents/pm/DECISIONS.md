@@ -13,6 +13,45 @@
 
 ---
 
+## 2026-08-11 — CFB PR1: schema enforces game∈week and week uniqueness at the database level, not just in the future RPC
+
+**Decision:** Senior review of the `cfb` schema scaffold (PR1, PR #40) raised four
+foundation-shape questions before any data existed in the new tables — cheap to fix then,
+expensive after. All four were accepted and shipped in the same migration:
+
+1. **`UNIQUE (event_id, week_number)` on `cfb.weeks`.** A CFB event is one season shared
+   by every pool on it (unlike golf, which mints a fresh event per pool), so a re-run of
+   season setup — or a second pool created against the same season — could otherwise
+   double-insert "Week 5" with no way to tell which row a game belongs to.
+2. **A composite FK, `cfb.picks (game_id, week_id) → cfb.games (id, week_id)`.** The plan
+   (`docs/CFB_BUILD_PLAN.md`) always intended the PR2 `cfb_submit_week_picks` RPC to be
+   the enforcement point for "this pick's game is actually in this pick's week." We chose
+   to *also* make it structurally impossible at the schema level, for near-zero cost while
+   the tables are empty, rather than trusting one code path alone. Belt-and-suspenders,
+   not a replacement for the RPC — PR2 still validates the whole weekly card as a set,
+   which no FK can express.
+3. **`CHECK` constraints on the remaining enum-shaped text columns** (`weeks.status`,
+   `games.status`, `picks.result`) — `picks.pick_type` already had one; the others didn't,
+   which was an inconsistency the review caught. A future typo in server code now fails
+   loudly at write time instead of silently writing a bad value that would poison grading
+   or standings later.
+4. **`cfb.event_details.season_year` is `NOT NULL`.** It's always known at event creation
+   and is the defining attribute of a CFB event; nullable was only ever an artifact of the
+   scaffold being unpopulated.
+
+**Why now, not later:** all four are one-line additions on tables with zero rows. Once
+real weeks/games/picks exist, adding a uniqueness constraint or a composite FK means
+dedup­ing live data first — a materially more expensive and riskier change.
+
+**What we gave up:** nothing functional — these are pure guardrails, not scope. The
+schema is marginally less "minimal" than the original `docs/CFB_BUILD_PLAN.md` sketch,
+which is now updated to match what shipped.
+
+**What would make us revisit:** if a legitimate write path needs a week status or pick
+result value outside the current enums, the fix is widening the `CHECK`, not removing it.
+
+---
+
 ## 2026-08-11 — CFB chosen as sport #2, against the docs' own recommendation; full sport-layer siloing; FormatEngine still deferred
 
 **Decision:** Six calls, made in one planning pass (PR0, PR #39, `docs/CFB_FORMAT.md` +

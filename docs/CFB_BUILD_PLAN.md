@@ -1,11 +1,14 @@
 # College Football (Sport #2) — Build Plan
 
-> **Status:** Planning. Written 2026-08-11 from a dedicated planning pass, grounded in a
-> full read of the golf implementation as the template. This is the *how-we-build-it*
-> sequencing doc; the *what-the-game-is* rules live in `docs/CFB_FORMAT.md` (PR0).
-> Supersedes nothing — it's net-new work. See `docs/MULTI_SPORT_MIGRATION.md` for the
-> per-schema architecture this sits on, and BACKLOG **F1** (`pool_standings`) / **F6**
-> (format contract) for the debt this interacts with.
+> **Status:** Planning, execution started. Written 2026-08-11 from a dedicated planning
+> pass, grounded in a full read of the golf implementation as the template. This is the
+> *how-we-build-it* sequencing doc; the *what-the-game-is* rules live in
+> `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's net-new work. See
+> `docs/MULTI_SPORT_MIGRATION.md` for the per-schema architecture this sits on, and
+> BACKLOG **F1** (`pool_standings`) / **F6** (format contract) for the debt this
+> interacts with. **PR1 (`cfb` schema scaffold) shipped 2026-08-11, PR #40** — see the
+> PR sequence table below; the schema sketch reflects what actually shipped, including
+> four integrity constraints senior review added beyond this doc's original sketch.
 
 CFB is Poold's second sport: a new `cfb` Postgres schema and a genuinely new **format**
 (weekly against-the-spread, season-cumulative). The full rules are in `docs/CFB_FORMAT.md`.
@@ -76,26 +79,37 @@ Mirrors golf's per-schema pattern, with one structural addition golf never neede
 weeks/games hanging off it and shared by every pool on that season (reuses the D3
 "multiple pools per event" hinge, for a season instead of a weekend).
 
+**Shipped as of PR1 (2026-08-11, PR #40)** — the block below is what actually landed in
+`supabase/migrations/20260811000000_cfb_phase1_scaffold.sql`. Four integrity constraints
+were added beyond this doc's original sketch, all flagged by senior review as cheap now /
+expensive once data exists: `weeks(event_id, week_number)` uniqueness, a composite FK
+guaranteeing a pick's game belongs to its week, `CHECK`s on the remaining enum columns,
+and `season_year NOT NULL`. Tables are empty; no RLS policies yet (PR2).
+
 ```
 cfb  (FKs point within cfb or cfb → public, never → golf)
-├── event_details   event_id → public.events (1:1), season_year int
+├── event_details   event_id → public.events (1:1), season_year int NOT NULL
 ├── weeks           id, event_id → public.events, week_number int, label,
-│                    lock_time timestamptz, status ('scheduled'|'open'|'locked'|'graded')
+│                    lock_time timestamptz, status ('scheduled'|'open'|'locked'|'graded') CHECK
 │                    -- event-level: one slate/lock per week, shared by every pool on the season
+│                    UNIQUE (event_id, week_number)  -- makes "Week 5 of this season" a single row
 ├── games           id, week_id → cfb.weeks, cfbd_game_id text UNIQUE,
 │                    home_team, away_team, home_conference, away_conference, kickoff_at,
 │                    home_spread numeric NOT NULL,      -- signed vs home; away = -home_spread
 │                    is_fbs_vs_fbs boolean NOT NULL,
-│                    status ('scheduled'|'in_progress'|'final'), home_score int, away_score int,
-│                    underdog_team text, underdog_spread numeric  -- denormalized for the picks UI
+│                    status ('scheduled'|'in_progress'|'final') CHECK, home_score int, away_score int,
+│                    underdog_team text, underdog_spread numeric,  -- denormalized for the picks UI
+│                    UNIQUE (id, week_id)  -- lets picks reference (game_id, week_id) as a composite FK
 ├── picks           id, pool_id → public.pools, week_id → cfb.weeks, user_id → public.profiles,
 │                    game_id → cfb.games, pick_type CHECK IN ('ats','underdog'),
 │                    selected_team text NOT NULL, is_double_down boolean DEFAULT false,
 │                    locked_spread numeric NOT NULL,   -- frozen at submit time, for grading
 │                    auto_filled boolean DEFAULT false, status text DEFAULT 'confirmed',
-│                    result text,                       -- cover|push|miss|win|loss (grading)
+│                    result text CHECK IN ('cover','push','miss','win','loss'),  -- NULL until graded
 │                    base_points numeric, bonus_points numeric, created_at timestamptz,
-│                    UNIQUE (pool_id, user_id, week_id, game_id)
+│                    UNIQUE (pool_id, user_id, week_id, game_id),
+│                    FOREIGN KEY (game_id, week_id) REFERENCES cfb.games (id, week_id)
+│                    -- structurally guarantees a pick's game belongs to its week, not just RPC-checked
 ```
 
 **Grants** — copy `20260624120000_multisport_phase1_scaffold.sql` line-for-line for `cfb`
@@ -230,7 +244,7 @@ green, coherent with the Poold system. Two fixes to carry into the real build:
 | # | PR | Goal | Key risk |
 |---|---|---|---|
 | 0 | `docs/CFB_FORMAT.md` | Rules + worked examples + schema sketch, reviewed before code | ambiguity found mid-build instead of now |
-| 1 | `cfb` schema scaffold | Additive tables, grants, RLS-deny-all, seed `public.sports` row; add `cfb` to config.toml | grants forgotten → silent "permission denied" |
+| 1 | `cfb` schema scaffold — **shipped 2026-08-11, PR #40** | Additive tables, grants, RLS-deny-all, seed `public.sports` row; add `cfb` to config.toml | grants forgotten → silent "permission denied" (mitigated; grant block mirrors golf's, confirmed in senior review) |
 | 2 | RLS + `cfb_submit_week_picks` RPC | Row policies mirroring golf + the atomic whole-card submit (Finding 2) | RLS alone can't enforce the 6-pick set — don't skip the RPC |
 | 3 | `cfd-proxy` + slate import | Server-side CFBD access; `src/lib/cfb.js` import | lineless games must be excluded at import, not just unscored |
 | 4 | `cfbScoring.js` + tests | Pure grading engine + the repo's first unit tests (F4) | double-down rounding + underdog tier boundaries |

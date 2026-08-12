@@ -63,8 +63,10 @@ writing code.
 - No second sport **built** until golf is proven and stable — the schema seam exists
   (that was the point of the migration). **CFB is now the committed sport #2 direction**:
   format decided, full build plan sequenced into ~11 PRs (`docs/CFB_FORMAT.md`,
-  `docs/CFB_BUILD_PLAN.md`, planning-only PR0 shipped 2026-08-11) — but PR1 (the `cfb`
-  schema scaffold) has not started. No `cfb` tables, adapters, or UI exist yet.
+  `docs/CFB_BUILD_PLAN.md`, planning-only PR0 shipped 2026-08-11) — **PR1 (the `cfb`
+  schema scaffold) shipped 2026-08-11, PR #40**: an empty, additive `cfb` schema (four
+  tables, RLS deny-all, no policies yet). No RLS policies, RPC, adapters, or UI exist yet
+  — those are PR2+.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -94,7 +96,8 @@ writing code.
   schema, `lib/cfb.js`, scoring engine, picks UI, `cfd-proxy` data provider) over a
   shared neutral `public` core, with only the `pool_standings` `{rank,total,display}`
   output shape shared between sports. Planning-only PR0 shipped; build sequenced into
-  ~11 PRs starting with the schema scaffold (`docs/CFB_BUILD_PLAN.md`).
+  ~11 PRs (`docs/CFB_BUILD_PLAN.md`) — PR1, the additive `cfb` schema scaffold, shipped
+  2026-08-11 (PR #40).
 - Split queries across the `public`/`golf` boundary, not PostgREST cross-schema embeds
   (Phase 0 spike decision).
 
@@ -151,9 +154,26 @@ writing code.
   engine, picks UI, `cfd-proxy` data provider) over the shared neutral `public` core, with
   only the `pool_standings` output shape shared between sports — finally putting that
   scaffolded-but-unused table to work (BACKLOG F1). No FormatEngine abstraction extracted
-  at two formats (BACKLOG F6 stays deferred, revisit at format #3). **Execution has not
-  started** — PR1 (the `cfb` schema scaffold) is next. See `agents/pm/DECISIONS.md`,
-  2026-08-11.
+  at two formats (BACKLOG F6 stays deferred, revisit at format #3). See
+  `agents/pm/DECISIONS.md`, 2026-08-11.
+- **CFB PR1 — `cfb` schema scaffold shipped 2026-08-11 (PR #40).** Additive-only
+  migration (`supabase/migrations/20260811000000_cfb_phase1_scaffold.sql`): the `cfb`
+  schema with four empty tables (`event_details`, `weeks`, `games`, `picks`), seeds
+  `public.sports` for `'cfb'`, full grant block for `authenticated`/`service_role`, and
+  RLS enabled with **no policies yet** (deny-all — safe default while empty). Adds `cfb`
+  to `supabase/config.toml`'s exposed schemas for local dev; the **prod dashboard's
+  Exposed Schemas flip is deliberately deferred** to the cutover checklist, not this PR.
+  Nothing golf reads is touched; fully reversible by dropping the new objects. Beyond
+  `docs/CFB_BUILD_PLAN.md`'s original sketch, senior review (`agents/senior-dev/reviews/
+  cfb-pr1-schema-scaffold.md`) prompted four foundation-hardening additions while the
+  tables are still empty: `UNIQUE (event_id, week_number)` on `cfb.weeks` (prevents a
+  duplicate "Week 5" if season setup ever reruns), a composite FK on `cfb.picks
+  (game_id, week_id) → cfb.games(id, week_id)` (makes a pick's game structurally
+  guaranteed to belong to its week, not just RPC-enforced), `CHECK` constraints on the
+  `weeks.status`/`games.status`/`picks.result` enum columns (matching the discipline
+  already used on `picks.pick_type`), and `event_details.season_year NOT NULL`. RLS
+  policies, the `cfb_submit_week_picks` RPC, slate import, scoring, grading, UI, and the
+  sport-dispatch layer are still not built — PR2 onward per `docs/CFB_BUILD_PLAN.md`.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.
