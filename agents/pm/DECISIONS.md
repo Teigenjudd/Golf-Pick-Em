@@ -13,6 +13,91 @@
 
 ---
 
+## 2026-08-12 — CFB PR3: cross-check CFBD's spread sign against its own text label; skip and warn on disagreement
+
+**Decision:** `src/lib/cfb.js` computes the underdog purely from the sign of CFBD's
+numeric `home_spread` — the entire ATS/underdog contract rests on that one number, with no
+second data source to corroborate it (golf, by contrast, joins Slash Golf + The Odds API
+and refuses an ambiguous match rather than guess). Senior review on PR3
+(`agents/senior-dev/reviews/cfb-pr3-slate-import.md`, Finding 1 / Question 1) flagged this
+as a silent-failure risk: if CFBD ever flips its sign convention, every underdog would be
+computed backwards with no error. The founder chose a code-level tripwire over "re-run the
+smoke test each season": `buildGameRows` now also reads CFBD's own `formattedSpread` text
+label (e.g. `"Michigan -17.5"`, which names the favorite in words) via the new
+`favoriteFromFormattedSpread()` helper, and compares it against the favorite implied by the
+numeric sign. On disagreement, the game is skipped entirely (excluded from that week's
+importable slate) and a `console.warn` is logged — not silently imported with a guessed
+side.
+
+**Why:** A wrong underdog freezes into `locked_spread` at submit time and grades wrong with
+no downstream signal — the exact "confidently wrong beats silently missing" failure this
+whole app tries to avoid elsewhere (see the 2026-07-13 player-name-matching decision, same
+principle). CFBD already ships both snake_case and camelCase field names across versions,
+so a sign-convention drift isn't a hypothetical. The text label is redundant information
+CFBD already sends on every line — reading it costs nothing extra and turns a silent
+mis-grade into a loud, recoverable gap (one missing game from the week's slate) instead.
+
+**Gave up:** A game gets excluded (not corrected) when the two disagree — there's no "trust
+the label over the number" fallback, because we don't know which one drifted. Also gave up
+on a second independent data source (golf's approach); CFBD stays the sole provider for
+CFB, this is a self-consistency check on one provider, not real corroboration.
+
+**Revisit if:** the warn-and-skip starts firing in real seasons (would mean CFBD's
+convention or label format actually changed) — at that point, add real alerting instead of
+a console log an admin has to be watching for, and re-derive the sign mapping fresh rather
+than patching around it.
+
+---
+
+## 2026-08-12 — CFB PR3: `importWeekSlate` asserts the target week's number/season match the CFBD week being pulled
+
+**Decision:** `importWeekSlate({ weekId, seasonYear, weekNumber })` takes the stored
+`cfb.weeks` row to write into (`weekId`) and the CFBD slate to fetch (`seasonYear` +
+`weekNumber`) as separate arguments with nothing previously checking they refer to the same
+week. Senior review on PR3 (Finding 3 / Question 2) flagged this as a silent-miswire risk
+once an admin UI wires the two together (PR9). The founder chose to add the guard now
+rather than defer it: before fetching anything, the function reads the stored week's
+`week_number` (and its season via `event_details`, split-query per the public/`cfb`
+boundary discipline) and throws if either disagrees with what was passed.
+
+**Why:** Cheap now (one extra read, pure function, no new schema) versus a real production
+failure mode later — a wrong week wiring in the eventual admin UI would silently store one
+week's games under another week's id with no DB-level error, and nobody would notice until
+players saw the wrong slate. Fixing it while the only caller is `importWeekSlate` itself
+(no admin UI yet, PR9) means the guard ships before the risk exists, not after.
+
+**Gave up:** Nothing meaningful — one extra query per import call, which already makes
+three sequential CFBD fetches, so the added latency is negligible.
+
+**Revisit if:** never — this is a permanent input-validation guard, not a stopgap.
+
+---
+
+## 2026-08-12 — CFB PR3: CFBD monthly call cap confirmed at 1000, not reused from golf's placeholder
+
+**Decision:** `docs/CFB_BUILD_PLAN.md`'s original sketch flagged golf's `1800`
+(`slash_golf_calls`) cap as a placeholder not to reuse for CFBD without checking real
+limits (open question #4). The founder confirmed CollegeFootballData's free tier is
+**1000 calls/month**; `cfd-proxy`'s `MONTHLY_CAP` is set to `1000` and `api_usage
+.cfbd_calls` (mirroring `slash_golf_calls`) tracks it with the same read-then-write
+per-call pattern golf uses (BACKLOG B4's lost-update race — "Non-atomic monthly API
+counter" — applies equally here; note the senior review artifact cites this as "B5," which
+is actually the unrelated `submitPicks`-atomicity item, but the described bug matches B4
+exactly. Not re-flagged as new since PR3's three fetches already run sequentially by
+design).
+
+**Why:** Sizing the cap to the vendor's actual limit, not a copy-pasted number from a
+different API, is the whole point of tracking usage at all — an oversized cap risks a
+mid-season 429 lockout during live import, and reusing golf's number was never anything
+more than a placeholder to unblock scaffolding.
+
+**Gave up:** Nothing — this just closes an open question, it doesn't trade anything away.
+
+**Revisit if:** CFBD's account is upgraded to a paid tier, or usage patterns (weekly slate
+import across many weeks/pools) approach the cap in practice.
+
+---
+
 ## 2026-08-11 — CFB PR2: `cfb.picks` gets NO client write policy at all — the submit RPC is the only door, not a defense-in-depth layer
 
 **Decision:** `docs/CFB_BUILD_PLAN.md`'s original RLS sketch called for row-level

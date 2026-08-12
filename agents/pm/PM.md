@@ -66,8 +66,9 @@ writing code.
   `docs/CFB_BUILD_PLAN.md`, planning-only PR0 shipped 2026-08-11) — **PR1 (the `cfb`
   schema scaffold) shipped 2026-08-11, PR #40**: an empty, additive `cfb` schema (four
   tables, RLS deny-all, no policies yet). **PR2 (RLS policies + the
-  `cfb_submit_week_picks` submit RPC) shipped 2026-08-11, PR #41.** Slate import
-  (CFD proxy), scoring, grading, adapters, and UI are still not built — those are PR3+.
+  `cfb_submit_week_picks` submit RPC) shipped 2026-08-11, PR #41.** **PR3 (`cfd-proxy` +
+  the weekly slate importer) shipped 2026-08-12.** Scoring, grading, adapters, and UI are
+  still not built — those are PR4+.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -203,6 +204,35 @@ writing code.
   dashboard's Exposed Schemas toggle is still OFF, so `cfb` isn't reachable by the Data
   API yet; that flip stays the deferred cutover step. Slate import, scoring, grading,
   UI, and the sport-dispatch layer are still not built — PR3 onward.
+- **CFB PR3 — `cfd-proxy` + the weekly slate importer shipped 2026-08-12.** The CFBD
+  read path: `supabase/functions/cfd-proxy/index.ts` (admin-JWT gated, cloned from
+  `slash-golf-proxy`, `CFBD_API_KEY` Supabase secret, endpoint allowlist `games`/`lines`/
+  `teams/fbs`, 1000/mo cap tracked via new `public.api_usage.cfbd_calls`), `src/lib/
+  cfbd.js` (browser proxy client), and `src/lib/cfb.js` — the `cfb` schema seam, whose
+  pure `buildGameRows()` filters CFBD's games+lines to FBS-vs-FBS games with a posted
+  line, freezes `home_spread` signed from home's perspective, and stores
+  `underdog_team`/`underdog_spread` positive+non-NULL, the contract PR2's RPC trusts
+  verbatim; `importWeekSlate()` fetches via the proxy and upserts on `cfbd_game_id`.
+  Migration `20260812000000_cfb_phase3_slate_import_support.sql` adds the
+  `api_usage.cfbd_calls` column and a `CHECK (underdog_spread IS NULL OR > 0)` on
+  `cfb.games` as belt-and-suspenders on the importer's `abs()`. Senior review
+  (`agents/senior-dev/reviews/cfb-pr3-slate-import.md`, APPROVE WITH QUESTIONS) surfaced
+  the one structural risk in the design — the underdog contract rests entirely on
+  CFBD's spread-sign convention with no second data source to corroborate it, unlike
+  golf's two-provider cross-check — plus a week-id/week-number trust gap. Both resolved
+  in-branch by founder decision (`agents/pm/DECISIONS.md`, 2026-08-12): a sign
+  cross-check (`chooseLine()`/`favoriteFromFormattedSpread()` compare CFBD's numeric
+  spread against its own `formattedSpread` text label, e.g. `"Michigan -17.5"`; on
+  disagreement the game is skipped and a warning logged, not silently frozen wrong) and
+  a week guard (`importWeekSlate` now asserts the target week row's `week_number`/season
+  match the CFBD week being pulled, else throws). Also resolved: CFBD's free tier is
+  confirmed at 1000 calls/month (not golf's 1800 placeholder), and a nit was fixed
+  (dropped a stray boolean `startTimeTBD` from the `kickoff_at` fallback chain). Verified
+  against real 2025 Week 1 data end-to-end (48 of 96 games eligible, sign mapping correct
+  on every row) plus 25 transform fixtures. Already applied/deployed to prod (migration
+  + edge function); `cfb` stays hidden from the Data API (Exposed Schemas toggle still
+  OFF) — admin writes via `.schema('cfb')` work regardless. No admin UI calls this yet
+  (PR9). Scoring, grading, and UI are still not built — PR4 onward.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.
