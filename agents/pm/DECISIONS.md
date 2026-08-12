@@ -13,6 +13,67 @@
 
 ---
 
+## 2026-08-11 — CFB PR2: `cfb.picks` gets NO client write policy at all — the submit RPC is the only door, not a defense-in-depth layer
+
+**Decision:** `docs/CFB_BUILD_PLAN.md`'s original RLS sketch called for row-level
+insert/delete policies on `cfb.picks` "mirroring golf's, for defense-in-depth," on top of
+the `cfb_submit_week_picks()` RPC being the "real" enforcement. PR2 (`agents/senior-dev/
+reviews/cfb-pr2-rls-and-submit-rpc.md`) shipped without that row-level layer: there is no
+client insert/update/delete policy on `cfb.picks` at all. RLS-on plus no matching policy
+means a normal authenticated user's direct write is denied outright; the only way onto
+the table is the `SECURITY DEFINER` RPC.
+
+**Why:** Golf's picks RLS can validate row-by-row because one golf pick is independently
+legal (one tier, one player). A CFB weekly card is a **set constraint across 6 rows** —
+exactly 5 ATS on 5 distinct games, 1 underdog on a 6th, ≤1 double-down only on an ATS
+pick. Postgres RLS evaluates one row at a time and cannot express "these 6 rows together
+are a legal card." A permissive per-row write policy sitting *next to* the RPC wouldn't
+be extra safety — it would be a second door that a crafted API call could walk through to
+insert e.g. 6 ATS picks or two double-downs, each individually passing a per-row check
+while corrupting the card. Removing that door entirely, rather than writing one that
+"defends in depth," is what actually closes Finding 2 (`docs/CFB_BUILD_PLAN.md`).
+
+**Gave up:** The row-level policies golf-style defense-in-depth would have provided
+against a bug *inside* the RPC itself (e.g. a future edit to the function that
+accidentally skips a check) — there's now exactly one code path guarding card integrity,
+not two. Accepted because a second, weaker guard that permits partial/invalid writes is
+worse than no guard, not safer.
+
+**Revisit if:** a future requirement needs a legitimate direct-row write on `cfb.picks`
+(e.g. a per-pick admin correction tool) — that should get its own narrow `SECURITY
+DEFINER` RPC re-validating the whole card, not a raw RLS policy.
+
+---
+
+## 2026-08-11 — CFB PR2: a week is "open" once its slate exists and `lock_time` hasn't passed — not gated on the `status` label
+
+**Decision:** `cfb_submit_week_picks()` rejects a submission only when
+`weeks.status IN ('locked','graded')` or `weeks.lock_time <= now()`. It does **not**
+require `weeks.status = 'open'` first — a week seeded `'scheduled'` is already pickable
+as soon as its games are imported and the lock time is still in the future. Raised as
+senior-review Question 3 on PR2; the founder confirmed this is the intended behavior, not
+an oversight.
+
+**Why:** `lock_time` is the actual deadline players see and the actual moment picks stop
+counting — it's the one date that has to be correct. Requiring a separate `'open'` flip
+would just be a second manual step admins could forget, with no player-facing benefit: a
+player literally cannot build a legal 6-pick card until the week's games are imported
+regardless of the status label (the RPC's "game must belong to this week" check fails on
+an empty slate). So the status label is informational for admin tooling; `lock_time` plus
+"do games exist yet" is what actually governs pickability. This mirrors golf's permissive
+style (picks open as soon as the tournament/field exists, not behind a second toggle).
+
+**Gave up:** No admin "soft off" switch to pause picks on a week whose slate is imported
+but not yet meant to be pickable (e.g. lines still being finalized) — the only lever is
+`lock_time` and whether games exist. If that gap matters in practice, add an explicit
+`status = 'open'` gate to the RPC then; it's a one-line change.
+
+**Revisit if:** slate import (PR3) ever needs to stage partial/unconfirmed lines before a
+week should be pickable — right now "games exist" and "week is pickable" are the same
+moment, and that would need to split.
+
+---
+
 ## 2026-08-11 — CFB PR1: schema enforces game∈week and week uniqueness at the database level, not just in the future RPC
 
 **Decision:** Senior review of the `cfb` schema scaffold (PR1, PR #40) raised four
