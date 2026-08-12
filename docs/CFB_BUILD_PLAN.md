@@ -1,15 +1,16 @@
 # College Football (Sport #2) — Build Plan
 
-> **Status:** Planning, execution in progress (PR2 of ~10 shipped). Written 2026-08-11
+> **Status:** Planning, execution in progress (PR3 of ~10 shipped). Written 2026-08-11
 > from a dedicated planning pass, grounded in a full read of the golf implementation as
 > the template. This is the *how-we-build-it* sequencing doc; the *what-the-game-is*
 > rules live in `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's net-new work. See
 > `docs/MULTI_SPORT_MIGRATION.md` for the per-schema architecture this sits on, and
 > BACKLOG **F1** (`pool_standings`) / **F6** (format contract) for the debt this
 > interacts with. **PR1 (`cfb` schema scaffold) shipped 2026-08-11, PR #40; PR2 (RLS +
-> `cfb_submit_week_picks` RPC) shipped 2026-08-11, PR #41** — see the PR sequence table
-> below; the schema sketch reflects what actually shipped, including four integrity
-> constraints senior review added beyond this doc's original sketch in PR1.
+> `cfb_submit_week_picks` RPC) shipped 2026-08-11, PR #41; PR3 (`cfd-proxy` + slate
+> import) shipped 2026-08-12** — see the PR sequence table below; the schema sketch
+> reflects what actually shipped, including four integrity constraints senior review
+> added beyond this doc's original sketch in PR1, plus PR3's `underdog_spread` CHECK.
 
 CFB is Poold's second sport: a new `cfb` Postgres schema and a genuinely new **format**
 (weekly against-the-spread, season-cumulative). The full rules are in `docs/CFB_FORMAT.md`.
@@ -138,30 +139,61 @@ is the *only* write path, not just the "real" one — see
 
 ## Data layer — CFD proxy, slate import, grading
 
-- **`supabase/functions/cfd-proxy/index.ts`** — mirrors `slash-golf-proxy`: admin-JWT/cron-secret
-  gated, `CFBD_API_KEY` as a Supabase secret (never browser-exposed), usage guard against
-  `api_usage` (+ a `cfbd_calls` column matching `slash_golf_calls`). Proxies
-  CollegeFootballData's games/lines/teams endpoints. **Confirm CFBD's real free-tier limits
-  before sizing the cap** — don't reuse golf's `1800` placeholder.
-- **Slate import** (`src/lib/cfb.js`) — per week, fetch games + lines, compute
-  `is_fbs_vs_fbs`/`underdog_team`/`underdog_spread`, upsert into `cfb.games`. **Runs a few days
-  before each week's lock, not once at season start** (lines move; future weeks aren't
-  posted). CFB pool "creation" seeds ~15 empty `cfb.weeks` with placeholder locks; each
-  week's games import later, as a recurring op (PR9).
-  **Data contract PR3 MUST honor (flagged in PR2 senior review, `agents/senior-dev/reviews/
-  cfb-pr2-rls-and-submit-rpc.md`):** `cfb_submit_week_picks` (PR2) trusts `cfb.games`
-  verbatim for the underdog slot — it freezes `locked_spread` as `g.underdog_spread` and
-  validates the pick against `g.underdog_team` with no defensive check. So at import time,
-  `underdog_team` must be the *actual* underdog and `underdog_spread` must be stored
-  **positive** (the dog's line, getting points) and **non-NULL** for every eligible game.
-  Get the sign or the team wrong here and the RPC will faithfully freeze a wrong number —
-  nothing downstream catches it. Planned enforcement: compute with `abs()` at import time,
-  plus a `CHECK` constraint on `cfb.games` (e.g. `underdog_spread IS NULL OR
-  underdog_spread > 0`).
+**Shipped as of PR3 (2026-08-12)** — `supabase/functions/cfd-proxy/index.ts`,
+`src/lib/cfbd.js`, `src/lib/cfb.js`, and migration
+`20260812000000_cfb_phase3_slate_import_support.sql`. Details below reflect what actually
+landed; see `agents/senior-dev/reviews/cfb-pr3-slate-import.md` (APPROVE WITH QUESTIONS)
+and `agents/pm/DECISIONS.md`, 2026-08-12, for the two founder calls it prompted.
+
+- **`supabase/functions/cfd-proxy/index.ts`** — mirrors `slash-golf-proxy`: admin-JWT gated
+  (checks `profiles.role = 'admin'`, not a cron secret — there's no scheduled caller yet),
+  `CFBD_API_KEY` as a Supabase secret (never browser-exposed, set and deployed), usage guard
+  against `public.api_usage.cfbd_calls` (new column, mirrors `slash_golf_calls` exactly).
+  Endpoint allowlist: `games`, `lines`, `teams/fbs` — no arbitrary path passthrough. **CFBD's
+  free tier is confirmed at 1000 calls/month** (`MONTHLY_CAP = 1000`, not golf's `1800`
+  placeholder — open question #4 below is resolved; see DECISIONS).
+- **`src/lib/cfbd.js`** — thin browser client mirroring `slashGolf.js`: `getGames`,
+  `getLines`, `getFbsTeams`.
+- **Slate import** (`src/lib/cfb.js`, the only file that calls `supabase.schema('cfb')`) —
+  `importWeekSlate({ weekId, seasonYear, weekNumber })` fetches a week's games + lines + the
+  FBS team set through the proxy, and the pure, unit-testable `buildGameRows()` shapes them:
+  filters to FBS-vs-FBS games with a posted line (no line → excluded, not just unscored),
+  freezes `home_spread` signed from the home team's perspective, and derives
+  `underdog_team`/`underdog_spread` (positive, non-NULL) from the sign — exactly the
+  contract PR2's RPC trusts verbatim. Upserts on `cfbd_game_id` so a re-import as lines move
+  just refreshes rows (already-submitted picks are unaffected — they carry a frozen
+  `locked_spread`). The three proxy calls run sequentially on purpose (each increments the
+  shared `api_usage.cfbd_calls` counter via read-then-write; parallel calls would
+  under-count against the cap). **Two safety additions beyond the original sketch, both
+  founder-decided in-branch (DECISIONS, 2026-08-12):**
+  1. **Sign cross-check** — `chooseLine()` also returns CFBD's own `formattedSpread` text
+     label (e.g. `"Michigan -17.5"`, which names the favorite in words);
+     `favoriteFromFormattedSpread()` parses it, and `buildGameRows` compares it against the
+     favorite implied by the numeric sign. On disagreement (a CFBD sign-convention drift),
+     the game is **skipped and a warning logged** rather than silently freezing a wrong
+     underdog — CFB has only one data provider, unlike golf's two-source corroboration, so
+     this is a self-consistency check, not real corroboration.
+  2. **Week guard** — before fetching anything, `importWeekSlate` reads the target
+     `cfb.weeks` row's `week_number` (and season via `event_details`, split query) and
+     throws if either disagrees with the `seasonYear`/`weekNumber` passed in — cheap
+     insurance against a future admin-UI wiring slip importing one week's games under
+     another week's id.
+  - **Data contract this file honors** (flagged in PR2 senior review, confirmed correct in
+    PR3 review): `cfb_submit_week_picks` (PR2) trusts `cfb.games` verbatim for the underdog
+    slot — it freezes `locked_spread` as `g.underdog_spread` and validates the pick against
+    `g.underdog_team` with no defensive check. `underdog_spread IS NULL OR > 0` is also now
+    a DB `CHECK` on `cfb.games` (belt-and-suspenders on top of the importer's `abs()`).
+  - **Known debt, deliberately deferred (senior review Findings 4–5, not blocking):**
+    re-import doesn't prune games that drop out of the CFBD slate (stale rows can linger in
+    the pickable list; grading of submitted picks is unaffected since `locked_spread` is
+    frozen); `is_fbs_vs_fbs` is always written `true` (informational only, harmless).
+  - Verified against real 2025 Week 1 data end-to-end (48 of 96 games eligible, sign mapping
+    correct on every row) plus 25 pure-transform fixtures.
 - **Grading** (not just caching, unlike golf) — because standings are cumulative across
   weeks, a `grade-cfb-week` job runs after a week's games go final: fetch final scores,
   update `cfb.games`, grade every pick, write the shared `pool_standings` projection. Same
-  "cron + admin manual-refresh" shape as golf's poller, with a grading step added.
+  "cron + admin manual-refresh" shape as golf's poller, with a grading step added. **Not
+  built yet — PR5.**
 
 ---
 
@@ -266,7 +298,7 @@ green, coherent with the Poold system. Two fixes to carry into the real build:
 | 0 | `docs/CFB_FORMAT.md` | Rules + worked examples + schema sketch, reviewed before code | ambiguity found mid-build instead of now |
 | 1 | `cfb` schema scaffold — **shipped 2026-08-11, PR #40** | Additive tables, grants, RLS-deny-all, seed `public.sports` row; add `cfb` to config.toml | grants forgotten → silent "permission denied" (mitigated; grant block mirrors golf's, confirmed in senior review) |
 | 2 | RLS + `cfb_submit_week_picks` RPC — **shipped 2026-08-11, PR #41** | Row policies mirroring golf + the atomic whole-card submit (Finding 2) | RLS alone can't enforce the 6-pick set — resolved by giving the RPC the *only* write path on `cfb.picks` (no client insert/update/delete policy at all, not just a defense-in-depth layer) |
-| 3 | `cfd-proxy` + slate import | Server-side CFBD access; `src/lib/cfb.js` import | lineless games must be excluded at import, not just unscored; **must also store `underdog_team`/`underdog_spread` correctly (positive, non-NULL) — PR2's RPC trusts this verbatim, see the slate-import note above** |
+| 3 | `cfd-proxy` + slate import — **shipped 2026-08-12** | Server-side CFBD access; `src/lib/cfb.js` import | lineless games excluded at import (done); underdog sign/team stored correctly (done, plus a CFBD-label cross-check the founder added — see DECISIONS) |
 | 4 | `cfbScoring.js` + tests | Pure grading engine + the repo's first unit tests (F4) | double-down rounding + underdog tier boundaries |
 | 5 | `grade-cfb-week` → `pool_standings` | Weekly grading writes the shared projection (CFB half of F1) | mirror/source drift — comment both files |
 | 5b | *(optional)* wire `pool_standings` for golf | Closes F1's other half; not required to ship CFB | none blocking — keep it from gating CFB |
@@ -290,7 +322,8 @@ Ranked. Load-bearing ones must be answered before the PR that depends on them.
    forfeit the DD?
 3. **Mid-season joins** — single cutoff before week 1, or join mid-season (and if so, 0 for
    missed weeks)? Affects the standings query.
-4. **CFBD API tier/limits** — confirm real free-tier cap before sizing the proxy guard.
+4. ~~**CFBD API tier/limits**~~ — **Resolved, PR3 (2026-08-12):** confirmed 1000 calls/month;
+   `cfd-proxy`'s `MONTHLY_CAP` is sized to it. See DECISIONS.
 5. **Route shape** — OK to give CFB its own `/cfb/*` namespace, golf's untouched? (Recommended.)
 6. **Theme scope** — minimal prop-based fix now vs. the fuller "sport pack" theming system
    (BRAINSTORM MS-9/10). Plan defers the big version deliberately; confirm that's intended.

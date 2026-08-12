@@ -114,7 +114,11 @@
   which errors when the month row doesn't exist yet (first call of the month).
   **Fix:** atomic increment via an RPC (`update ... set calls = calls + n`) or a
   Postgres `on conflict do update` returning the new value; use `.maybeSingle()`.
-  (AUDIT L3.)
+  (AUDIT L3.) **Now shared by `cfd-proxy` too (CFB PR3, 2026-08-12):** `api_usage
+  .cfbd_calls` uses the identical read-then-write pattern (`.upsert` with `.single()`
+  read, matching the same race). Not made materially worse — `src/lib/cfb.js`
+  `importWeekSlate`'s three CFBD fetches run sequentially by design — but the fix,
+  when it lands, should cover both counters in one pass.
 
 - [ ] 🟡 **B5 — `submitPicks` is not atomic (delete-then-insert, no transaction).**
   `src/lib/golf.js` `submitPicks` deletes all of a user's picks, then inserts the new

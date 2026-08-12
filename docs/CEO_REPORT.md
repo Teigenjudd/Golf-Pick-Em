@@ -1,13 +1,13 @@
 # Poold — CEO Report
 
-*Updated 2026-08-11 · latest: PR #41 (CFB PR2)*
+*Updated 2026-08-12 · latest: PR3 (CFB slate import)*
 
-**Status:** 🟢 Golf live in prod · 🟡 CFB in build — PR2 of ~10 shipped · Sports live: **1**
+**Status:** 🟢 Golf live in prod · 🟡 CFB in build — PR3 of ~10 shipped · Sports live: **1**
 
-**State of the app.** Golf pick'em is live in production (auth, pools, picks, live leaderboards, prize-pool math). CFB is in active build; PR2 locked down who can see and write picks.
+**State of the app.** Golf pick'em is live in production (auth, pools, picks, live leaderboards, prize-pool math). CFB is in active build; PR3 connects it to real college football data.
 
-**Recent wins.** CFB now enforces its security rules: a player can only submit their own weekly picks, through one locked-down function that checks the whole 6-pick card is legal — closing a gap simple per-pick rules couldn't. Approved on review, no blockers. Earlier this month: the schema foundation (PR1) and legal-contact/email fixes.
+**Recent wins.** CFB can now pull real game schedules and betting lines from a college football data provider, server-side and cost-capped, and shape them into weekly slates ready to pick against. Review caught one real risk — the whole system trusts a single data source to say who's the underdog — so we added a self-check that skips (and flags) any game where that data looks internally inconsistent, rather than risk a silently wrong bet. Approved on review. Earlier this month: pick-submission security (PR2) and the schema foundation (PR1).
 
-**Next up.** CFB PR3 — connecting the real college football data feed and importing each week's games and spreads, so there's finally real data to pick against.
+**Next up.** CFB PR4 — the scoring engine that grades a week's picks (covers, the bonus double-down, underdog wins), including the app's first automated tests.
 
-**Pitfalls to watch.** CFB's database is live in prod but invisible to the app until one dashboard setting flips, deferred on purpose until the frontend is ready. No real games are imported yet, so the submit logic is verified by review only, not a live card.
+**Pitfalls to watch.** CFB's database is live in prod but still invisible to the app until one dashboard setting flips, deferred on purpose until the frontend is ready. No admin screen imports games yet — that's a later PR — so today's import path is code-verified against real 2025 data, not yet a live weekly operation.
