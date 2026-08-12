@@ -67,8 +67,9 @@ writing code.
   schema scaffold) shipped 2026-08-11, PR #40**: an empty, additive `cfb` schema (four
   tables, RLS deny-all, no policies yet). **PR2 (RLS policies + the
   `cfb_submit_week_picks` submit RPC) shipped 2026-08-11, PR #41.** **PR3 (`cfd-proxy` +
-  the weekly slate importer) shipped 2026-08-12.** Scoring, grading, adapters, and UI are
-  still not built — those are PR4+.
+  the weekly slate importer) shipped 2026-08-12.** **PR4 (`cfbScoring.js` grading engine +
+  the repo's first unit tests) shipped 2026-08-12, PR #43.** Grading, adapters, and UI are
+  still not built — those are PR5+.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -99,7 +100,8 @@ writing code.
   shared neutral `public` core, with only the `pool_standings` `{rank,total,display}`
   output shape shared between sports. Planning-only PR0 shipped; build sequenced into
   ~11 PRs (`docs/CFB_BUILD_PLAN.md`) — PR1, the additive `cfb` schema scaffold, shipped
-  2026-08-11 (PR #40).
+  2026-08-11 (PR #40); PR4, the scoring engine (`cfbScoring.js`) plus the repo's first
+  unit tests, shipped 2026-08-12 (PR #43).
 - Split queries across the `public`/`golf` boundary, not PostgREST cross-schema embeds
   (Phase 0 spike decision).
 
@@ -233,6 +235,33 @@ writing code.
   + edge function); `cfb` stays hidden from the Data API (Exposed Schemas toggle still
   OFF) — admin writes via `.schema('cfb')` work regardless. No admin UI calls this yet
   (PR9). Scoring, grading, and UI are still not built — PR4 onward.
+- **CFB PR4 — scoring engine + the repo's first unit tests shipped 2026-08-12 (PR #43).**
+  `src/utils/cfbScoring.js` is a pure, import-free module implementing `docs/CFB_FORMAT.md`
+  verbatim: `doubleDownBuffer` (buffer rounding, quarter-ties up), `doubleDownWinBy` (the
+  UI's margin-threshold copy helper), `gradeAtsPick`/`gradeDoubleDown`/`underdogTier`/
+  `gradeUnderdogPick`, `gradeWeekCard` (whole-card grading emitting the `cfb.picks`
+  `result`/`base_points`/`bonus_points` columns), and `projectSeasonStandings` (the
+  cumulative descending fold into the shared `public.pool_standings`
+  `{user_id, rank, total, display}` shape). `vitest` + a `test`/`test:watch` script landed
+  in `package.json`; `cfbScoring.test.js` is the repo's first unit test suite (44 tests,
+  all passing) covering every boundary in the format spec. No app code imports the engine
+  yet — it's consumed by `grade-cfb-week` (PR5) and the picks UI (PR6). Senior review
+  (`agents/senior-dev/reviews/cfb-pr4-scoring-engine.md`, APPROVE WITH QUESTIONS) traced
+  every rule against the code and confirmed the math is sound on every risky axis (buffer
+  rounding, strict half-point thresholds, underdog tiers, standings rank order); it raised
+  two forward-looking questions, both resolved by founder decision in-branch
+  (`agents/pm/DECISIONS.md`, 2026-08-12): (1) the authoritative grader landing in PR5 will
+  be a hand-kept TypeScript mirror (`supabase/functions/_shared/cfbScoring.ts`, since Deno
+  edge functions can't import `src/`) — PR5 will extract the worked examples into a shared
+  fixtures file both the JS and TS test suites consume, so drift fails a test instead of
+  relying on a "keep in sync" comment; (2) a double-down IS allowed on an underdog ATS pick
+  (e.g. a +10 pick clearing its buffer by covering) — the engine already scored this
+  correctly, so `doubleDownWinBy`'s doc comment (not its logic) was updated to state the
+  returned threshold is **sign-general** (negative for underdogs), and PR6's picks UI must
+  phrase the bonus condition generally ("cover by more than N") rather than favorite-only
+  "win by X+". This starts closing BACKLOG F4 (golf's `scoring.js`/`tierBuilder.js`/
+  `format.js` remain uncovered). Grading, adapters, and UI are still not built — PR5
+  onward.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.

@@ -13,6 +13,68 @@
 
 ---
 
+## 2026-08-12 — CFB PR4: double-down is legal on an underdog ATS pick; UI copy must phrase it generally
+
+**Decision:** A double-down flag may be placed on any of the 5 ATS picks, including one where
+the picked team is the underdog getting points (e.g. a `+10` pick, buffer `5`, which clears by
+losing by 4 or fewer, or winning outright). Senior review on PR4
+(`agents/senior-dev/reviews/cfb-pr4-scoring-engine.md`, Question 2) flagged that `cfbScoring.js`'s
+`gradeDoubleDown` already scores this case correctly, but the UI copy helper
+(`doubleDownWinBy`) was documented as if the flagged pick were always a favorite, returning a
+negative, nonsensical "win by −4" for a dog. The founder chose to **allow** the underdog
+double-down (the alternative — restrict double-downs to favorites and enforce it at submit —
+was also on the table and rejected) and fix the *documentation/consumption* contract instead of
+the rule: `doubleDownWinBy` now returns a **sign-general** margin threshold (positive for
+favorites, negative for underdogs) and its header comment spells out both readings. No scoring
+logic changed — the arithmetic was already correct; only the doc comment and two new tests
+(pinning the underdog case) landed in this PR.
+
+**Why:** Restricting double-downs to favorites would be an arbitrary rule with no basis in
+`docs/CFB_FORMAT.md` (which never says the DD must be a favorite pick) and would remove a
+legitimate, students-of-the-game strategic choice — flagging a live underdog is a real, exciting
+decision, not an edge case to design away. The engine handles it for free; the only real cost is
+that PR6's picks-UI copy layer must branch on sign ("win by X+" for favorites vs. "cover by more
+than N" / "keep it within N" for underdogs) instead of using one static string template.
+
+**Gave up:** A simpler picks-UI copy layer (one string template, no sign branching) — not worth
+it for removing a real strategic option from players.
+
+**Revisit if:** PR6 finds the sign-branching copy genuinely can't read naturally in the UI
+(unlikely — it's two template strings selected on `doubleDownWinBy`'s sign, not a formula in the
+UI). See `docs/CFB_BUILD_PLAN.md`'s design-direction section for the concrete phrasing note.
+
+---
+
+## 2026-08-12 — CFB PR4→PR5: guard JS/TS scoring-engine drift with shared fixtures, not a comment
+
+**Decision:** PR5 will add the authoritative, server-side grader as a hand-kept TypeScript
+mirror of `src/utils/cfbScoring.js` (`supabase/functions/_shared/cfbScoring.ts`), because Deno
+edge functions can't cleanly import from `src/`. Senior review on PR4
+(`agents/senior-dev/reviews/cfb-pr4-scoring-engine.md`, Question 1) flagged that this means the
+load-bearing scoring math will exist in two languages, edited by hand, with only the JS side
+under test — the TS grader could silently diverge from the tested arithmetic and nothing would
+catch it. The founder decided: **when PR5 lands, extract the worked-example cases (the buffer
+rounding boundaries, DD thresholds, underdog tier edges, the underdog-DD case from the entry
+above) into a shared fixtures file that both the existing JS test suite and a new TS-grader test
+consume.** A drift between the two implementations then fails a test, not just a code-review
+glance at a "keep these in sync" comment.
+
+**Why:** Server-authoritative grading (so users can't grade their own picks) is the right
+integrity call and isn't being revisited — but "keep two files in sync by hand" is exactly the
+kind of promise that erodes silently over a season of edits. A shared fixtures file makes the
+sync requirement mechanically enforced instead of a documentation convention, for close to zero
+extra cost (the fixtures already exist as worked examples in `docs/CFB_FORMAT.md` and PR4's test
+file — this is packaging them for reuse, not writing new cases).
+
+**Gave up:** Nothing real — this is additive scaffolding for PR5, not a scope cut. The
+alternative (a manual "keep in sync" comment only) was rejected as insufficient.
+
+**Revisit if:** PR5's shared-fixtures approach turns out to be awkward across the JS/TS
+boundary (e.g. fixture format needs per-language transforms) — fall back to a documented manual
+sync with a stronger comment, but treat that as a downgrade to flag, not the default.
+
+---
+
 ## 2026-08-12 — CFB PR3: cross-check CFBD's spread sign against its own text label; skip and warn on disagreement
 
 **Decision:** `src/lib/cfb.js` computes the underdog purely from the sign of CFBD's

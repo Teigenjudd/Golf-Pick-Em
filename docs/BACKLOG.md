@@ -284,6 +284,10 @@
   `scoring.js` (`computeScores`, WD/CUT penalty, best-N, tie ranks), `tierBuilder.js`
   (odds→prob calibration, wildcard split), `format.js`. **Fix:** add Vitest + a
   handful of `scoring`/`tierBuilder` tests; they'd have caught B1/B3 regressions.
+  **Partially closed 2026-08-12, PR #43:** `vitest` + a `test`/`test:watch` script landed,
+  and `src/utils/cfbScoring.js` (CFB's scoring engine, not golf's) got the repo's first 44
+  unit tests, all passing. Golf's `scoring.js`/`tierBuilder.js`/`format.js` are still
+  uncovered — this item stays open for those.
 
 - [ ] ⚪ **F5 — `MONTHLY_CAP = 1800` duplicated across both edge functions.**
   And `SLASH_GOLF_BASE`. Small, but they can drift. **Fix:** shared constant module
