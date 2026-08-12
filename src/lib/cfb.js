@@ -42,20 +42,55 @@ function median(nums) {
 
 // Pick a single home-perspective spread from a CFBD lines entry. Prefer the
 // "consensus" provider when present; otherwise pool the providers by median so
-// one outlier book can't skew the line. Returns a number or null (no line).
-export function chooseSpread(lineEntry) {
-  const providers = lineEntry?.lines ?? []
-  const numeric = providers
-    .map(p => field(p, 'spread'))
-    .map(Number)
-    .filter(n => Number.isFinite(n))
-  if (!numeric.length) return null
+// one outlier book can't skew the line. Also returns a representative
+// `formattedSpread` — CFBD's own text label like "Michigan -17.5", which names
+// the favorite — paired with the chosen number, so buildGameRows can corroborate
+// the sign convention. Returns { spread, formattedSpread }; spread is null (no
+// line) when nothing usable is posted.
+export function chooseLine(lineEntry) {
+  const providers = (lineEntry?.lines ?? []).filter(
+    p => Number.isFinite(Number(field(p, 'spread'))),
+  )
+  if (!providers.length) return { spread: null, formattedSpread: null }
+
+  const fmt = p => field(p, 'formattedSpread', 'formatted_spread')
 
   const consensus = providers.find(
     p => String(field(p, 'provider') ?? '').toLowerCase() === 'consensus',
   )
-  const consensusSpread = consensus ? Number(field(consensus, 'spread')) : NaN
-  return Number.isFinite(consensusSpread) ? consensusSpread : median(numeric)
+  if (consensus) return { spread: Number(field(consensus, 'spread')), formattedSpread: fmt(consensus) }
+
+  const med = median(providers.map(p => Number(field(p, 'spread'))))
+  // Representative label = the provider closest to the median we're storing.
+  let rep = providers[0]
+  let best = Infinity
+  for (const p of providers) {
+    const d = Math.abs(Number(field(p, 'spread')) - med)
+    if (d < best) { best = d; rep = p }
+  }
+  return { spread: med, formattedSpread: fmt(rep) }
+}
+
+// Thin back-compat wrapper: just the chosen number.
+export function chooseSpread(lineEntry) {
+  return chooseLine(lineEntry).spread
+}
+
+// CFBD writes the favorite in `formattedSpread` with a negative line, e.g.
+// "Michigan -17.5" (or "Miami (OH) -3.5", "Texas A&M -7"). Returns the favored
+// team name IFF it matches one of this game's two teams; null when the label is
+// a pick'em/EVEN, malformed, or names a team we can't match (can't corroborate).
+// Used to catch a CFBD sign-convention flip: if the text names one favorite but
+// the numeric spread's sign implies the other, the number has drifted.
+export function favoriteFromFormattedSpread(text, home, away) {
+  if (!text || typeof text !== 'string') return null
+  const parts = text.trim().split(/\s+/)
+  const num = Number(parts[parts.length - 1])
+  if (!Number.isFinite(num) || num >= 0) return null // EVEN / pick'em / unexpected format
+  const name = parts.slice(0, -1).join(' ')
+  if (name === home) return home
+  if (name === away) return away
+  return null
 }
 
 // Pure transform: CFBD games + lines + FBS team set → cfb.games row objects
@@ -66,10 +101,10 @@ export function buildGameRows(games, lines, fbsTeams) {
   const fbsSet = new Set(
     (fbsTeams ?? []).map(t => field(t, 'school', 'team')).filter(Boolean),
   )
-  const spreadByGameId = new Map()
+  const lineByGameId = new Map()
   for (const entry of lines ?? []) {
     const id = field(entry, 'id', 'gameId', 'game_id')
-    if (id != null) spreadByGameId.set(String(id), chooseSpread(entry))
+    if (id != null) lineByGameId.set(String(id), chooseLine(entry))
   }
 
   const rows = []
@@ -87,8 +122,26 @@ export function buildGameRows(games, lines, fbsTeams) {
         && field(g, 'awayClassification', 'away_classification') === 'fbs'
     if (!bothFbs) continue
 
-    const spread = spreadByGameId.get(String(gameId))
+    const line = lineByGameId.get(String(gameId))
+    const spread = line?.spread
     if (spread == null || !Number.isFinite(spread)) continue // no line → not pickable
+
+    // Corroborate CFBD's numeric sign against its own text label (which names the
+    // favorite). If the label names the OTHER team, CFBD's sign convention has
+    // drifted — skip this game and flag it rather than freeze a wrong underdog.
+    // (spread === 0 is a pick'em: no favorite to check.)
+    const signFavorite = spread < 0 ? home : spread > 0 ? away : null
+    if (signFavorite) {
+      const textFavorite = favoriteFromFormattedSpread(line.formattedSpread, home, away)
+      if (textFavorite && textFavorite !== signFavorite) {
+        console.warn(
+          `[cfb slate] sign mismatch on game ${gameId} (${away} @ ${home}): ` +
+          `spread ${spread} implies ${signFavorite} favored, but CFBD label ` +
+          `"${line.formattedSpread}" names ${textFavorite}. Skipping.`,
+        )
+        continue
+      }
+    }
 
     // Underdog is the team getting points; its spread is stored positive.
     // spread < 0: home favored → away is the dog. spread > 0: away favored →
@@ -110,7 +163,7 @@ export function buildGameRows(games, lines, fbsTeams) {
       away_team: away,
       home_conference: field(g, 'homeConference', 'home_conference'),
       away_conference: field(g, 'awayConference', 'away_conference'),
-      kickoff_at: field(g, 'startDate', 'start_date', 'startTimeTBD') || null,
+      kickoff_at: field(g, 'startDate', 'start_date') || null,
       home_spread: spread,
       is_fbs_vs_fbs: true,
       status: completed ? 'final' : 'scheduled',
@@ -135,6 +188,35 @@ export function buildGameRows(games, lines, fbsTeams) {
 // slate. Requires an admin session (the cfd-proxy enforces it). Returns a small
 // summary for the admin UI.
 export async function importWeekSlate({ weekId, seasonYear, weekNumber }) {
+  // Guard: the CFBD week we're about to pull (seasonYear/weekNumber) must be the
+  // same week the target row (weekId) actually is. Without this, a caller slip
+  // would silently store one week's games under another week's id. Cheap: one
+  // read of the stored week + its season.
+  const { data: wk, error: wkErr } = await cfb()
+    .from('weeks')
+    .select('week_number, event_id')
+    .eq('id', weekId)
+    .maybeSingle()
+  if (wkErr) throw wkErr
+  if (!wk) throw new Error(`importWeekSlate: no cfb.weeks row for weekId ${weekId}`)
+  if (wk.week_number !== weekNumber) {
+    throw new Error(
+      `importWeekSlate: weekId ${weekId} is week ${wk.week_number}, but weekNumber=${weekNumber} was passed`,
+    )
+  }
+  // Season check via event_details (split query, not a nested embed — the
+  // public/cfb boundary is joined in JS, same discipline as lib/golf.js).
+  const { data: ed } = await cfb()
+    .from('event_details')
+    .select('season_year')
+    .eq('event_id', wk.event_id)
+    .maybeSingle()
+  if (ed?.season_year != null && ed.season_year !== seasonYear) {
+    throw new Error(
+      `importWeekSlate: that week's season is ${ed.season_year}, but seasonYear=${seasonYear} was passed`,
+    )
+  }
+
   const games = await getGames({ year: seasonYear, week: weekNumber })
   const lines = await getLines({ year: seasonYear, week: weekNumber })
   const fbsTeams = await getFbsTeams(seasonYear)
