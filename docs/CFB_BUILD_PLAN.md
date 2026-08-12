@@ -1,6 +1,6 @@
 # College Football (Sport #2) — Build Plan
 
-> **Status:** Planning, execution in progress (PR3 of ~10 shipped). Written 2026-08-11
+> **Status:** Planning, execution in progress (PR4 of ~10 shipped). Written 2026-08-11
 > from a dedicated planning pass, grounded in a full read of the golf implementation as
 > the template. This is the *how-we-build-it* sequencing doc; the *what-the-game-is*
 > rules live in `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's net-new work. See
@@ -8,7 +8,8 @@
 > BACKLOG **F1** (`pool_standings`) / **F6** (format contract) for the debt this
 > interacts with. **PR1 (`cfb` schema scaffold) shipped 2026-08-11, PR #40; PR2 (RLS +
 > `cfb_submit_week_picks` RPC) shipped 2026-08-11, PR #41; PR3 (`cfd-proxy` + slate
-> import) shipped 2026-08-12** — see the PR sequence table below; the schema sketch
+> import) shipped 2026-08-12; PR4 (`cfbScoring.js` grading engine + first unit tests)
+> shipped 2026-08-12, PR #43** — see the PR sequence table below; the schema sketch
 > reflects what actually shipped, including four integrity constraints senior review
 > added beyond this doc's original sketch in PR1, plus PR3's `underdog_spread` CHECK.
 
@@ -199,8 +200,10 @@ and `agents/pm/DECISIONS.md`, 2026-08-12, for the two founder calls it prompted.
 
 ## Scoring engine — `src/utils/cfbScoring.js`
 
-Pure module, no imports (same discipline as `src/utils/scoring.js`):
-`doubleDownBuffer(spread)` → `max(spread*0.5, 4)` rounded to nearest 0.5;
+**Shipped 2026-08-12, PR #43.** Pure module, no imports (same discipline as
+`src/utils/scoring.js`): `doubleDownBuffer(spread)` → `max(|spread|*0.5, 4)` rounded to
+nearest 0.5, quarter-ties up; `doubleDownWinBy(lockedSpread)` → the UI's margin-threshold
+helper, documented as **sign-general** (not favorite-only) — see the double-down note below;
 `gradeAtsPick(...)` → cover/push/miss + points (push = exact margin = 0);
 `gradeDoubleDown(...)` → +1 if margin clears the buffer, else 0 (never negative);
 `underdogTier(spread)` → 1|2|3 at the documented boundaries; `gradeUnderdogPick(...)` →
@@ -208,15 +211,24 @@ outright win/loss, tiered on win; `gradeWeekCard(...)`; `projectSeasonStandings(
 cumulative fold returning the shared `{ rank, total, display }` shape (with a pre-rendered
 subtitle like `"142 pts · Week 9"` so the shared UI never needs CFB scoring knowledge).
 
-**Unit tests (the repo's first — starts closing BACKLOG F4).** Add `vitest`, a `test` script,
-and `cfbScoring.test.js` covering the boundary cases from `CFB_FORMAT.md` verbatim.
+**Unit tests (the repo's first — starts closing BACKLOG F4).** `vitest` + a `test`/`test:watch`
+script landed in `package.json`; `cfbScoring.test.js` covers every boundary case from
+`CFB_FORMAT.md` verbatim (buffer rounding at 8.5/9/10.5, DD exactly-on-buffer, underdog tier
+edges 6.5/7/13.5/14, push, ties-share-rank, plus the underdog-DD boundary) — **44/44 passing**.
+Senior review (`agents/senior-dev/reviews/cfb-pr4-scoring-engine.md`, APPROVE WITH QUESTIONS)
+traced every rule against the code and confirmed the math is sound on every axis it flagged
+as risky (float-safe buffer rounding, strict half-point thresholds, underdog tiers, standings
+rank order).
 
 **Client↔edge duplication:** authoritative grading runs server-side (service role) so users
 can't grade their own picks. Deno edge functions can't import `src/` cleanly, so keep
 `cfbScoring.js` as the tested source of truth and maintain a small
 `supabase/functions/_shared/cfbScoring.ts` mirror with a comment pointing back (precedented
 by `.design-sync/scoring-preview.js`, BACKLOG F7). Bounded, pure arithmetic — not a slippery
-slope.
+slope. **PR5 directive (founder decision, `agents/pm/DECISIONS.md` 2026-08-12):** rather than
+trust a "keep in sync" comment, extract the worked-example cases into a shared fixtures file
+that both the JS test suite and a new TS-grader test consume — so drift between the two
+languages fails a test, not just a code-review glance.
 
 ---
 
@@ -260,7 +272,14 @@ green, coherent with the Poold system. Two fixes to carry into the real build:
 2. Double-down copy must reflect the **strict** rule: "cover by more than N · win by X+" — the
    buffer is a strictly-greater threshold, so an inclusive "N+" is wrong for spreads whose buffer
    lands on a half-point (e.g. an 8.5 line → 4.5 buffer, which a 13-point win lands exactly on).
-   Build the buffer→"win by X" helper in the scoring engine (PR4) and unit-test it.
+   The buffer→threshold helper (`doubleDownWinBy`) shipped in PR4, unit-tested. **Founder decision
+   (2026-08-12, see DECISIONS):** a double-down IS allowed on an underdog ATS pick (e.g. a +10
+   pick clearing the buffer by covering) — the engine already scores this correctly.
+   `doubleDownWinBy` therefore returns a **sign-general** margin threshold (negative for
+   underdogs, e.g. a +10 pick with buffer 5 returns −4), not a literal "win by" number. PR6's
+   picks UI must phrase the bonus condition generally ("cover by more than N") rather than
+   favorite-only "win by X+", branching on the sign to render "win by X+" (favorite) vs. "keep it
+   within N / cover by more than N" (underdog).
 
 ---
 
@@ -299,7 +318,7 @@ green, coherent with the Poold system. Two fixes to carry into the real build:
 | 1 | `cfb` schema scaffold — **shipped 2026-08-11, PR #40** | Additive tables, grants, RLS-deny-all, seed `public.sports` row; add `cfb` to config.toml | grants forgotten → silent "permission denied" (mitigated; grant block mirrors golf's, confirmed in senior review) |
 | 2 | RLS + `cfb_submit_week_picks` RPC — **shipped 2026-08-11, PR #41** | Row policies mirroring golf + the atomic whole-card submit (Finding 2) | RLS alone can't enforce the 6-pick set — resolved by giving the RPC the *only* write path on `cfb.picks` (no client insert/update/delete policy at all, not just a defense-in-depth layer) |
 | 3 | `cfd-proxy` + slate import — **shipped 2026-08-12** | Server-side CFBD access; `src/lib/cfb.js` import | lineless games excluded at import (done); underdog sign/team stored correctly (done, plus a CFBD-label cross-check the founder added — see DECISIONS) |
-| 4 | `cfbScoring.js` + tests | Pure grading engine + the repo's first unit tests (F4) | double-down rounding + underdog tier boundaries |
+| 4 | `cfbScoring.js` + tests — **shipped 2026-08-12, PR #43** | Pure grading engine + the repo's first unit tests (F4), 44/44 passing | double-down rounding + underdog tier boundaries (verified sound in senior review; underdog-DD copy resolved — see DECISIONS) |
 | 5 | `grade-cfb-week` → `pool_standings` | Weekly grading writes the shared projection (CFB half of F1) | mirror/source drift — comment both files |
 | 5b | *(optional)* wire `pool_standings` for golf | Closes F1's other half; not required to ship CFB | none blocking — keep it from gating CFB |
 | 6 | Weekly picks UI + shell theme-props | `CfbPicks`/`CfbWeekPicker`; prop-ify the shells (Finding 1) | shell changes must not visually change golf (defaults) |
@@ -315,8 +334,9 @@ green, coherent with the Poold system. Two fixes to carry into the real build:
 
 Ranked. Load-bearing ones must be answered before the PR that depends on them.
 
-1. **Double-down buffer rounding** — if the buffer computes to a non-half-point number, round
-   up, down, or to nearest? (Needed before PR4 tests.)
+1. ~~**Double-down buffer rounding**~~ — **Resolved** (in `docs/CFB_FORMAT.md` ahead of PR4):
+   round to the nearest 0.5, quarter-point ties up. `cfbScoring.js`'s `doubleDownBuffer` and its
+   PR4 tests pin this exactly (`8.5→4.5`, `10.5→5.5`).
 2. **Partial-submission auto-fill** — submit 3 of 6 then miss the deadline: top up only the
    missing 3 (keep real picks + DD), or wipe the whole card to random? Does a *partial* miss
    forfeit the DD?
