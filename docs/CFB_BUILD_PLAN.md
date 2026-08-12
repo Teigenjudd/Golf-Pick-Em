@@ -1,14 +1,15 @@
 # College Football (Sport #2) — Build Plan
 
-> **Status:** Planning, execution started. Written 2026-08-11 from a dedicated planning
-> pass, grounded in a full read of the golf implementation as the template. This is the
-> *how-we-build-it* sequencing doc; the *what-the-game-is* rules live in
-> `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's net-new work. See
+> **Status:** Planning, execution in progress (PR2 of ~10 shipped). Written 2026-08-11
+> from a dedicated planning pass, grounded in a full read of the golf implementation as
+> the template. This is the *how-we-build-it* sequencing doc; the *what-the-game-is*
+> rules live in `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's net-new work. See
 > `docs/MULTI_SPORT_MIGRATION.md` for the per-schema architecture this sits on, and
 > BACKLOG **F1** (`pool_standings`) / **F6** (format contract) for the debt this
-> interacts with. **PR1 (`cfb` schema scaffold) shipped 2026-08-11, PR #40** — see the
-> PR sequence table below; the schema sketch reflects what actually shipped, including
-> four integrity constraints senior review added beyond this doc's original sketch.
+> interacts with. **PR1 (`cfb` schema scaffold) shipped 2026-08-11, PR #40; PR2 (RLS +
+> `cfb_submit_week_picks` RPC) shipped 2026-08-11, PR #41** — see the PR sequence table
+> below; the schema sketch reflects what actually shipped, including four integrity
+> constraints senior review added beyond this doc's original sketch in PR1.
 
 CFB is Poold's second sport: a new `cfb` Postgres schema and a genuinely new **format**
 (weekly against-the-spread, season-cumulative). The full rules are in `docs/CFB_FORMAT.md`.
@@ -84,7 +85,9 @@ weeks/games hanging off it and shared by every pool on that season (reuses the D
 were added beyond this doc's original sketch, all flagged by senior review as cheap now /
 expensive once data exists: `weeks(event_id, week_number)` uniqueness, a composite FK
 guaranteeing a pick's game belongs to its week, `CHECK`s on the remaining enum columns,
-and `season_year NOT NULL`. Tables are empty; no RLS policies yet (PR2).
+and `season_year NOT NULL`. Tables are empty (no CFB data has been imported yet); RLS
+policies and the `cfb_submit_week_picks` RPC shipped in PR2, 2026-08-11, PR #41 — see the
+"RLS" bullet below.
 
 ```
 cfb  (FKs point within cfb or cfb → public, never → golf)
@@ -117,12 +120,19 @@ cfb  (FKs point within cfb or cfb → public, never → golf)
 `authenticated` + `service_role`). Skipping this = "permission denied" *before RLS runs* —
 the migration doc's #1 cross-schema foot-gun.
 
-**RLS** — `weeks`/`games`/`event_details` mirror golf's `tiers`/`tier_players`/`event_details`
-(authenticated read-all, admin manages). `cfb.picks`: read-own anytime; read-others'-picks
-only after **that week's** lock (`cfb.weeks.lock_time`/`status`, per-week not per-pool); plus
-row-level insert/delete policies mirroring golf's for defense-in-depth — but the real
-enforcement is the `cfb_submit_week_picks` RPC (Finding 2). Auto-fill and grading also run
-server-side (service role), not client writes.
+**RLS — shipped as of PR2 (2026-08-11, PR #41), and it deviates from this doc's original
+sketch on purpose.** `weeks`/`games`/`event_details` mirror golf's
+`tiers`/`tier_players`/`event_details` (authenticated read-all, admin manages).
+`cfb.picks`: read-own anytime; read-others'-confirmed-picks only after **that week's**
+lock (`cfb.weeks.lock_time`/`status`, per-week not per-pool); admin read/update/delete;
+`service_role` writes (auto-fill, grading). **There is deliberately NO client
+insert/update/delete policy on `cfb.picks`** — this doc originally sketched row-level
+write policies "for defense-in-depth," but senior review on PR2 concluded that would
+REOPEN Finding 2's hole: a per-row policy can't express "these 6 rows together are a
+legal card," so a row-policy client write could pass every per-row check while still
+corrupting a card (6 ATS picks, two double-downs, etc.). The `cfb_submit_week_picks` RPC
+is the *only* write path, not just the "real" one — see
+`agents/pm/DECISIONS.md`, 2026-08-11.
 
 ---
 
@@ -138,6 +148,16 @@ server-side (service role), not client writes.
   before each week's lock, not once at season start** (lines move; future weeks aren't
   posted). CFB pool "creation" seeds ~15 empty `cfb.weeks` with placeholder locks; each
   week's games import later, as a recurring op (PR9).
+  **Data contract PR3 MUST honor (flagged in PR2 senior review, `agents/senior-dev/reviews/
+  cfb-pr2-rls-and-submit-rpc.md`):** `cfb_submit_week_picks` (PR2) trusts `cfb.games`
+  verbatim for the underdog slot — it freezes `locked_spread` as `g.underdog_spread` and
+  validates the pick against `g.underdog_team` with no defensive check. So at import time,
+  `underdog_team` must be the *actual* underdog and `underdog_spread` must be stored
+  **positive** (the dog's line, getting points) and **non-NULL** for every eligible game.
+  Get the sign or the team wrong here and the RPC will faithfully freeze a wrong number —
+  nothing downstream catches it. Planned enforcement: compute with `abs()` at import time,
+  plus a `CHECK` constraint on `cfb.games` (e.g. `underdog_spread IS NULL OR
+  underdog_spread > 0`).
 - **Grading** (not just caching, unlike golf) — because standings are cumulative across
   weeks, a `grade-cfb-week` job runs after a week's games go final: fetch final scores,
   update `cfb.games`, grade every pick, write the shared `pool_standings` projection. Same
@@ -245,8 +265,8 @@ green, coherent with the Poold system. Two fixes to carry into the real build:
 |---|---|---|---|
 | 0 | `docs/CFB_FORMAT.md` | Rules + worked examples + schema sketch, reviewed before code | ambiguity found mid-build instead of now |
 | 1 | `cfb` schema scaffold — **shipped 2026-08-11, PR #40** | Additive tables, grants, RLS-deny-all, seed `public.sports` row; add `cfb` to config.toml | grants forgotten → silent "permission denied" (mitigated; grant block mirrors golf's, confirmed in senior review) |
-| 2 | RLS + `cfb_submit_week_picks` RPC | Row policies mirroring golf + the atomic whole-card submit (Finding 2) | RLS alone can't enforce the 6-pick set — don't skip the RPC |
-| 3 | `cfd-proxy` + slate import | Server-side CFBD access; `src/lib/cfb.js` import | lineless games must be excluded at import, not just unscored |
+| 2 | RLS + `cfb_submit_week_picks` RPC — **shipped 2026-08-11, PR #41** | Row policies mirroring golf + the atomic whole-card submit (Finding 2) | RLS alone can't enforce the 6-pick set — resolved by giving the RPC the *only* write path on `cfb.picks` (no client insert/update/delete policy at all, not just a defense-in-depth layer) |
+| 3 | `cfd-proxy` + slate import | Server-side CFBD access; `src/lib/cfb.js` import | lineless games must be excluded at import, not just unscored; **must also store `underdog_team`/`underdog_spread` correctly (positive, non-NULL) — PR2's RPC trusts this verbatim, see the slate-import note above** |
 | 4 | `cfbScoring.js` + tests | Pure grading engine + the repo's first unit tests (F4) | double-down rounding + underdog tier boundaries |
 | 5 | `grade-cfb-week` → `pool_standings` | Weekly grading writes the shared projection (CFB half of F1) | mirror/source drift — comment both files |
 | 5b | *(optional)* wire `pool_standings` for golf | Closes F1's other half; not required to ship CFB | none blocking — keep it from gating CFB |

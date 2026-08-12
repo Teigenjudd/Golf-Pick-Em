@@ -65,8 +65,9 @@ writing code.
   format decided, full build plan sequenced into ~11 PRs (`docs/CFB_FORMAT.md`,
   `docs/CFB_BUILD_PLAN.md`, planning-only PR0 shipped 2026-08-11) — **PR1 (the `cfb`
   schema scaffold) shipped 2026-08-11, PR #40**: an empty, additive `cfb` schema (four
-  tables, RLS deny-all, no policies yet). No RLS policies, RPC, adapters, or UI exist yet
-  — those are PR2+.
+  tables, RLS deny-all, no policies yet). **PR2 (RLS policies + the
+  `cfb_submit_week_picks` submit RPC) shipped 2026-08-11, PR #41.** Slate import
+  (CFD proxy), scoring, grading, adapters, and UI are still not built — those are PR3+.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -174,6 +175,34 @@ writing code.
   already used on `picks.pick_type`), and `event_details.season_year NOT NULL`. RLS
   policies, the `cfb_submit_week_picks` RPC, slate import, scoring, grading, UI, and the
   sport-dispatch layer are still not built — PR2 onward per `docs/CFB_BUILD_PLAN.md`.
+- **CFB PR2 — RLS + the weekly-card submit RPC shipped 2026-08-11 (PR #41).** One
+  migration (`supabase/migrations/20260811000001_cfb_phase2_rls_and_submit_rpc.sql`):
+  RLS policies for all four `cfb` tables (reference tables = authenticated-read +
+  admin-manage, mirroring golf phase-3), and `cfb.cfb_submit_week_picks(p_pool_id,
+  p_week_id, p_picks)` — a `SECURITY DEFINER` RPC that is now the **only** write path
+  onto `cfb.picks` (no client insert/update/delete policy at all — a deliberate
+  deviation from `docs/CFB_BUILD_PLAN.md`'s original "row policies for defense-in-depth"
+  line, because a per-row policy can't enforce the 6-row whole-card rule; see
+  `agents/pm/DECISIONS.md`, 2026-08-11). It validates pool membership, that the week
+  belongs to the pool's season, that the week is still open (gated on `lock_time`/status,
+  not a separate flag — a week is pickable once its slate is loaded and lock_time hasn't
+  passed, a deliberate founder call, also logged in DECISIONS), and the whole 6-row card
+  (exactly 5 ATS + 1 underdog on 6 distinct games, ≤1 double-down only on an ATS pick,
+  valid team incl. the dog slot being the real underdog) before atomically replacing the
+  card in one transaction. `locked_spread` is frozen server-side from the current
+  `cfb.games` row — the client never sends it. Senior review
+  (`agents/senior-dev/reviews/cfb-pr2-rls-and-submit-rpc.md`, APPROVE WITH QUESTIONS)
+  traced every malformed-card case and confirmed the security properties hold; it
+  flagged one piece of debt now written down for PR3 in `docs/CFB_BUILD_PLAN.md` (the
+  RPC trusts `cfb.games.underdog_team`/`underdog_spread` verbatim — PR3's import must
+  store the real underdog with a positive, non-NULL spread) plus two low-priority nits
+  (a raw Postgres error on garbage-typed input instead of a friendly message; submit is
+  technically allowed before a week is explicitly `'open'`, harmless since no games
+  exist yet to build a card from). **Deploy note:** already applied to prod via
+  `supabase db push` (no users yet, so prod doubles as the CFB dev DB) — the Supabase
+  dashboard's Exposed Schemas toggle is still OFF, so `cfb` isn't reachable by the Data
+  API yet; that flip stays the deferred cutover step. Slate import, scoring, grading,
+  UI, and the sport-dispatch layer are still not built — PR3 onward.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.
