@@ -29,15 +29,21 @@ export function doubleDownBuffer(spread) {
   return Math.round(raw * 2) / 2
 }
 
-// UI helper for the double-down copy ("cover by more than N · win by X+").
-// Returns the minimum INTEGER margin of victory (from the picked team's
-// perspective) needed to CLEAR the buffer and earn the +1 bonus. The bonus is a
-// STRICT threshold (cover_margin > buffer), so this is the smallest integer margin
-// strictly greater than (buffer − locked_spread). e.g. an 8.5 favorite: buffer 4.5,
-// needs cover_margin > 4.5 → margin > 13 → win by 14+. A 13-point win lands exactly
-// on the threshold and does NOT clear — which is why an inclusive "13+" copy would
-// be wrong. `Math.floor(t) + 1` gives the right answer whether t is an integer or a
-// half-integer (floor(13)+1 = floor(13.5)+1 = 14).
+// UI helper for the double-down copy. Returns the minimum INTEGER margin — from the
+// PICKED team's perspective — needed to CLEAR the buffer and earn the +1 bonus. The
+// bonus is a STRICT threshold (cover_margin > buffer), so this is the smallest
+// integer strictly greater than (buffer − locked_spread); `Math.floor(t) + 1` is
+// correct whether t is an integer or a half-integer (floor(13)+1 = floor(13.5)+1 = 14).
+//
+// Double-downs are legal on underdog ATS picks too (founder decision, see
+// agents/pm/DECISIONS.md 2026-08-12), so the returned number must be read GENERALLY,
+// not as a literal "win by" — its SIGN tells the UI how to phrase it:
+//   • Favorite (e.g. −8.5): returns +14 → "win by 14+" (a 13-point win lands exactly
+//     on the threshold and does NOT clear, which is why an inclusive "13+" is wrong).
+//   • Underdog (e.g. +10):  returns −4  → the dog clears the buffer by losing by no
+//     more than 4 (or winning) → phrase as "cover by more than N" / "keep it within 4".
+// The number is the correct margin threshold in both cases; rendering a raw
+// "win by −4" would be the UI bug the phrasing layer (PR6) must avoid.
 export function doubleDownWinBy(lockedSpread) {
   const threshold = doubleDownBuffer(lockedSpread) - lockedSpread
   return Math.floor(threshold) + 1

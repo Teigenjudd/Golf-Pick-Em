@@ -61,6 +61,17 @@ describe('doubleDownWinBy — strict "win by X+" copy helper', () => {
   it('a 9 favorite must win by 14+ (buffer 4.5, threshold 13.5)', () => {
     expect(doubleDownWinBy(-9)).toBe(14)
   })
+
+  it('an underdog double-down is legal: a +10 dog returns the correct ≤0 margin threshold (−4)', () => {
+    // buffer 5 → clears iff cover_margin > 5 → margin > −5 → min integer margin −4
+    // (the dog loses by no more than 4, or wins). The UI phrases the sign, not "win by".
+    expect(doubleDownWinBy(10)).toBe(-4)
+  })
+
+  it('the returned threshold matches the gradeDoubleDown boundary for an underdog', () => {
+    expect(gradeDoubleDown({ margin: -4, lockedSpread: 10 })).toEqual({ bonus: 1 }) // clears
+    expect(gradeDoubleDown({ margin: -5, lockedSpread: 10 })).toEqual({ bonus: 0 }) // exactly on → no
+  })
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
