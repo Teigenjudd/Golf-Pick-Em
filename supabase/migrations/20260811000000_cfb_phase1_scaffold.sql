@@ -35,7 +35,7 @@ CREATE SCHEMA IF NOT EXISTS cfb;
 -- 1:1 CFB-specific extension of public.events (one event = one season)
 CREATE TABLE IF NOT EXISTS cfb.event_details (
   event_id    uuid PRIMARY KEY REFERENCES public.events(id) ON DELETE CASCADE,
-  season_year int
+  season_year int NOT NULL
 );
 
 -- event-level: one slate/lock per week, shared by every pool on the season
@@ -45,7 +45,11 @@ CREATE TABLE IF NOT EXISTS cfb.weeks (
   week_number int NOT NULL,
   label       text,
   lock_time   timestamptz,
-  status      text NOT NULL DEFAULT 'scheduled'  -- 'scheduled'|'open'|'locked'|'graded'
+  status      text NOT NULL DEFAULT 'scheduled'
+    CHECK (status IN ('scheduled', 'open', 'locked', 'graded')),
+  -- one row per (season, week number): makes week seeding idempotent and gives
+  -- every game/pick a single addressable "Week N of this season" to attach to
+  CONSTRAINT cfb_weeks_one_per_number UNIQUE (event_id, week_number)
 );
 
 CREATE TABLE IF NOT EXISTS cfb.games (
@@ -59,11 +63,15 @@ CREATE TABLE IF NOT EXISTS cfb.games (
   kickoff_at       timestamptz,
   home_spread      numeric NOT NULL,             -- signed vs home; away = -home_spread
   is_fbs_vs_fbs    boolean NOT NULL,
-  status           text NOT NULL DEFAULT 'scheduled', -- 'scheduled'|'in_progress'|'final'
+  status           text NOT NULL DEFAULT 'scheduled'
+    CHECK (status IN ('scheduled', 'in_progress', 'final')),
   home_score       int,
   away_score       int,
   underdog_team    text,                         -- denormalized for the picks UI
-  underdog_spread  numeric                        -- denormalized for the picks UI
+  underdog_spread  numeric,                       -- denormalized for the picks UI
+  -- lets cfb.picks reference (game_id, week_id) as a composite FK, so a pick's
+  -- game is structurally guaranteed to belong to that pick's week
+  CONSTRAINT cfb_games_id_week UNIQUE (id, week_id)
 );
 
 CREATE TABLE IF NOT EXISTS cfb.picks (
@@ -71,19 +79,23 @@ CREATE TABLE IF NOT EXISTS cfb.picks (
   pool_id         uuid NOT NULL REFERENCES public.pools(id) ON DELETE CASCADE,
   week_id         uuid NOT NULL REFERENCES cfb.weeks(id) ON DELETE CASCADE,
   user_id         uuid NOT NULL REFERENCES public.profiles(id),
-  game_id         uuid NOT NULL REFERENCES cfb.games(id),
+  game_id         uuid NOT NULL,
   pick_type       text NOT NULL CHECK (pick_type IN ('ats', 'underdog')),
   selected_team   text NOT NULL,
   is_double_down  boolean NOT NULL DEFAULT false,
   locked_spread   numeric NOT NULL,               -- spread frozen at submit, for grading
   auto_filled     boolean NOT NULL DEFAULT false,
   status          text NOT NULL DEFAULT 'confirmed',
-  result          text,                           -- cover|push|miss|win|loss (set at grading)
+  result          text CHECK (result IN ('cover', 'push', 'miss', 'win', 'loss')), -- NULL until graded
   base_points     numeric,
   bonus_points    numeric,
   created_at      timestamptz NOT NULL DEFAULT now(),
   -- exactly one pick per (pool, user, week, game)
-  CONSTRAINT cfb_picks_one_per_game UNIQUE (pool_id, user_id, week_id, game_id)
+  CONSTRAINT cfb_picks_one_per_game UNIQUE (pool_id, user_id, week_id, game_id),
+  -- the picked game must belong to the pick's week (composite FK into cfb.games);
+  -- enforces game∈week structurally, for every write path, not just the PR2 RPC
+  CONSTRAINT cfb_picks_game_in_week FOREIGN KEY (game_id, week_id)
+    REFERENCES cfb.games (id, week_id)
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
