@@ -63,8 +63,10 @@ writing code.
 - No second sport **built** until golf is proven and stable — the schema seam exists
   (that was the point of the migration). **CFB is now the committed sport #2 direction**:
   format decided, full build plan sequenced into ~11 PRs (`docs/CFB_FORMAT.md`,
-  `docs/CFB_BUILD_PLAN.md`, planning-only PR0 shipped 2026-08-11) — but PR1 (the `cfb`
-  schema scaffold) has not started. No `cfb` tables, adapters, or UI exist yet.
+  `docs/CFB_BUILD_PLAN.md`, planning-only PR0 shipped 2026-08-11) — **PR1 (the `cfb`
+  schema scaffold) shipped 2026-08-11, PR #40**: an empty, additive `cfb` schema (four
+  tables, RLS deny-all, no policies yet). No RLS policies, RPC, adapters, or UI exist yet
+  — those are PR2+.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -94,7 +96,8 @@ writing code.
   schema, `lib/cfb.js`, scoring engine, picks UI, `cfd-proxy` data provider) over a
   shared neutral `public` core, with only the `pool_standings` `{rank,total,display}`
   output shape shared between sports. Planning-only PR0 shipped; build sequenced into
-  ~11 PRs starting with the schema scaffold (`docs/CFB_BUILD_PLAN.md`).
+  ~11 PRs (`docs/CFB_BUILD_PLAN.md`) — PR1, the additive `cfb` schema scaffold, shipped
+  2026-08-11 (PR #40).
 - Split queries across the `public`/`golf` boundary, not PostgREST cross-schema embeds
   (Phase 0 spike decision).
 
@@ -151,9 +154,26 @@ writing code.
   engine, picks UI, `cfd-proxy` data provider) over the shared neutral `public` core, with
   only the `pool_standings` output shape shared between sports — finally putting that
   scaffolded-but-unused table to work (BACKLOG F1). No FormatEngine abstraction extracted
-  at two formats (BACKLOG F6 stays deferred, revisit at format #3). **Execution has not
-  started** — PR1 (the `cfb` schema scaffold) is next. See `agents/pm/DECISIONS.md`,
-  2026-08-11.
+  at two formats (BACKLOG F6 stays deferred, revisit at format #3). See
+  `agents/pm/DECISIONS.md`, 2026-08-11.
+- **CFB PR1 — `cfb` schema scaffold shipped 2026-08-11 (PR #40).** Additive-only
+  migration (`supabase/migrations/20260811000000_cfb_phase1_scaffold.sql`): the `cfb`
+  schema with four empty tables (`event_details`, `weeks`, `games`, `picks`), seeds
+  `public.sports` for `'cfb'`, full grant block for `authenticated`/`service_role`, and
+  RLS enabled with **no policies yet** (deny-all — safe default while empty). Adds `cfb`
+  to `supabase/config.toml`'s exposed schemas for local dev; the **prod dashboard's
+  Exposed Schemas flip is deliberately deferred** to the cutover checklist, not this PR.
+  Nothing golf reads is touched; fully reversible by dropping the new objects. Beyond
+  `docs/CFB_BUILD_PLAN.md`'s original sketch, senior review (`agents/senior-dev/reviews/
+  cfb-pr1-schema-scaffold.md`) prompted four foundation-hardening additions while the
+  tables are still empty: `UNIQUE (event_id, week_number)` on `cfb.weeks` (prevents a
+  duplicate "Week 5" if season setup ever reruns), a composite FK on `cfb.picks
+  (game_id, week_id) → cfb.games(id, week_id)` (makes a pick's game structurally
+  guaranteed to belong to its week, not just RPC-enforced), `CHECK` constraints on the
+  `weeks.status`/`games.status`/`picks.result` enum columns (matching the discipline
+  already used on `picks.pick_type`), and `event_details.season_year NOT NULL`. RLS
+  policies, the `cfb_submit_week_picks` RPC, slate import, scoring, grading, UI, and the
+  sport-dispatch layer are still not built — PR2 onward per `docs/CFB_BUILD_PLAN.md`.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.
@@ -304,9 +324,31 @@ a change that breaks the guard. A hook can't safely review its own edit, so this
 | `docs/MULTI_SPORT_MIGRATION.md` | The multi-sport architecture plan + phase status | …advances or changes the migration (Phase 5 is what's left) |
 | `docs/CFB_FORMAT.md` | College football (sport #2) rules-of-record — the weekly ATS card, scoring, worked examples, join model. What the `cfb` schema, `cfb_submit_week_picks` RPC, and scoring-engine tests are built against | …changes a CFB rule, scoring boundary, or the join model |
 | `docs/CFB_BUILD_PLAN.md` | CFB's PR-sliced implementation plan — architecture decisions, schema sketch, PR sequence (PR1–PR10), open questions for the founder | …changes CFB build sequencing/architecture, or a PR in its sequence ships |
+| `docs/CEO_REPORT.md` | The founder/investor-facing executive status report — a single living doc, ~150–180 words, under-2-minute skim. Not per-PR, not a changelog: the layer *above* this status board. | **Every** PR ship — unconditionally, not gated on which files the diff touched. See the update contract below. |
 | `docs/ENTERPRISE_ARCHITECTURE_PROPOSAL.md` | **Reference, not adopted.** Fable's blank-slate ideal architecture for a multi-sport/format platform, plus the review of it against Poold | …basically never. A north-star doc; the actionable takeaway is BACKLOG F6. |
 | `README.md` | The 60-second orientation for a human arriving cold | …changes setup, stack, or a headline architecture decision |
 | `docs/AUDIT.md` | **Historical.** The 2026-06-20 audit; C1–C4 resolution record | …basically never. Superseded by `BACKLOG.md`. Don't add to it. |
+
+### `docs/CEO_REPORT.md` update contract
+
+Unlike every other row in the table, this one isn't triggered by which files the diff
+touched — it fires on **every PR that ships**, full stop, because a founder reading it
+shouldn't have to know which PR to check. Each pm-sync pass:
+
+1. **Refresh the header line** — `*Updated <today's date>*` and the `latest: PR #N (short
+   name)` pointer.
+2. **Refresh the `**Status:**` metrics line** — the sports-live count, CFB's `PR N of ~10`
+   progress against `docs/CFB_BUILD_PLAN.md`'s sequence, and the 🟢/🟡/🔴 health markers
+   (🔴 only for something actually broken in prod, not backlog debt).
+3. **Roll the just-shipped PR into "Recent wins,"** dropping older entries as needed to
+   hold the word budget — this is a rolling window, not an accumulating log.
+4. **Advance "Next up"** to whatever the build plan / roadmap says comes after what just
+   shipped.
+5. **Add or resolve a "Pitfalls to watch" line** only if this PR actually surfaced or
+   closed a real risk — don't manufacture one to fill the section.
+6. **Hold the whole doc to ~150–180 words**, plain founder/investor language, no jargon,
+   no per-file changelog. If a claim needs more than a sentence to justify, it belongs in
+   `agents/pm/PM.md`'s status board or `docs/BACKLOG.md`, not here.
 
 ### Source-of-truth order (when two docs disagree)
 
