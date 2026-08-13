@@ -1,21 +1,24 @@
 # College Football (Sport #2) — Build Plan
 
 > **Status:** Planning, execution in progress (PR5 of ~10 shipped, plus one inserted
-> live-scores PR ahead of PR6). Written 2026-08-11 from a dedicated planning pass,
-> grounded in a full read of the golf implementation as the template. This is the
-> *how-we-build-it* sequencing doc; the *what-the-game-is* rules live in
-> `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's net-new work. See
-> `docs/MULTI_SPORT_MIGRATION.md` for the per-schema architecture this sits on, and
-> BACKLOG **F1** (`pool_standings`) / **F6** (format contract) for the debt this
-> interacts with. **PR1 (`cfb` schema scaffold) shipped 2026-08-11, PR #40; PR2 (RLS +
+> live-scores PR ahead of PR6, plus the admin half of PR8/PR9 landed early — see below).
+> Written 2026-08-11 from a dedicated planning pass, grounded in a full read of the golf
+> implementation as the template. This is the *how-we-build-it* sequencing doc; the
+> *what-the-game-is* rules live in `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's
+> net-new work. See `docs/MULTI_SPORT_MIGRATION.md` for the per-schema architecture this
+> sits on, and BACKLOG **F1** (`pool_standings`) / **F6** (format contract) for the debt
+> this interacts with. **PR1 (`cfb` schema scaffold) shipped 2026-08-11, PR #40; PR2 (RLS +
 > `cfb_submit_week_picks` RPC) shipped 2026-08-11, PR #41; PR3 (`cfd-proxy` + slate
 > import) shipped 2026-08-12; PR4 (`cfbScoring.js` grading engine + first unit tests)
 > shipped 2026-08-12, PR #43; PR5 (`grade-cfb-week` grading job + `pool_standings` +
 > the JS/TS drift guard) shipped 2026-08-12, PR #44; CFB live in-game scores
-> (data layer only, inserted between PR5 and PR6) shipped 2026-08-13** — see the PR
-> sequence table below; the schema sketch reflects what actually shipped, including four
-> integrity constraints senior review added beyond this doc's original sketch in PR1,
-> plus PR3's `underdog_spread` CHECK.
+> (data layer only, inserted between PR5 and PR6) shipped 2026-08-13; CFB admin —
+> pool creation + weekly slate-import ops (the admin half of PR8/PR9, landed early)
+> shipped 2026-08-13, PR #46** — see the PR sequence table below; the schema sketch
+> reflects what actually shipped, including four integrity constraints senior review
+> added beyond this doc's original sketch in PR1, plus PR3's `underdog_spread` CHECK,
+> plus PR #46's per-pool-events correction (`cfb.games` re-keyed `UNIQUE(week_id,
+> cfbd_game_id)` — see `agents/pm/DECISIONS.md`, 2026-08-13).
 
 CFB is Poold's second sport: a new `cfb` Postgres schema and a genuinely new **format**
 (weekly against-the-spread, season-cumulative). The full rules are in `docs/CFB_FORMAT.md`.
@@ -81,10 +84,18 @@ level down (it already knows each pool's sport from its query).
 
 ## The `cfb` schema (sketch)
 
-Mirrors golf's per-schema pattern, with one structural addition golf never needed: golf's
-`event_id` = one tournament (one lock, scored once); **CFB's `event_id` = one season**, with
-weeks/games hanging off it and shared by every pool on that season (reuses the D3
-"multiple pools per event" hinge, for a season instead of a weekend).
+Mirrors golf's per-schema pattern. **`event_id` = one pool's season instance** — each CFB pool
+gets its own `public.events` row, `cfb.event_details`, `cfb.weeks`, and `cfb.games`, the same
+per-pool pattern golf's `createGolfPool` already uses (the D3 hinge, applied per pool rather than
+per real-world event). **This corrects the doc's original sketch**, which assumed one `event_id`
+shared by every pool on a season; that never shipped in working form and was formally superseded
+2026-08-13 (see `agents/pm/DECISIONS.md`) once a founder requirement — two pools on the same real
+season starting at different weeks with different lock schedules — proved a shared season-level
+event couldn't represent that. `cfb.games.cfbd_game_id` is therefore unique **per week**
+(`UNIQUE (week_id, cfbd_game_id)`, migration `20260813000000_cfb_games_per_week_unique.sql`, PR
+`cfb-admin-pool-creation`), not globally — the same real CFBD game legitimately gets one row per
+pool's week. Admin slate imports scale with `(pools × weeks)`; grading/live-score CFBD calls still
+dedupe by the real `(season, week_number)` across events, so that cost is unaffected.
 
 **Shipped as of PR1 (2026-08-11, PR #40)** — the block below is what actually landed in
 `supabase/migrations/20260811000000_cfb_phase1_scaffold.sql`. Four integrity constraints
@@ -93,22 +104,25 @@ expensive once data exists: `weeks(event_id, week_number)` uniqueness, a composi
 guaranteeing a pick's game belongs to its week, `CHECK`s on the remaining enum columns,
 and `season_year NOT NULL`. Tables are empty (no CFB data has been imported yet); RLS
 policies and the `cfb_submit_week_picks` RPC shipped in PR2, 2026-08-11, PR #41 — see the
-"RLS" bullet below.
+"RLS" bullet below. **`games.cfbd_game_id` was re-keyed from globally UNIQUE to
+`UNIQUE (week_id, cfbd_game_id)` on 2026-08-13** — see the per-pool-events correction above.
 
 ```
 cfb  (FKs point within cfb or cfb → public, never → golf)
 ├── event_details   event_id → public.events (1:1), season_year int NOT NULL
 ├── weeks           id, event_id → public.events, week_number int, label,
 │                    lock_time timestamptz, status ('scheduled'|'open'|'locked'|'graded') CHECK
-│                    -- event-level: one slate/lock per week, shared by every pool on the season
-│                    UNIQUE (event_id, week_number)  -- makes "Week 5 of this season" a single row
-├── games           id, week_id → cfb.weeks, cfbd_game_id text UNIQUE,
+│                    -- per-pool: event_id is this pool's own event, so its weeks are its own
+│                    UNIQUE (event_id, week_number)  -- makes "Week 5 of this pool's season" a single row
+├── games           id, week_id → cfb.weeks, cfbd_game_id text,
 │                    home_team, away_team, home_conference, away_conference, kickoff_at,
 │                    home_spread numeric NOT NULL,      -- signed vs home; away = -home_spread
 │                    is_fbs_vs_fbs boolean NOT NULL,
 │                    status ('scheduled'|'in_progress'|'final') CHECK, home_score int, away_score int,
 │                    underdog_team text, underdog_spread numeric,  -- denormalized for the picks UI
 │                    UNIQUE (id, week_id)  -- lets picks reference (game_id, week_id) as a composite FK
+│                    UNIQUE (week_id, cfbd_game_id)  -- per-week, not global (2026-08-13) — the same
+│                    -- real CFBD game legitimately appears once per pool's week
 ├── picks           id, pool_id → public.pools, week_id → cfb.weeks, user_id → public.profiles,
 │                    game_id → cfb.games, pick_type CHECK IN ('ats','underdog'),
 │                    selected_team text NOT NULL, is_double_down boolean DEFAULT false,
@@ -406,12 +420,15 @@ green, coherent with the Poold system. Two fixes to carry into the real build:
 - **Admin CFB pool creation** (`src/pages/admin/cfb/CreateCfbPool.jsx`) — pick a season, set a
   recurring lock rule, create `public.events` (`sport_id:'cfb'`) → `public.pools` →
   `cfb.event_details` → seed `cfb.weeks`. Unlike golf, **not create-once-and-done**; weekly
-  slate ops are a new recurring admin surface (PR9).
+  slate ops are a new recurring admin surface. **Shipped 2026-08-13, PR #46** — see PR 8a above.
 
 **Config/grants foot-guns to check off explicitly:**
 1. `supabase/config.toml` → add `cfb` to `[api] schemas` in **PR1** (so local dev works day one).
 2. **Prod dashboard → Settings → API → Exposed Schemas must add `cfb` manually** — not in any
-   migration; the highest-likelihood cutover foot-gun. Checklist item on the first PR to real users.
+   migration; was the highest-likelihood cutover foot-gun. **Done, 2026-08-13** — the founder
+   flipped the prod toggle (all schemas/tables/functions exposed) ahead of PR #46, so admin CFB
+   writes now round-trip through the real Data API instead of only via `.schema('cfb')` bypassing
+   exposure with elevated privileges.
 3. Edge functions touching `cfb` must call `.schema('cfb')` (service role bypasses RLS, not
    schema-qualification).
 4. `SECURITY DEFINER` functions need `SET search_path` pinned (like `is_admin()`).
@@ -431,12 +448,13 @@ green, coherent with the Poold system. Two fixes to carry into the real build:
 | 5 | `grade-cfb-week` → `pool_standings` — **shipped 2026-08-12, PR #44** | Weekly grading writes the shared projection (CFB half of F1); JS/TS drift guard via shared fixtures (152/152 tests) | mirror/source drift — resolved via shared fixtures, not a comment |
 | 5b | *(optional)* wire `pool_standings` for golf | Closes F1's other half; not required to ship CFB | none blocking — keep it from gating CFB |
 | 5c | CFB live in-game scores (data layer only) — **shipped 2026-08-13, inserted between PR5 and PR6** | `poll-cfb-scores` + `cfb.games.live`; CFBD Tier 2 (30k/mo) unlocks `/scoreboard`; shared `_shared/cfbGrading.ts` | poller's look-ahead window vs. cron cadence governs whether the season fits the 30k cap — tightened to 30min in-branch, full tuning + arming still a PR9 founder call |
+| 8a | **CFB admin: pool creation + weekly slate-import ops — shipped 2026-08-13, PR #46 (the admin half of PR8/PR9, landed early, out of sequence).** `createCfbPool()` (event(cfb) → pool → `cfb.event_details` → seed `cfb.weeks` on a weekly lock cadence from a now-required first-week lock); `CfbAdmin`/`CreateCfbPool`/`CfbPoolOps` admin pages (`/admin/cfb`, `/admin/cfb/create-pool`, `/admin/cfb/pool/:id` — general admin register, no sport colorway); per-week lock edit + slate import + CFBD usage meter. Surfaced the founder requirement that forced the per-pool-events correction above (`agents/pm/DECISIONS.md`, 2026-08-13) — `cfb.games` re-keyed `UNIQUE(week_id, cfbd_game_id)`, migration `20260813000000_cfb_games_per_week_unique.sql`. | per-pool events means admin slate imports scale with (pools × weeks) — accepted trade-off, see DECISIONS; still no sport-dispatch (`Join`/`Dashboard` don't branch on `sport_id` yet), so a real pool exists but only an admin can reach it via a direct `/admin/cfb/pool/:id` link — not through the normal join flow |
 | 6 | Weekly picks UI + shell theme-props | `CfbPicks`/`CfbWeekPicker`; prop-ify the shells (Finding 1) | shell changes must not visually change golf (defaults) |
 | 7 | CFB pool detail / leaderboard | `CfbPoolDetail`, `CfbWidgets`; `WidgetGrid` → render-prop | first page reading `pool_standings` — validates Decision #3; also first UI reader of `cfb.games.live` |
-| 8 | Sport-dispatch + CFB pool creation | `lib/pools.js`; `Join`/`Dashboard` branch on sport; `CreateCfbPool`; CFB routes | Dashboard surgery — golf must be byte-identical after |
-| 9 | Weekly admin ops + cron | Manual import/lock/grade buttons, then pg_cron (golf's pattern). **Must also close three deferred items** (`agents/pm/DECISIONS.md`, 2026-08-12 and 2026-08-13): two PR5 grader gaps (an admin "finalize week as-is" override for a stuck week, and a `lock_time` guard on the manual "Grade week" button), plus the live-scores cron-cadence tuning (confirm the 30-min look-ahead, decide windowed-vs-year-round schedule, deploy `poll-cfb-scores` + arm the cron) | 15 weeks of manual ops/season until automation lands; a stuck week burns CFBD calls every cron run until the override ships; an unarmed live poller means no live scores until this PR |
+| 8 | Sport-dispatch + remaining CFB pool-creation surgery | `lib/pools.js`; `Join`/`Dashboard` branch on sport; CFB routes for player-facing pages. **Admin pool creation itself already shipped as 8a above** — what's left here is making a created pool reachable through the normal join-code flow instead of only a direct admin link. | Dashboard surgery — golf must be byte-identical after |
+| 9 | Remaining weekly admin ops + cron | Grade-week button (import + lock-edit already shipped in 8a). Then pg_cron (golf's pattern). **Must also close three deferred items** (`agents/pm/DECISIONS.md`, 2026-08-12 and 2026-08-13): two PR5 grader gaps (an admin "finalize week as-is" override for a stuck week, and a `lock_time` guard on the manual "Grade week" button), plus the live-scores cron-cadence tuning (confirm the 30-min look-ahead, decide windowed-vs-year-round schedule, deploy `poll-cfb-scores` + arm the cron) | 15 weeks of manual ops/season until automation lands; a stuck week burns CFBD calls every cron run until the override ships; an unarmed live poller means no live scores until this PR |
 | 10 | Auto-fill on missed deadline | Random fill of missing slots, DD forfeiture, `auto_filled` flag | partial-card semantics (see CFB_FORMAT open questions) |
-| — | **Prod cutover checklist** | Flip Exposed Schemas to include `cfb` in the Supabase dashboard | silent 404s on every `cfb` query if forgotten |
+| — | **Prod cutover checklist** — **Exposed Schemas flip done 2026-08-13**, ahead of PR #46 | Flipped Exposed Schemas to include `cfb` (and all other schemas/tables/functions) in the Supabase dashboard | resolved — was silent 404s on every `cfb` query if forgotten |
 
 ---
 
