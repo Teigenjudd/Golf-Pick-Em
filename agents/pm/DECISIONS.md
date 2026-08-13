@@ -13,6 +13,62 @@
 
 ---
 
+## 2026-08-13 — CFB: slate import automated (hourly poller), not manual per-week admin action
+
+**Decision:** Replaced the PR3 admin-triggered `importWeekSlate()` flow with
+`supabase/functions/poll-cfb-lines/index.ts` — an hourly, service-role poller that pulls
+ONE season-wide CFBD fetch set (`/games`+`/lines`+`/teams/fbs`) per active season and fans
+the shaped rows onto every pool's `cfb.weeks` for that `(season, week_number)`, deduped.
+Admins set title/lock/weeks/stake at pool creation and never import a slate by hand;
+`CfbPoolOps.jsx` (`src/pages/admin/cfb/CfbPoolOps.jsx`) now shows auto-slate status plus a
+single "Refresh slates now" override (`refreshCfbSlates()` in `src/lib/cfb.js`) instead of
+a per-week "Import slate" button. The CFBD→`cfb.games` transform
+(`chooseLine`/`favoriteFromFormattedSpread`/`buildGameRows`) moved server-side into
+`supabase/functions/_shared/cfbSlate.ts` — `src/lib/cfb.js` no longer shapes CFBD data at
+all, since import is server-only now. **CFB has no admin "odds" step, unlike golf's
+odds-market pick at pool creation — spreads ARE the CFBD lines, pulled automatically.**
+
+**Why:** A real pull against 2025 season data showed betting lines only post ~1-2 weeks
+before kickoff (Week 1 = 51 games with a line, Week 3 = 0), so a season's slate cannot be
+imported upfront the way golf imports a tournament field once. An hourly poll keeps every
+pool's pickable slate current as lines roll in, without an admin remembering to click
+"import" on a rolling cadence for the life of the season.
+
+**Spread freeze at kickoff:** the poller only writes games where `now < kickoff_at`; once a
+game kicks off its `home_spread` is left alone (frozen at the last pre-kickoff value = the
+closing line), both so "the line at kickoff" is the number displayed forever after and so
+the poller can never clobber `poll-cfb-scores`, which owns status/scores/live once a game
+starts. Per-pick grading still uses each player's own frozen `locked_spread` from submit
+time, unaffected by this.
+
+**Spread history:** `cfb.spread_history` (migration `20260813010000_cfb_spread_history.sql`)
+logs a snapshot — keyed by the real `cfbd_game_id`, not a per-pool `cfb.games` row, since all
+pools share the same real line — only when a game's spread actually moves since the last
+poll, for a future line-movement UI (`getSpreadHistory()` in `src/lib/cfb.js`). Authenticated
+users can read it; only the poller (service role) and admins write it.
+
+**Gave up:** `cfd-proxy` (PR3) stays deployed but is no longer called from the browser —
+`poll-cfb-lines` calls CFBD directly with its own service-role key rather than going through
+the admin-JWT-gated proxy, since it now runs server-side on a cron, not from an admin
+session. Left in place rather than deleted; unused, not broken. Senior review also caught and
+fixed a scale bug before merge: the poller's change-detection read was changed to one
+representative `cfb.event_details` row per season (all pools on a season share the same real
+games/spreads) instead of every pool's own game copies, which would have multiplied with pool
+count and risked truncating past PostgREST's row cap at ~20 pools — see
+`agents/senior-dev/reviews/cfb-auto-lines-poller.md`.
+
+**Deploy note:** the `spread_history` migration, `poll-cfb-lines` function deploy, and arming
+its hourly cron are all deferred to PR9 (same CFB prod-as-dev pattern as every prior CFB PR) —
+not applied to prod as part of this merge. PR9 now arms **three** CFB crons total: hourly
+slate/lines (`poll-cfb-lines`), ~1-minute live scores (`poll-cfb-scores`), and weekly grading
+(`grade-cfb-week`).
+
+**Revisit if:** CFBD's free-line-window assumption changes (e.g. lines start posting a full
+season ahead), which would make upfront import viable again and the poller unnecessary
+overhead; or if `cfd-proxy` sits unused long enough that it's worth deleting outright.
+
+---
+
 ## 2026-08-13 — CFB: per-pool events, not one shared event per season (supersedes PR1's original note)
 
 **Decision:** CFB pools use **per-pool `public.events` rows** — each pool gets its own event,

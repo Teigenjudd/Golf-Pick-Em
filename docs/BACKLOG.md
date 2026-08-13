@@ -301,8 +301,14 @@
   handful of `scoring`/`tierBuilder` tests; they'd have caught B1/B3 regressions.
   **Partially closed 2026-08-12, PR #43:** `vitest` + a `test`/`test:watch` script landed,
   and `src/utils/cfbScoring.js` (CFB's scoring engine, not golf's) got the repo's first 44
-  unit tests, all passing. Golf's `scoring.js`/`tierBuilder.js`/`format.js` are still
-  uncovered — this item stays open for those.
+  unit tests, all passing. **Further closed 2026-08-13, PR #47:** the CFBD→`cfb.games`
+  slate transform (`buildGameRows`/`chooseLine`/`favoriteFromFormattedSpread`, moved
+  server-side to `supabase/functions/_shared/cfbSlate.ts`) got its first *committed* tests
+  (`src/utils/cfbSlate.test.js`, vitest importing the `.ts` directly) — the tests caught a
+  real latent bug (a lineless provider row read as a phantom pick'em `0` via `Number(null)
+  === 0` instead of "no line"), now fixed. 173 tests pass repo-wide. Golf's
+  `scoring.js`/`tierBuilder.js`/`format.js` are still uncovered — this item stays open for
+  those.
 
 - [ ] ⚪ **F5 — `MONTHLY_CAP = 1800` duplicated across both edge functions.**
   And `SLASH_GOLF_BASE`. Small, but they can drift. **Fix:** shared constant module
