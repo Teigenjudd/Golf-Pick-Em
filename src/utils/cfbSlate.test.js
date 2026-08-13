@@ -96,6 +96,13 @@ describe('buildGameRows', () => {
     expect(row).toMatchObject({ status: 'final', home_score: 30, away_score: 24 })
   })
 
+  it('keeps a genuine posted pick\'em (spread 0 → no underdog)', () => {
+    const games = [{ id: 8, week: 5, homeTeam: 'Michigan', awayTeam: 'Ohio State' }]
+    const lines = [{ id: 8, lines: [{ provider: 'consensus', spread: 0, formattedSpread: 'EVEN' }] }]
+    const [row] = buildGameRows(games, lines, fbs)
+    expect(row).toMatchObject({ cfbd_game_id: '8', home_spread: 0, underdog_team: null, underdog_spread: null })
+  })
+
   it('falls back to per-game classification when the FBS team set is absent', () => {
     const games = [{ id: 7, week: 5, homeTeam: 'A', awayTeam: 'B', homeClassification: 'fbs', awayClassification: 'fbs' }]
     const lines = [{ id: 7, lines: [{ provider: 'consensus', spread: -3, formattedSpread: 'A -3' }] }]

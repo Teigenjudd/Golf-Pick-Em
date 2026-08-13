@@ -93,12 +93,22 @@ Deno.serve(async (req) => {
   }
   if (!seasons.size) return json({ skipped: true, reason: 'no seeded weeks', cfbd_calls: 0 })
 
-  // Current stored spread per real game (for change detection → spread_history).
-  const allWeekIds = (weeks ?? []).map((w) => w.id)
+  // Current stored spread per real game (for change detection → spread_history). Read
+  // just ONE representative event per season, not every pool's copies: all pools on a
+  // season share the same real games + spreads, so one event holds the full per-game
+  // picture — and this stays well under PostgREST's row cap regardless of pool count.
+  // (Reading every pool's copies would multiply by pool count and could truncate,
+  // making games look "new" and logging spurious spread_history rows.)
+  const repEventIds = new Set<string>()
+  const seenSeasons = new Set<number>()
+  for (const e of eds ?? []) {
+    if (!seenSeasons.has(e.season_year)) { seenSeasons.add(e.season_year); repEventIds.add(e.event_id) }
+  }
+  const repWeekIds = (weeks ?? []).filter((w) => repEventIds.has(w.event_id)).map((w) => w.id)
   const currentSpread = new Map<string, number>()
-  if (allWeekIds.length) {
+  if (repWeekIds.length) {
     const { data: existing } = await supabase.schema('cfb').from('games')
-      .select('cfbd_game_id, home_spread').in('week_id', allWeekIds)
+      .select('cfbd_game_id, home_spread').in('week_id', repWeekIds)
     for (const g of existing ?? []) currentSpread.set(String(g.cfbd_game_id), Number(g.home_spread))
   }
 
