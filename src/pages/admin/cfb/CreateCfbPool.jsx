@@ -140,7 +140,7 @@ export default function CreateCfbPool() {
 
           <div>
             <label className={labelClass}>
-              Week 1 Lock <span className="normal-case font-normal text-warm-400">· required (each week steps +7 days; editable later)</span>
+              First-Week Lock <span className="normal-case font-normal text-warm-400">· required (later weeks step +7 days; editable later)</span>
             </label>
             <input
               type="datetime-local"
@@ -149,7 +149,8 @@ export default function CreateCfbPool() {
               className={inputClass}
             />
             <p className="text-[11.5px] text-warm-400 mt-[6px]">
-              This is also the season <span className="font-semibold">join cutoff</span> — players must join before Week 1 locks.
+              Sets the lock for this pool's <span className="font-semibold">first week</span> — also the season
+              <span className="font-semibold"> join cutoff</span> (players must join before it locks).
             </p>
           </div>
 
