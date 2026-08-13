@@ -13,6 +13,109 @@
 
 ---
 
+## 2026-08-13 — CFB: live in-game scores added to the build (scope insert between PR5 and PR6)
+
+**Decision:** Founder requested in-app live scores for CFB — a player should be able to watch
+their pick's score/clock/possession inside Poold instead of switching tabs. Approved and built
+immediately as a data-layer-only PR inserted between `docs/CFB_BUILD_PLAN.md` PR5 (grading) and
+PR6 (picks UI), rather than folded into PR6/7 or pushed to the end of the sequence. What shipped:
+migration `20260812120000_cfb_live_scores.sql` (additive `cfb.games.live jsonb`),
+`supabase/functions/poll-cfb-scores/index.ts` (the live poller), and the `MONTHLY_CAP` bump
+1000→30000 across `cfd-proxy`/`grade-cfb-week`/`poll-cfb-scores`. UI consumption is still PR6/7;
+cron arming and the prod deploy are still PR9.
+
+**Why:** A CFBD **Tier 2** upgrade (30k calls/mo, unlocking the `/scoreboard` endpoint) makes this
+cheap: `/scoreboard` returns the entire live FBS slate in ONE call, so live polling costs one API
+call per tick regardless of games/pools/players — the same economics that make golf's
+per-tournament leaderboard dedup affordable. Shipping the data layer now (schema + poller +
+shared grading) rather than bundling it into the picks/leaderboard UI PRs keeps each PR
+single-purpose and lets PR6/7 consume `cfb.games.live` as a plain column instead of building the
+ingestion path themselves.
+
+**Gave up:** Nothing structural — this is additive and reversible (drop the column, delete the
+function). The PR sequence in `docs/CFB_BUILD_PLAN.md` grows by one inserted step; nothing already
+shipped had to be redone.
+
+**Revisit if:** live scores turn out not to be worth the Tier-2 spend once real usage data exists
+(unlikely — Tier 2 is now load-bearing for the whole CFB build, not just this feature).
+
+---
+
+## 2026-08-13 — CFB: live poller triggers grading on final (confirmed), shared via `_shared/cfbGrading.ts`
+
+**Decision:** Confirms an earlier founder call: when the live poller (`poll-cfb-scores`) sees a
+game flip to final, it grades that week and recomputes standings immediately, so standings move
+live as games end rather than waiting for `grade-cfb-week`'s scan. `grade-cfb-week` remains the
+manual/backfill grader (targeted `{week_id}` or "scan everything due"). To avoid two grading
+implementations that can drift, the grading logic (`gradeWeek`, `recomputeStandings`) was
+extracted verbatim out of `grade-cfb-week` into `supabase/functions/_shared/cfbGrading.ts`, which
+both functions now import — `grade-cfb-week`'s behavior is unchanged (senior-reviewed, confirmed
+byte-for-byte equivalent on its normal path).
+
+**Why:** "Standings move live" is the whole point of the feature; deferring grading to a separate
+scheduled scan would make the live poller update scores but not points, which is a confusing half
+of the feature. Sharing one grading module rather than duplicating the logic in the poller removes
+the risk of the two graders silently disagreeing on a scoring edge case.
+
+**Gave up:** Nothing — `gradeWeek` gained one additional branch (trust an already-`final`-in-DB
+game when the live poller's partial `/scoreboard` map doesn't include it, so a multi-game week
+doesn't get un-finalized mid-slate); it's inert for `grade-cfb-week`'s full-week `/games` map,
+which always includes every game.
+
+**Revisit if:** a future format wants grading to happen only on an explicit admin action (not
+automatically on final) — would need a flag to disable the poller's grade-on-final path.
+
+---
+
+## 2026-08-13 — CFB: live-poller look-ahead tightened to 30 minutes (judgment call, PR9 must confirm)
+
+**Decision:** The live poller's "is anything worth polling right now" gate originally used an 18h
+look-ahead (any non-final game with `kickoff_at` within the next 18 hours counted as "live
+window," alongside a 6h after-kickoff tail). Senior review found this would spend one CFBD call
+per cron tick for most of a game day *before* any game had actually started — idle spend with no
+score to show for it, risking the 30k/mo Tier-2 cap over a full season. Tightened in-branch to 30
+minutes: still enough to catch any kickoff within one future ~1-minute cron tick (PR9), but
+eliminates hours of pre-game dead-air polling.
+
+**Why:** My (PM) judgment call to unblock this PR rather than leave the finding open — 30 minutes
+is a defensible number (cron cadence + margin) but it's a guess, not a founder-confirmed value.
+
+**Gave up:** Nothing functional; a real edge case (an early/moved kickoff outside the 30-min
+window) would be caught on the very next poll once `kickoff_at` enters the window, so the cost is
+a few minutes of delay on the very first live update for that game, not a missed game.
+
+**Revisit if / must-do:** **flagging for PR9 explicitly** — the founder needs to confirm (a) the
+30-minute figure, and (b) the broader cron-cadence question the senior review raised: a windowed
+schedule like golf's `poll-thursday..sunday` (business hours only) vs. year-round every-minute.
+Both numbers together determine whether the live-scores feature survives a full season on the 30k
+cap. Not a merge blocker for this data-layer PR (the cron isn't armed here) — but PR9 must not
+arm the cron without settling this.
+
+---
+
+## 2026-08-13 — CFB: live-scores deploy steps deliberately deferred to PR9
+
+**Decision:** This PR does not push the migration to prod, does not deploy `poll-cfb-scores` or
+the updated `grade-cfb-week`/`cfd-proxy`, does not set any new secrets or `verify_jwt` config, and
+does not arm any cron job. All of that is deferred to PR9, matching the CFB "prod-as-dev, defer
+the deploy" pattern already used for PR1–PR5.
+
+**Why:** Consistent with every prior CFB PR — while there are no real users, prod doubles as the
+CFB dev DB, and deploy/cron-arming is batched into PR9 (the dedicated admin-ops PR) rather than
+spread across every data-layer PR. Also: the exact CFBD `/scoreboard` field names
+(`period`/`clock`/`possession`/`situation`/`last_play`) are read defensively but unconfirmed
+against a real Tier-2 response — worth verifying once, at UI-wiring time, rather than deploying
+speculatively now.
+
+**Gave up:** Nothing — this is sequencing, not a scope cut. The migration is additive and
+reversible whenever it does land.
+
+**Revisit if:** PR9 slips significantly and live scores become blocking for a launch — could pull
+just the migration + function deploy forward without waiting for the rest of PR9's admin-ops
+scope.
+
+---
+
 ## 2026-08-12 — CFB PR5: double-down minimum-line rule declined; `effectiveDoubleDownLine` added instead
 
 **Decision:** Considered requiring a minimum spread (e.g. 5.5) for a pick to be double-down

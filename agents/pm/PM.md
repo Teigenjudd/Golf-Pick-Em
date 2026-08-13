@@ -70,8 +70,10 @@ writing code.
   the weekly slate importer) shipped 2026-08-12.** **PR4 (`cfbScoring.js` grading engine +
   the repo's first unit tests) shipped 2026-08-12, PR #43.** **PR5 (`grade-cfb-week`
   grading job + the first write path to `pool_standings` + a JS/TS drift guard) shipped
-  2026-08-12, PR #44.** Picks UI and the sport-dispatch layer are still not built —
-  those are PR6+.
+  2026-08-12, PR #44.** **Live in-game scores (data layer only, inserted between PR5
+  and PR6) shipped 2026-08-13** — CFBD Tier 2 upgrade (30k/mo, `/scoreboard`), the
+  `poll-cfb-scores` poller, and shared grading via `_shared/cfbGrading.ts`. Picks UI and
+  the sport-dispatch layer are still not built — those are PR6+.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -302,7 +304,44 @@ writing code.
   cron run — PR9 must add an admin "finalize week as-is" override; and the manual
   `{week_id}` grade path doesn't check `lock_time` — PR9 must add that one-line guard
   when its admin button gets a caller. Picks UI, adapters, and the sport-dispatch
-  layer are still not built — PR6 onward.
+  layer are still not built — PR6 onward. **Grading logic later extracted into
+  `_shared/cfbGrading.ts` by the live-scores PR below** — `grade-cfb-week` now imports
+  it instead of defining it inline; behavior unchanged.
+- **CFB live in-game scores (data layer only) shipped 2026-08-13, inserted between PR5
+  and PR6.** Founder-requested: a player should be able to watch their pick's live
+  score/clock/possession inside Poold. Enabled by a CFBD **Tier 2** upgrade — 30k
+  calls/mo, unlocking the `/scoreboard` endpoint — so `MONTHLY_CAP` moved 1000→30000
+  across `cfd-proxy`, `grade-cfb-week`, and the new poller (all three share
+  `public.api_usage.cfbd_calls`). Migration `20260812120000_cfb_live_scores.sql` adds
+  an additive, nullable `cfb.games.live jsonb` (ephemeral in-game blob:
+  period/clock/possession/situation/last_play; the authoritative score/status stay in
+  the existing typed columns, which the poller also mirrors live). New
+  `supabase/functions/poll-cfb-scores/index.ts` is the live poller: CFBD's
+  `/scoreboard` returns the whole live FBS slate in ONE call, so a poll costs one API
+  call regardless of games/pools — and it's self-regulating, gating first on a cheap DB
+  query ("any game in the live window?") and spending zero API calls when nothing's
+  live, so a future ~1-minute cron (armed in PR9) only costs real game hours. When a
+  game flips final it grades that week and recomputes standings via the new
+  `supabase/functions/_shared/cfbGrading.ts` (grading logic extracted out of
+  `grade-cfb-week` so both graders share one implementation — `gradeWeek` gained a
+  branch trusting an already-final-in-DB game so the poller's partial scoreboard map
+  can't un-finalize a week; `grade-cfb-week`'s own behavior is unchanged).
+  `supabase/functions/_shared/cfbLive.ts` is the pure `/scoreboard`→`cfb.games`
+  transform, unit-tested (`src/utils/cfbLive.test.js`, 7 tests — **159 tests pass**
+  repo-wide); exact CFBD live-field names are unconfirmed against a real Tier-2
+  response until the UI is wired. `src/lib/cfb.js` adds `refreshCfbScores()`, a thin
+  invoker for PR9's admin "Refresh scores" button. Senior review
+  (`agents/senior-dev/reviews/cfb-live-scores.md`, APPROVE WITH QUESTIONS) confirmed
+  the correctness holds (mid-game scores never grade, already-final games can't
+  re-trigger grading, `grade-cfb-week` unaffected) and flagged the poller's look-ahead
+  window as the one live decision — an initial 18h look-ahead risked burning idle API
+  calls for most of a game day against the 30k cap; **tightened in-branch to 30
+  minutes**, a PM judgment call still needing founder confirmation
+  (`agents/pm/DECISIONS.md`, 2026-08-13). The broader cron-cadence question (windowed
+  like golf's Thu–Sun schedule vs. year-round every-minute) is an explicit PR9
+  must-settle item. No migration applied to prod, no function deployed, no cron armed —
+  all deferred to PR9 per the CFB prod-as-dev pattern. UI is still PR6/7; nothing golf
+  reads is touched.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.
