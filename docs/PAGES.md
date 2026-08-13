@@ -438,10 +438,13 @@ mirroring `createGolfPool`. Shipped 2026-08-13, PR #46.
 **Theme:** General (admin utility)
 
 **What it does:** The recurring weekly admin surface golf never needed — where a CFB season is
-run week by week after creation. Per week: edit the lock time, import (or re-import) that week's
-slate from CFBD via `importWeekSlate()`, see the game count and week status. Shows the shared
-CFBD Tier-2 usage meter (calls this month / 30,000 cap) so an admin can see budget headroom before
-importing. Shipped 2026-08-13, PR #46.
+run week by week after creation. Slates and spreads are now pulled **automatically** by the
+hourly `poll-cfb-lines` poller (games appear as CFBD posts lines, roughly 1-2 weeks before
+kickoff) — there is no per-week manual import anymore. This page is for visibility (game count,
+week status) + tuning lock times, plus a single "Refresh slates now" override that triggers the
+poller on demand via `refreshCfbSlates()`. Shows the shared CFBD Tier-2 usage meter (calls this
+month / 30,000 cap). Manual per-week import shipped 2026-08-13 (PR #46); replaced by the automated
+poller 2026-08-13 (PR #47, `cfb-auto-lines-poller` — see `agents/pm/DECISIONS.md`).
 
 **Data available:**
 - Pool + season year via `getCfbPool(poolId)`
@@ -449,15 +452,16 @@ importing. Shipped 2026-08-13, PR #46.
 - CFBD usage via `getCfbdUsage()`: current month's `cfbd_calls` against the shared 30,000/mo Tier-2 cap
 
 **What must be on this page:**
-- Sticky nav: `← CFB Admin | POOLD Weekly Ops`
+- Sticky nav: `← CFB Admin | POOLD Season Ops`
 - Pool name, season, join code header; CFBD usage meter (calls / cap) top-right
-- Per-week card: label, status badge (scheduled/open/locked/graded), game count, editable lock-time input + "Save lock" button (via `updateWeekLockTime`), "Import slate" / "Re-import slate" button (via `importWeekSlate`) with an inline success/error result line
+- Auto-slate banner: "Slates & spreads update automatically every hour" + note that games appear as lines post (~1-2 wks out) and each game's spread freezes at kickoff, plus the "Refresh slates now" button (via `refreshCfbSlates()`) with an inline result line (game rows written / spread moves logged / CFBD calls spent)
+- Per-week card: label, status badge (scheduled/open/locked/graded), game count ("N games loaded"), editable lock-time input + "Save lock" button (via `updateWeekLockTime`) — no per-week import button anymore
 - Empty state if no weeks were seeded
 
 **Design notes:**
 - Same card language as `CfbAdmin`'s pool list (`bg-white border border-[#EAD8C4] rounded-[14px]`).
-- Import button reads "Import slate" when `game_count === 0`, "Re-import slate" once games exist — re-import is safe (upserts on `(week_id, cfbd_game_id)`, already-submitted picks are unaffected because `locked_spread` is frozen at submit time).
-- No "Grade week" button yet — grading is still admin-triggered only via the (unbuilt) PR9 surface; this page is import + lock only.
+- Slate freshness is no longer a per-week admin action — a game either has a line yet or it doesn't, and that's driven by CFBD's own posting schedule, not admin timing.
+- No "Grade week" button yet — grading is still admin-triggered only via the (unbuilt) PR9 surface; this page is now refresh-override + lock only.
 
 ---
 

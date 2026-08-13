@@ -77,8 +77,11 @@ writing code.
   PR8/PR9, landed early): `createCfbPool()` + three new `/admin/cfb*` admin pages, general
   register (no sport colorway). Corrected a load-bearing architecture assumption in the
   same PR — CFB uses **per-pool events**, not the "one shared event per season" the build
-  plan originally sketched (`agents/pm/DECISIONS.md`, 2026-08-13). Picks UI and the
-  sport-dispatch layer are still not built — those are PR6+; a CFB pool today is only
+  plan originally sketched (`agents/pm/DECISIONS.md`, 2026-08-13). **Slate import
+  automated shipped 2026-08-13, PR #47** — an hourly `poll-cfb-lines` poller replaced
+  PR #46's manual per-week import (lines only post ~1-2 weeks out, so upfront import
+  never worked at season scale); CFB now has no admin "odds" step at all. Picks UI and
+  the sport-dispatch layer are still not built — those are PR6+; a CFB pool today is only
   reachable via a direct admin link, not the normal join-code flow.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
@@ -377,6 +380,47 @@ writing code.
   reasoning in `agents/pm/DECISIONS.md`, 2026-08-13. **The prod Exposed Schemas cutover
   is now done** (flipped 2026-08-13, ahead of this PR — all schemas/tables/functions
   exposed), closing the deferred cutover step noted in earlier CFB PR entries below.
+- **CFB — slate import automated, replacing PR #46's manual per-week import — shipped
+  2026-08-13, PR #47 (`cfb-auto-lines-poller`).** A real pull against 2025 season data
+  showed betting lines only post ~1-2 weeks before kickoff (Week 1 = 51 games with a
+  posted line, Week 3 = 0), so a season's slate can't be imported upfront the way golf
+  imports its field once — this PR replaces the admin's per-week "Import slate" button
+  with `supabase/functions/poll-cfb-lines/index.ts`, an hourly poller (cron-secret-or
+  admin-JWT gated, service role, sharing the 30k/mo CFBD cap) that makes ONE
+  season-wide CFBD fetch per active season and fans the shaped games onto every pool's
+  `cfb.weeks` for that `(season, week_number)`, deduped. **CFB now has no admin "odds"
+  step at all** — spreads are the CFBD lines, pulled automatically, unlike golf's
+  odds-market pick at pool creation. The CFBD→`cfb.games` transform
+  (`chooseLine`/`favoriteFromFormattedSpread`/`buildGameRows`) moved server-side into
+  `supabase/functions/_shared/cfbSlate.ts` (single source now that import is
+  server-only) and got its first *committed* unit tests
+  (`src/utils/cfbSlate.test.js`, vitest importing the `.ts` directly — the PR3 "25
+  fixtures" were never actually committed) — the tests caught a real latent bug (a
+  lineless provider row read as a phantom pick'em `0` via `Number(null) === 0`) now
+  fixed; 173 tests pass repo-wide. The poller only writes pre-kickoff games (`now <
+  kickoff_at`); once a game kicks off, `home_spread` is left frozen at its last
+  pre-kickoff value — the closing line, displayed forever after — which also keeps the
+  poller from ever clobbering `poll-cfb-scores` (per-pick grading is unaffected; it
+  always uses each player's own frozen `locked_spread`). New migration
+  `20260813010000_cfb_spread_history.sql` adds `cfb.spread_history` — a line-movement
+  log, keyed by the real `cfbd_game_id` (not a per-pool row, since all pools share the
+  same real line), written only when a game's spread actually changes, for a future
+  "opened → closed" UI (`getSpreadHistory()` in `src/lib/cfb.js`, no UI consumer yet).
+  `CfbPoolOps.jsx` now shows an auto-slate status banner plus a single "Refresh slates
+  now" override (`refreshCfbSlates()`, invokes `poll-cfb-lines`). `cfd-proxy` (PR3)
+  stays deployed but is no longer called from the browser — the poller talks to CFBD
+  directly with its own service-role key. Senior review
+  (`agents/senior-dev/reviews/cfb-auto-lines-poller.md`, APPROVE WITH QUESTIONS) caught
+  one scale bug pre-merge, fixed in-branch: change-detection reads one representative
+  `cfb.event_details` row per season (all pools on a season share the same real
+  games/spreads) instead of every pool's own game copies, which would have multiplied
+  with pool count and risked truncating past PostgREST's row cap around ~20 pools; a
+  kept-pick'em test was also added. No migration applied to prod, no function
+  deployed, no cron armed — deferred to PR9, same CFB prod-as-dev pattern as every
+  prior CFB PR. PR9 now arms **three** CFB crons: hourly slate/lines
+  (`poll-cfb-lines`), ~1-minute live scores (`poll-cfb-scores`), and weekly grading
+  (`grade-cfb-week`). Full call in `agents/pm/DECISIONS.md`, 2026-08-13. Picks UI and
+  the sport-dispatch layer are still not built — PR6 onward.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.

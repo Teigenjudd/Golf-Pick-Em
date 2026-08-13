@@ -1,24 +1,28 @@
 # College Football (Sport #2) — Build Plan
 
 > **Status:** Planning, execution in progress (PR5 of ~10 shipped, plus one inserted
-> live-scores PR ahead of PR6, plus the admin half of PR8/PR9 landed early — see below).
-> Written 2026-08-11 from a dedicated planning pass, grounded in a full read of the golf
-> implementation as the template. This is the *how-we-build-it* sequencing doc; the
-> *what-the-game-is* rules live in `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's
-> net-new work. See `docs/MULTI_SPORT_MIGRATION.md` for the per-schema architecture this
-> sits on, and BACKLOG **F1** (`pool_standings`) / **F6** (format contract) for the debt
-> this interacts with. **PR1 (`cfb` schema scaffold) shipped 2026-08-11, PR #40; PR2 (RLS +
+> live-scores PR ahead of PR6, plus the admin half of PR8/PR9 landed early, plus a
+> slate-import automation PR — see below). Written 2026-08-11 from a dedicated planning
+> pass, grounded in a full read of the golf implementation as the template. This is the
+> *how-we-build-it* sequencing doc; the *what-the-game-is* rules live in
+> `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's net-new work. See
+> `docs/MULTI_SPORT_MIGRATION.md` for the per-schema architecture this sits on, and
+> BACKLOG **F1** (`pool_standings`) / **F6** (format contract) for the debt this interacts
+> with. **PR1 (`cfb` schema scaffold) shipped 2026-08-11, PR #40; PR2 (RLS +
 > `cfb_submit_week_picks` RPC) shipped 2026-08-11, PR #41; PR3 (`cfd-proxy` + slate
 > import) shipped 2026-08-12; PR4 (`cfbScoring.js` grading engine + first unit tests)
 > shipped 2026-08-12, PR #43; PR5 (`grade-cfb-week` grading job + `pool_standings` +
 > the JS/TS drift guard) shipped 2026-08-12, PR #44; CFB live in-game scores
 > (data layer only, inserted between PR5 and PR6) shipped 2026-08-13; CFB admin —
 > pool creation + weekly slate-import ops (the admin half of PR8/PR9, landed early)
-> shipped 2026-08-13, PR #46** — see the PR sequence table below; the schema sketch
-> reflects what actually shipped, including four integrity constraints senior review
-> added beyond this doc's original sketch in PR1, plus PR3's `underdog_spread` CHECK,
-> plus PR #46's per-pool-events correction (`cfb.games` re-keyed `UNIQUE(week_id,
-> cfbd_game_id)` — see `agents/pm/DECISIONS.md`, 2026-08-13).
+> shipped 2026-08-13, PR #46; slate import automated (hourly `poll-cfb-lines` poller +
+> `cfb.spread_history`, replacing PR3's manual per-week import) shipped 2026-08-13,
+> PR #47** — see the PR sequence table below; the schema sketch reflects what actually
+> shipped, including four integrity constraints senior review added beyond this doc's
+> original sketch in PR1, plus PR3's `underdog_spread` CHECK, plus PR #46's
+> per-pool-events correction (`cfb.games` re-keyed `UNIQUE(week_id, cfbd_game_id)` — see
+> `agents/pm/DECISIONS.md`, 2026-08-13), plus PR #47's `cfb.spread_history` addition (same
+> date, separate decision entry).
 
 CFB is Poold's second sport: a new `cfb` Postgres schema and a genuinely new **format**
 (weekly against-the-spread, season-cumulative). The full rules are in `docs/CFB_FORMAT.md`.
@@ -156,13 +160,22 @@ is the *only* write path, not just the "real" one — see
 
 ---
 
-## Data layer — CFD proxy, slate import, grading
+## Data layer — CFD proxy, slate import (superseded), automated poller, grading
+
+**Slate import is now automated (PR #47, 2026-08-13) — the manual `importWeekSlate()` flow
+described below (PR3) is superseded, not deleted from history.** See the "Automated slate +
+spread poller" subsection further down for what actually runs today.
 
 **Shipped as of PR3 (2026-08-12)** — `supabase/functions/cfd-proxy/index.ts`,
 `src/lib/cfbd.js`, `src/lib/cfb.js`, and migration
 `20260812000000_cfb_phase3_slate_import_support.sql`. Details below reflect what actually
 landed; see `agents/senior-dev/reviews/cfb-pr3-slate-import.md` (APPROVE WITH QUESTIONS)
 and `agents/pm/DECISIONS.md`, 2026-08-12, for the two founder calls it prompted.
+**`cfd-proxy` stays deployed but is no longer called from the browser as of PR #47** — the
+automated poller talks to CFBD directly with its own service-role key. `importWeekSlate()`
+and the transform it called (`buildGameRows`/`chooseLine`/`favoriteFromFormattedSpread`)
+were removed from `src/lib/cfb.js` and moved server-side; the sign cross-check and week
+guard described below both live on in the new poller/transform, unchanged in spirit.
 
 - **`supabase/functions/cfd-proxy/index.ts`** — mirrors `slash-golf-proxy`: admin-JWT gated
   (checks `profiles.role = 'admin'`, not a cron secret — there's no scheduled caller yet),
@@ -207,7 +220,54 @@ and `agents/pm/DECISIONS.md`, 2026-08-12, for the two founder calls it prompted.
     the pickable list; grading of submitted picks is unaffected since `locked_spread` is
     frozen); `is_fbs_vs_fbs` is always written `true` (informational only, harmless).
   - Verified against real 2025 Week 1 data end-to-end (48 of 96 games eligible, sign mapping
-    correct on every row) plus 25 pure-transform fixtures.
+    correct on every row) plus 25 pure-transform fixtures (not committed at the time; see below).
+
+**Automated slate + spread poller — shipped 2026-08-13, PR #47 (`cfb-auto-lines-poller`).**
+Replaces PR3's manual per-week admin import. Real 2025 data showed betting lines only post
+~1-2 weeks before kickoff (Week 1 = 51 games with a line, Week 3 = 0), so a season's slate
+can't be imported upfront the way golf imports a field once — an hourly poller keeps every
+pool's slate current instead. See `agents/pm/DECISIONS.md`, 2026-08-13, for the full call.
+
+- **`supabase/functions/_shared/cfbSlate.ts`** — the CFBD→`cfb.games` transform
+  (`chooseLine`, `favoriteFromFormattedSpread`, `buildGameRows`), moved server-side from
+  `src/lib/cfb.js` now that import is server-only. Pure, unit-tested for the first time as
+  *committed* tests (`src/utils/cfbSlate.test.js`, vitest importing the `.ts` directly —
+  the PR3 "25 fixtures" were never committed). The tests caught a real latent bug: a
+  provider row with no spread field was read as a phantom pick'em `0`
+  (`Number(null) === 0`) instead of "no line" — fixed. 173 tests pass repo-wide.
+- **`supabase/functions/poll-cfb-lines/index.ts`** — the hourly poller (cron-secret-or
+  admin-JWT gated, service role, 30k cap shared with `cfd-proxy`/`grade-cfb-week`/
+  `poll-cfb-scores`). Per active season: ONE season-wide CFBD fetch set (`/games`+
+  `/lines`+`/teams/fbs`), shaped by `buildGameRows`, then fanned onto **every pool's**
+  `cfb.weeks` row for that `(season, week_number)` — all pools on a season see the same
+  numbers, deduped the same way grading/live-scores already dedupe. Only writes games
+  where `now < kickoff_at`; once a game kicks off its `home_spread` is left alone, so it
+  freezes at the last pre-kickoff value (the closing line, the number shown forever
+  after) and the poller can never clobber `poll-cfb-scores`, which owns status/scores/live
+  once a game starts. Per-pick grading is unaffected — it always uses each player's own
+  frozen `locked_spread` from submit time. Logs a `cfb.spread_history` snapshot only when
+  a game's spread actually changed since the last poll. Senior review
+  (`agents/senior-dev/reviews/cfb-auto-lines-poller.md`, APPROVE WITH QUESTIONS) caught one
+  scale bug pre-merge: change-detection now reads one representative
+  `cfb.event_details` row per season (all pools on a season share the same real
+  games/spreads) rather than every pool's own game copies, which would have multiplied
+  with pool count and risked truncating past PostgREST's row cap around ~20 pools.
+- **Migration `20260813010000_cfb_spread_history.sql`** — `cfb.spread_history` (keyed by
+  the real `cfbd_game_id` + `captured_at`, not a per-pool `cfb.games` row — all pools
+  share the same real line), a line-movement log for a future "opened → closed" UI.
+  Authenticated-read; service role (poller) + admin write. `getSpreadHistory()` in
+  `src/lib/cfb.js` reads it (no UI consumer yet).
+- **`CfbPoolOps.jsx`** — dropped the per-week "Import slate"/"Re-import slate" button;
+  now shows an auto-slate status banner ("updates hourly / lines post ~1-2 wks out /
+  spread freezes at kickoff") plus a single "Refresh slates now" override
+  (`refreshCfbSlates()` in `src/lib/cfb.js`, invokes `poll-cfb-lines`). See
+  `docs/PAGES.md` §10e.
+- **Not yet done:** the `spread_history` migration isn't applied to prod, `poll-cfb-lines`
+  isn't deployed, and no cron is armed — all deferred to PR9, same CFB prod-as-dev pattern
+  as every prior CFB PR. PR9 now arms **three** CFB crons: hourly slate/lines
+  (`poll-cfb-lines`), ~1-minute live scores (`poll-cfb-scores`), and weekly grading
+  (`grade-cfb-week`).
+
 - **Grading** (not just caching, unlike golf) — because standings are cumulative across
   weeks, a `grade-cfb-week` job runs after a week's games go final: fetch final scores,
   update `cfb.games`, grade every pick, write the shared `pool_standings` projection. Same
@@ -443,7 +503,8 @@ green, coherent with the Poold system. Two fixes to carry into the real build:
 | 0 | `docs/CFB_FORMAT.md` | Rules + worked examples + schema sketch, reviewed before code | ambiguity found mid-build instead of now |
 | 1 | `cfb` schema scaffold — **shipped 2026-08-11, PR #40** | Additive tables, grants, RLS-deny-all, seed `public.sports` row; add `cfb` to config.toml | grants forgotten → silent "permission denied" (mitigated; grant block mirrors golf's, confirmed in senior review) |
 | 2 | RLS + `cfb_submit_week_picks` RPC — **shipped 2026-08-11, PR #41** | Row policies mirroring golf + the atomic whole-card submit (Finding 2) | RLS alone can't enforce the 6-pick set — resolved by giving the RPC the *only* write path on `cfb.picks` (no client insert/update/delete policy at all, not just a defense-in-depth layer) |
-| 3 | `cfd-proxy` + slate import — **shipped 2026-08-12** | Server-side CFBD access; `src/lib/cfb.js` import | lineless games excluded at import (done); underdog sign/team stored correctly (done, plus a CFBD-label cross-check the founder added — see DECISIONS) |
+| 3 | `cfd-proxy` + slate import — **shipped 2026-08-12; manual import superseded 2026-08-13, PR #47** | Server-side CFBD access; `src/lib/cfb.js` import | lineless games excluded at import (done); underdog sign/team stored correctly (done, plus a CFBD-label cross-check the founder added — see DECISIONS) |
+| 5d | Slate import automated (hourly `poll-cfb-lines` poller + `cfb.spread_history`, replaces PR3's manual import) — **shipped 2026-08-13, PR #47 (`cfb-auto-lines-poller`)** | Lines post ~1-2 wks out, so upfront season import doesn't work; hourly poll keeps every pool's slate current; spread freezes at kickoff | change-detection read could multiply with pool count past PostgREST's row cap — fixed pre-merge (one representative event per season, senior review); not yet deployed/armed, deferred to PR9 |
 | 4 | `cfbScoring.js` + tests — **shipped 2026-08-12, PR #43** | Pure grading engine + the repo's first unit tests (F4), 44/44 passing | double-down rounding + underdog tier boundaries (verified sound in senior review; underdog-DD copy resolved — see DECISIONS) |
 | 5 | `grade-cfb-week` → `pool_standings` — **shipped 2026-08-12, PR #44** | Weekly grading writes the shared projection (CFB half of F1); JS/TS drift guard via shared fixtures (152/152 tests) | mirror/source drift — resolved via shared fixtures, not a comment |
 | 5b | *(optional)* wire `pool_standings` for golf | Closes F1's other half; not required to ship CFB | none blocking — keep it from gating CFB |
@@ -452,7 +513,7 @@ green, coherent with the Poold system. Two fixes to carry into the real build:
 | 6 | Weekly picks UI + shell theme-props | `CfbPicks`/`CfbWeekPicker`; prop-ify the shells (Finding 1) | shell changes must not visually change golf (defaults) |
 | 7 | CFB pool detail / leaderboard | `CfbPoolDetail`, `CfbWidgets`; `WidgetGrid` → render-prop | first page reading `pool_standings` — validates Decision #3; also first UI reader of `cfb.games.live` |
 | 8 | Sport-dispatch + remaining CFB pool-creation surgery | `lib/pools.js`; `Join`/`Dashboard` branch on sport; CFB routes for player-facing pages. **Admin pool creation itself already shipped as 8a above** — what's left here is making a created pool reachable through the normal join-code flow instead of only a direct admin link. | Dashboard surgery — golf must be byte-identical after |
-| 9 | Remaining weekly admin ops + cron | Grade-week button (import + lock-edit already shipped in 8a). Then pg_cron (golf's pattern). **Must also close three deferred items** (`agents/pm/DECISIONS.md`, 2026-08-12 and 2026-08-13): two PR5 grader gaps (an admin "finalize week as-is" override for a stuck week, and a `lock_time` guard on the manual "Grade week" button), plus the live-scores cron-cadence tuning (confirm the 30-min look-ahead, decide windowed-vs-year-round schedule, deploy `poll-cfb-scores` + arm the cron) | 15 weeks of manual ops/season until automation lands; a stuck week burns CFBD calls every cron run until the override ships; an unarmed live poller means no live scores until this PR |
+| 9 | Remaining weekly admin ops + cron | Grade-week button (import is now automated per 5d; lock-edit already shipped in 8a). Then pg_cron (golf's pattern) — **arms THREE CFB crons**: hourly slate/lines (`poll-cfb-lines`), ~1-minute live scores (`poll-cfb-scores`), weekly grading (`grade-cfb-week`). **Must also close three deferred items** (`agents/pm/DECISIONS.md`, 2026-08-12 and 2026-08-13): two PR5 grader gaps (an admin "finalize week as-is" override for a stuck week, and a `lock_time` guard on the manual "Grade week" button), plus the live-scores cron-cadence tuning (confirm the 30-min look-ahead, decide windowed-vs-year-round schedule, deploy `poll-cfb-scores` + arm the cron). Also deploys `poll-cfb-lines` + applies the `spread_history` migration (5d). | a stuck week burns CFBD calls every cron run until the override ships; an unarmed live poller means no live scores until this PR; an unarmed slate poller means no NEW games/spreads land until this PR (existing slates from PR3-era manual imports still work) |
 | 10 | Auto-fill on missed deadline | Random fill of missing slots, DD forfeiture, `auto_filled` flag | partial-card semantics (see CFB_FORMAT open questions) |
 | — | **Prod cutover checklist** — **Exposed Schemas flip done 2026-08-13**, ahead of PR #46 | Flipped Exposed Schemas to include `cfb` (and all other schemas/tables/functions) in the Supabase dashboard | resolved — was silent 404s on every `cfb` query if forgotten |
 
