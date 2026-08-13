@@ -247,3 +247,16 @@ export async function gradeCfbWeek(weekId) {
   if (data && data.error) throw new Error(data.error)
   return data
 }
+
+// Trigger a live-scoreboard poll on demand (admin "Refresh scores" button, PR9).
+// Invokes the poll-cfb-scores edge function, which — if any game is currently in its
+// live window — makes one CFBD /scoreboard call, updates live state + scores on
+// cfb.games, and grades + restands any week whose game just went final. Normally this
+// runs on a ~1-minute pg_cron during game days (armed in PR9); this is the manual
+// analogue of golf's "Refresh Now". Returns the function's summary.
+export async function refreshCfbScores() {
+  const { data, error } = await supabase.functions.invoke('poll-cfb-scores', { body: {} })
+  if (error) throw error
+  if (data && data.error) throw new Error(data.error)
+  return data
+}

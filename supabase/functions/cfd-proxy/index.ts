@@ -3,10 +3,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // Server-side proxy for the CollegeFootballData API (collegefootballdata.com).
 // Mirrors slash-golf-proxy: the CFBD_API_KEY lives as a Supabase secret and is
 // never exposed to the browser. Admin JWT required. Monthly call cap is tracked
-// in api_usage.cfbd_calls. CFBD's free tier is 1000 calls/month — bump this if
-// the account is upgraded.
+// in api_usage.cfbd_calls. On CFBD Tier 2 the cap is 30k/month; keep this value in
+// sync with grade-cfb-week and poll-cfb-scores (they share the api_usage.cfbd_calls
+// counter).
 const CFBD_BASE = 'https://api.collegefootballdata.com'
-const MONTHLY_CAP = 1000
+const MONTHLY_CAP = 30000
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
