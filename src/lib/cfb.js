@@ -153,7 +153,7 @@ export async function getAdminCfbPools() {
 export async function getCfbPool(poolId) {
   const { data: pool } = await supabase
     .from('pools')
-    .select('id, name, status, join_code, event_id, lock_time')
+    .select('id, name, status, join_code, event_id, lock_time, stake_amount, payout_structure')
     .eq('id', poolId)
     .maybeSingle()
   if (!pool) return null
@@ -196,6 +196,66 @@ export async function getCfbdUsage() {
   const { data } = await supabase
     .from('api_usage').select('cfbd_calls').eq('month', month).maybeSingle()
   return { month, calls: data?.cfbd_calls ?? 0, cap: 30000 }
+}
+
+// ── Player-facing: CFB Pool Detail reads (docs/CFB_UI_PLAN.md §6) ─────────────
+// These feed the season-standings hero, the week selector, the scorecard-expand,
+// and the widget row. All read-only; grading/standings are written server-side.
+
+// The season-cumulative standings the shared UI ranks by (public.pool_standings,
+// written by the grader). Rows: { user_id, rank, total, display: {name, subtitle} }.
+// Empty until the first week is graded — the page falls back to participants at 0.
+export async function getCfbStandings(poolId) {
+  const { data } = await supabase
+    .from('pool_standings')
+    .select('user_id, rank, total, display')
+    .eq('pool_id', poolId)
+  return data ?? []
+}
+
+// Every member of the pool + their display name, so the standings show everyone
+// (even pre-season, before anyone has a standings row). Newest join last.
+export async function getCfbParticipants(poolId) {
+  const { data: parts } = await supabase
+    .from('pool_participants')
+    .select('user_id, joined_at')
+    .eq('pool_id', poolId)
+    .order('joined_at')
+  const userIds = [...new Set((parts ?? []).map(p => p.user_id))]
+  if (!userIds.length) return []
+
+  const { data: profs } = await supabase
+    .from('profiles').select('id, display_name').in('id', userIds)
+  const nameById = {}
+  ;(profs ?? []).forEach(p => { nameById[p.id] = p.display_name ?? 'Participant' })
+
+  return userIds.map(uid => ({ user_id: uid, display_name: nameById[uid] ?? 'Participant' }))
+}
+
+// The slate for one week: cfb.games with the live blob + scores/status the poller
+// keeps current. Ordered by kickoff so the board and expand read in game order.
+export async function getCfbWeekGames(weekId) {
+  const { data } = await cfb()
+    .from('games')
+    .select('id, cfbd_game_id, home_team, away_team, home_conference, away_conference, ' +
+            'kickoff_at, home_spread, underdog_team, underdog_spread, status, ' +
+            'home_score, away_score, live')
+    .eq('week_id', weekId)
+    .order('kickoff_at', { nullsFirst: false })
+  return data ?? []
+}
+
+// Every player's picks for one pool-week. RLS returns only your own picks until
+// that week locks, then everyone's confirmed picks — so before lock the expand
+// only fills in for the current user, which the page handles.
+export async function getCfbWeekPicks(poolId, weekId) {
+  const { data } = await cfb()
+    .from('picks')
+    .select('id, user_id, game_id, pick_type, selected_team, is_double_down, ' +
+            'locked_spread, auto_filled, result, base_points, bonus_points')
+    .eq('pool_id', poolId)
+    .eq('week_id', weekId)
+  return data ?? []
 }
 
 // Line-movement history for one real game (oldest → newest), for a future UI chart.
