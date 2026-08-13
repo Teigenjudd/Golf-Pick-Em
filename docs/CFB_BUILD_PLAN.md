@@ -1,19 +1,21 @@
 # College Football (Sport #2) — Build Plan
 
-> **Status:** Planning, execution in progress (PR5 of ~10 shipped). Written 2026-08-11
-> from a dedicated planning pass, grounded in a full read of the golf implementation as
-> the template. This is the *how-we-build-it* sequencing doc; the *what-the-game-is*
-> rules live in `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's net-new work. See
+> **Status:** Planning, execution in progress (PR5 of ~10 shipped, plus one inserted
+> live-scores PR ahead of PR6). Written 2026-08-11 from a dedicated planning pass,
+> grounded in a full read of the golf implementation as the template. This is the
+> *how-we-build-it* sequencing doc; the *what-the-game-is* rules live in
+> `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's net-new work. See
 > `docs/MULTI_SPORT_MIGRATION.md` for the per-schema architecture this sits on, and
 > BACKLOG **F1** (`pool_standings`) / **F6** (format contract) for the debt this
 > interacts with. **PR1 (`cfb` schema scaffold) shipped 2026-08-11, PR #40; PR2 (RLS +
 > `cfb_submit_week_picks` RPC) shipped 2026-08-11, PR #41; PR3 (`cfd-proxy` + slate
 > import) shipped 2026-08-12; PR4 (`cfbScoring.js` grading engine + first unit tests)
 > shipped 2026-08-12, PR #43; PR5 (`grade-cfb-week` grading job + `pool_standings` +
-> the JS/TS drift guard) shipped 2026-08-12, PR #44** — see the PR sequence table below;
-> the schema sketch reflects what actually shipped, including four integrity constraints
-> senior review added beyond this doc's original sketch in PR1, plus PR3's
-> `underdog_spread` CHECK.
+> the JS/TS drift guard) shipped 2026-08-12, PR #44; CFB live in-game scores
+> (data layer only, inserted between PR5 and PR6) shipped 2026-08-13** — see the PR
+> sequence table below; the schema sketch reflects what actually shipped, including four
+> integrity constraints senior review added beyond this doc's original sketch in PR1,
+> plus PR3's `underdog_spread` CHECK.
 
 CFB is Poold's second sport: a new `cfb` Postgres schema and a genuinely new **format**
 (weekly against-the-spread, season-cumulative). The full rules are in `docs/CFB_FORMAT.md`.
@@ -285,6 +287,58 @@ new month, a `throughWeek` subtitle that can look stale if weeks grade out of or
 `pool_standings` rows not being pruned for a departed participant) were left as-is — see the
 review for detail.
 
+**Now shared:** `gradeWeek`/`recomputeStandings` were extracted verbatim out of this function into
+`supabase/functions/_shared/cfbGrading.ts` when live scores shipped (below), so both graders run
+one implementation. `grade-cfb-week` is behavior-identical — see the Live scores section.
+
+---
+
+## Live scores — `poll-cfb-scores` (data layer only)
+
+**Shipped 2026-08-13, inserted between PR5 and PR6.** Founder-requested: a player should be able
+to watch their pick's live score/clock/possession inside Poold. Enabled by a CFBD **Tier 2**
+upgrade (30k calls/mo, unlocking the `/scoreboard` endpoint) — `MONTHLY_CAP` raised 1000→30000
+across `cfd-proxy`, `grade-cfb-week`, and the new function (all three share
+`public.api_usage.cfbd_calls`). This PR is data-layer only, no UI; see `agents/pm/DECISIONS.md`,
+2026-08-13, for the four decisions behind it.
+
+- **Migration `20260812120000_cfb_live_scores.sql`** — additive, nullable `cfb.games.live jsonb`:
+  an ephemeral in-game blob (`period`/`clock`/`possession`/`situation`/`last_play`). The
+  authoritative score/status stay in the existing typed columns (`home_score`/`away_score`/
+  `status`), which the poller also mirrors live so the UI has one place to read "current score."
+  No new grants/RLS — rides on `cfb.games`' existing table-level SELECT grant.
+- **`supabase/functions/poll-cfb-scores/index.ts`** — the live poller (cron-secret-or-admin-JWT
+  gated, service role). CFBD's `/scoreboard` returns the whole live FBS slate in ONE call, so a
+  poll costs one API call regardless of games/pools/players. **Self-regulating:** it first runs a
+  cheap DB-only gate ("any game in the live window right now?" — `kickoff_at` within
+  `[now−6h, now+30min]`, not yet `final`) and returns with **zero API spend** when nothing's live,
+  so a future ~1-minute cron (armed in PR9) costs only real game hours. When a game flips final it
+  calls the shared `gradeWeek`/`recomputeStandings` so standings move live as games end;
+  `grade-cfb-week` remains the manual/backfill grader.
+- **`supabase/functions/_shared/cfbGrading.ts`** (new) — `gradeWeek` + `recomputeStandings`
+  extracted from `grade-cfb-week`, now imported by both graders. `gradeWeek` gained one added
+  branch: trust a game already `status='final'` in the DB when the live poller's partial
+  `/scoreboard` map doesn't include it (a game that finalized on an earlier poll drops off later
+  ones), so a multi-game week can't get un-finalized mid-slate. `grade-cfb-week`'s normal path is
+  behavior-identical (senior-reviewed, confirmed verbatim except this branch).
+- **`supabase/functions/_shared/cfbLive.ts`** (new) — pure `/scoreboard` → `cfb.games` transform,
+  reads fields defensively and never throws on an unexpected shape. Unit-tested
+  (`src/utils/cfbLive.test.js`, 7 tests — **159 tests pass repo-wide**). Exact CFBD live-field
+  names are unconfirmed against a real Tier-2 response — verify when PR6/7's UI leans on them.
+- **`src/lib/cfb.js`** adds `refreshCfbScores()` — a thin invoker for PR9's admin "Refresh scores"
+  button; the poller itself never runs client-side.
+
+Senior review (`agents/senior-dev/reviews/cfb-live-scores.md`, APPROVE WITH QUESTIONS) confirmed
+the correctness holds end-to-end (mid-game scores never grade, already-final games can't
+re-trigger grading, `grade-cfb-week` unaffected) and flagged one live decision: the poller's
+initial 18h look-ahead risked burning idle API calls for most of a game day against the 30k cap.
+**Tightened in-branch to 30 minutes** (`agents/pm/DECISIONS.md`, 2026-08-13) — a PM judgment call
+that still needs founder confirmation. The broader question — a windowed cron schedule (golf's
+Thu–Sun business-hours pattern) vs. year-round every-minute, and whether 30 min is the right
+number — is an explicit **PR9 must-settle-before-arming-the-cron** item (added to PR9's row
+below). No migration applied to prod, no function deployed, no cron armed — all deferred to PR9
+per the CFB prod-as-dev pattern.
+
 ---
 
 ## Picks UI + theme
@@ -376,10 +430,11 @@ green, coherent with the Poold system. Two fixes to carry into the real build:
 | 4 | `cfbScoring.js` + tests — **shipped 2026-08-12, PR #43** | Pure grading engine + the repo's first unit tests (F4), 44/44 passing | double-down rounding + underdog tier boundaries (verified sound in senior review; underdog-DD copy resolved — see DECISIONS) |
 | 5 | `grade-cfb-week` → `pool_standings` — **shipped 2026-08-12, PR #44** | Weekly grading writes the shared projection (CFB half of F1); JS/TS drift guard via shared fixtures (152/152 tests) | mirror/source drift — resolved via shared fixtures, not a comment |
 | 5b | *(optional)* wire `pool_standings` for golf | Closes F1's other half; not required to ship CFB | none blocking — keep it from gating CFB |
+| 5c | CFB live in-game scores (data layer only) — **shipped 2026-08-13, inserted between PR5 and PR6** | `poll-cfb-scores` + `cfb.games.live`; CFBD Tier 2 (30k/mo) unlocks `/scoreboard`; shared `_shared/cfbGrading.ts` | poller's look-ahead window vs. cron cadence governs whether the season fits the 30k cap — tightened to 30min in-branch, full tuning + arming still a PR9 founder call |
 | 6 | Weekly picks UI + shell theme-props | `CfbPicks`/`CfbWeekPicker`; prop-ify the shells (Finding 1) | shell changes must not visually change golf (defaults) |
-| 7 | CFB pool detail / leaderboard | `CfbPoolDetail`, `CfbWidgets`; `WidgetGrid` → render-prop | first page reading `pool_standings` — validates Decision #3 |
+| 7 | CFB pool detail / leaderboard | `CfbPoolDetail`, `CfbWidgets`; `WidgetGrid` → render-prop | first page reading `pool_standings` — validates Decision #3; also first UI reader of `cfb.games.live` |
 | 8 | Sport-dispatch + CFB pool creation | `lib/pools.js`; `Join`/`Dashboard` branch on sport; `CreateCfbPool`; CFB routes | Dashboard surgery — golf must be byte-identical after |
-| 9 | Weekly admin ops + cron | Manual import/lock/grade buttons, then pg_cron (golf's pattern). **Must also close two PR5-deferred grader gaps** (`agents/pm/DECISIONS.md`, 2026-08-12): an admin "finalize week as-is" override for a stuck week (cancelled/rescheduled game), and a `lock_time` guard on the manual "Grade week" button so it can't grade a still-open week | 15 weeks of manual ops/season until automation lands; a stuck week burns CFBD calls every cron run until the override ships |
+| 9 | Weekly admin ops + cron | Manual import/lock/grade buttons, then pg_cron (golf's pattern). **Must also close three deferred items** (`agents/pm/DECISIONS.md`, 2026-08-12 and 2026-08-13): two PR5 grader gaps (an admin "finalize week as-is" override for a stuck week, and a `lock_time` guard on the manual "Grade week" button), plus the live-scores cron-cadence tuning (confirm the 30-min look-ahead, decide windowed-vs-year-round schedule, deploy `poll-cfb-scores` + arm the cron) | 15 weeks of manual ops/season until automation lands; a stuck week burns CFBD calls every cron run until the override ships; an unarmed live poller means no live scores until this PR |
 | 10 | Auto-fill on missed deadline | Random fill of missing slots, DD forfeiture, `auto_filled` flag | partial-card semantics (see CFB_FORMAT open questions) |
 | — | **Prod cutover checklist** | Flip Exposed Schemas to include `cfb` in the Supabase dashboard | silent 404s on every `cfb` query if forgotten |
 

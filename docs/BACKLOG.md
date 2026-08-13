@@ -114,11 +114,15 @@
   which errors when the month row doesn't exist yet (first call of the month).
   **Fix:** atomic increment via an RPC (`update ... set calls = calls + n`) or a
   Postgres `on conflict do update` returning the new value; use `.maybeSingle()`.
-  (AUDIT L3.) **Now shared by `cfd-proxy` too (CFB PR3, 2026-08-12):** `api_usage
-  .cfbd_calls` uses the identical read-then-write pattern (`.upsert` with `.single()`
-  read, matching the same race). Not made materially worse — `src/lib/cfb.js`
-  `importWeekSlate`'s three CFBD fetches run sequentially by design — but the fix,
-  when it lands, should cover both counters in one pass.
+  (AUDIT L3.) **Now shared by three CFBD functions:** `cfd-proxy` (CFB PR3,
+  2026-08-12), `grade-cfb-week` (CFB PR5, 2026-08-12), and `poll-cfb-scores`
+  (live-scores PR, 2026-08-13) all read-then-write the same `api_usage.cfbd_calls`
+  counter (senior review flagged this again on `poll-cfb-scores`, same pre-existing
+  pattern, not new debt). Not made materially worse — none of the three CFBD callers
+  run concurrently by design today — but the fix, when it lands, should cover all
+  counters (`slash_golf_calls` + `cfbd_calls`) in one pass. **CFBD's cap is now
+  30,000/month** (Tier 2 upgrade, live-scores PR) — up from the 1,000/month noted when
+  this item was first written.
 
 - [ ] 🟡 **B5 — `submitPicks` is not atomic (delete-then-insert, no transaction).**
   `src/lib/golf.js` `submitPicks` deletes all of a user's picks, then inserts the new
@@ -252,16 +256,21 @@
     `golf()`), repoint `createGolfPool`, and stop discarding that call's error — *then*
     drop `pga_event_badges` with the rest. Tracked together with F1 rather than split
     out, since it's a precondition for the same cleanup.
-  - **`public.pool_standings` — CFB half now writes it (2026-08-12, PR #44).**
-    `supabase/functions/grade-cfb-week/index.ts` is the first code in the repo to write
-    this table: after grading a week it recomputes each affected pool's season-cumulative
-    standings via `projectSeasonStandings` and upserts `pool_standings`. No app screen
-    reads it yet (CFB's leaderboard, `CfbPoolDetail`, is `docs/CFB_BUILD_PLAN.md` PR7) —
-    so this closes the "never written" half of the complaint but not the "no reader"
-    half. **Golf's half is still open:** `submitPicks` writes `pool_participants` but
-    nothing on the golf side writes `pool_standings`, and D3's client-side
-    `computeScores` recompute is unchanged. Wiring golf (`docs/CFB_BUILD_PLAN.md` PR5b,
-    optional, not required to ship CFB) would close D3 too.
+  - **`public.pool_standings` — CFB half now writes it (2026-08-12, PR #44), and now
+    updates live (2026-08-13, live-scores PR).** `supabase/functions/grade-cfb-week/
+    index.ts` was the first code in the repo to write this table: after grading a week
+    it recomputes each affected pool's season-cumulative standings via
+    `projectSeasonStandings` and upserts `pool_standings`. As of the live-scores PR, the
+    new `poll-cfb-scores` function does the same thing whenever a game flips final
+    (both call the same shared `supabase/functions/_shared/cfbGrading.ts`), so standings
+    can now move mid-slate, not just on `grade-cfb-week`'s scan. No app screen reads
+    `pool_standings` yet (CFB's leaderboard, `CfbPoolDetail`, is `docs/CFB_BUILD_PLAN.md`
+    PR7) — so this closes the "never written" half of the complaint but not the "no
+    reader" half. **Golf's half is still open:** `submitPicks` writes
+    `pool_participants` but nothing on the golf side writes `pool_standings`, and D3's
+    client-side `computeScores` recompute is unchanged. Wiring golf
+    (`docs/CFB_BUILD_PLAN.md` PR5b, optional, not required to ship CFB) would close D3
+    too.
 
   **Fix:** resolve the `pga_event_badges` dependency above first, confirm zero
   references to the remaining legacy tables in prod (query `pg_stat_user_tables` for row
