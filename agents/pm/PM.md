@@ -80,9 +80,12 @@ writing code.
   plan originally sketched (`agents/pm/DECISIONS.md`, 2026-08-13). **Slate import
   automated shipped 2026-08-13, PR #47** — an hourly `poll-cfb-lines` poller replaced
   PR #46's manual per-week import (lines only post ~1-2 weeks out, so upfront import
-  never worked at season scale); CFB now has no admin "odds" step at all. Picks UI and
-  the sport-dispatch layer are still not built — those are PR6+; a CFB pool today is only
-  reachable via a direct admin link, not the normal join-code flow.
+  never worked at season scale); CFB now has no admin "odds" step at all. **CFB player UI
+  Phase 1 (theme + shared-shell prop-ification + two placeholder routes) shipped
+  2026-08-13, PR #48** — see the status board entry below for detail. The real picks
+  builder, real standings, and the sport-dispatch layer are still not built (Phases 2-4);
+  a CFB pool today is still only reachable via a direct admin link, not the normal
+  join-code flow.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -421,6 +424,24 @@ writing code.
   (`poll-cfb-lines`), ~1-minute live scores (`poll-cfb-scores`), and weekly grading
   (`grade-cfb-week`). Full call in `agents/pm/DECISIONS.md`, 2026-08-13. Picks UI and
   the sport-dispatch layer are still not built — PR6 onward.
+- **CFB player UI Phase 1 (of 4) — Varsity Navy theme + shared-shell prop-ification +
+  route scaffolds — shipped 2026-08-13, PR #48.** The first CFB *player-facing* UI work
+  (prior CFB PRs were backend + admin). `src/theme/cfb.js` locks the "Varsity Navy"
+  colorway (navy `#101C3D→#0A1229` header gradient, brick `#D6291B` accent, green
+  `#2E8F4F` cover/win) from the founder's Claude Design comp, applied only on the two CFB
+  sport-specific screens. The shared pool shells (`PoolHeader`, `PicksHeader`,
+  `StandingsCard`, `WidgetGrid`) are now prop-ified (`gradient`/`accentColor`/`rib`/
+  `children`/`label`/`showBadge`) with golf's exact prior values as defaults — golf
+  renders byte-identically, confirmed line-by-line in senior review
+  (`agents/senior-dev/reviews/cfb-ui-phase1-foundation.md`). Two new placeholder routes,
+  `/cfb/pool/:id` (`CfbPoolDetail.jsx`) and `/cfb/pool/:id/picks` (`CfbPicks.jsx`), render
+  the real themed shell with a "coming soon" body; `getCfbPool()` now refuses a non-CFB
+  pool id (returns null → "Pool not found"), a review-driven fix so Phase 2 can't
+  accidentally build real standings on top of a golf pool's data. Neither route is linked
+  from the dashboard yet (Phase 4). Full phase breakdown + rationale in
+  `agents/pm/DECISIONS.md`, 2026-08-13. 173 tests pass, unchanged (pure UI scaffolding,
+  no new tests). Real page bodies (standings/week selector = Phase 2, picks builder =
+  Phase 3) are not built.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.

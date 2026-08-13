@@ -159,7 +159,10 @@ export async function getCfbPool(poolId) {
   if (!pool) return null
   const { data: ed } = await cfb()
     .from('event_details').select('season_year').eq('event_id', pool.event_id).maybeSingle()
-  return { ...pool, season_year: ed?.season_year ?? null }
+  // No cfb.event_details row → this isn't a CFB pool. Return null so a golf pool id
+  // hitting a /cfb route shows "not found" rather than golf data in the CFB skin.
+  if (!ed) return null
+  return { ...pool, season_year: ed.season_year }
 }
 
 // The pool's weeks with a slate (game) count each, for the ops table.

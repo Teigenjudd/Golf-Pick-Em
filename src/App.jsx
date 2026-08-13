@@ -14,6 +14,8 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import CfbAdmin from './pages/admin/cfb/CfbAdmin'
 import CreateCfbPool from './pages/admin/cfb/CreateCfbPool'
 import CfbPoolOps from './pages/admin/cfb/CfbPoolOps'
+import CfbPoolDetail from './pages/cfb/CfbPoolDetail'
+import CfbPicks from './pages/cfb/CfbPicks'
 import TournamentDetail from './pages/TournamentDetail'
 import { DemoProvider } from './demo/DemoContext'
 import DemoLayout from './demo/DemoLayout'
@@ -88,6 +90,8 @@ function App() {
           <Route path="/admin/cfb/pool/:id" element={<AdminRoute><CfbPoolOps /></AdminRoute>} />
           <Route path="/tournament/:id" element={<ProtectedRoute><TournamentDetail /></ProtectedRoute>} />
           <Route path="/tournament/:id/picks" element={<ProtectedRoute><Picks /></ProtectedRoute>} />
+          <Route path="/cfb/pool/:id" element={<ProtectedRoute><CfbPoolDetail /></ProtectedRoute>} />
+          <Route path="/cfb/pool/:id/picks" element={<ProtectedRoute><CfbPicks /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

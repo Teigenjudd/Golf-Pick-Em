@@ -13,6 +13,82 @@
 
 ---
 
+## 2026-08-13 — CFB player UI is a 4-phase PR series; PR #48 = Phase 1 (theme + shells + scaffolds)
+
+**Decision:** The CFB player-facing UI (the Claude Design comp "CFB Pool Detail and Picks
+- Full States") ships as four PRs rather than one: (1) locked colorway + shared-shell
+prop-ification + placeholder routes [this PR, #48], (2) the real Pool Detail body
+(`docs/CFB_BUILD_PLAN.md` PR7 — season standings, week selector, scorecard-expand,
+CFB widgets), (3) the real Weekly Picks body (PR6 — 5 ATS + double-down + underdog builder
+with live validity), (4) reachability (`src/lib/pools.js` sport-dispatch, `Join.jsx`/
+`Dashboard.jsx` branching on `sport_id`, a sport-agnostic "New Pool" flow — PR8). Routes
+`/cfb/pool/:id` and `/cfb/pool/:id/picks` exist as of Phase 1 but are not linked from
+anywhere in the UI yet — reachable only by typing the URL.
+
+**Why:** Each phase is independently reviewable and low-risk on its own. Phase 1 alone
+touches four widely-shared components (`PoolHeader`, `PicksHeader`, `StandingsCard`,
+`WidgetGrid`) — bundling it with the actual picks/standings logic would make "does golf
+still render byte-identically" harder to verify in one sitting. Splitting lets senior
+review confirm that claim in isolation (it did — see
+`agents/senior-dev/reviews/cfb-ui-phase1-foundation.md`) before any real CFB logic lands
+on top of the shells.
+
+**What we gave up:** four PRs' worth of review/merge overhead instead of one, and a CFB
+pool remains unreachable through normal navigation until Phase 4 ships.
+
+**Revisit if:** the phase boundaries turn out to not be independently shippable (e.g.
+Phase 2's standings need a shell prop Phase 1 didn't anticipate) — fine to adjust, just
+note the change here rather than re-deriving why 4 phases were chosen.
+
+## 2026-08-13 — CFB colorway locked: "Varsity Navy"
+
+**Decision:** CFB's sport-specific register (pool detail + picks pages only) is navy
+`#101C3D→#0A1229` header gradient, brick `#D6291B` accent (eyebrow, expand bar, double-down
+flag, selected pick, submit, badge border), green `#2E8F4F` for cover/win, and the existing
+warm-cream neutrals shared with golf — over a brick/cream/brick 3-segment "rib" stripe
+under the header in place of golf's plain band. Constants live in `src/theme/cfb.js`
+(`CFB_THEME`, `cfbBadge(seasonYear)`/`CFB_BADGE`), not in `public.sports.theme` (still
+unused) or Tailwind tokens — plain JS since the hexes are CFB-only and consumed both
+inline and passed into the shared shells. Golf keeps fairway `#1B4332`/gold `#C9A368`
+unchanged.
+
+**Why:** Founder-finalized in a Claude Design comp pass ("CFB Pool Detail and Picks - Full
+States"). Reads collegiate-Saturday, distinct from golf's fairway green, consistent with
+the rest of Poold's warm-cream system. Supersedes `docs/CFB_BUILD_PLAN.md`'s earlier
+"exploratory, NOT locked into tokens yet" note on the same visual direction.
+
+**What we gave up:** nothing load-bearing — this only affects the two CFB-specific
+screens, and both are still placeholder bodies (Phase 1), so no real content had to be
+restyled.
+
+**Revisit if:** the design comp's remaining states (in-progress, error, empty) surface a
+color this palette doesn't cover — extend `CFB_THEME`, don't introduce a second CFB
+palette.
+
+## 2026-08-13 — Shared pool shells prop-ified for a second sport (Finding 1 resolved)
+
+**Decision:** `PoolHeader`, `PicksHeader`, `StandingsCard`, and `WidgetGrid`
+(`src/components/pool/`) now accept theme/content props — `gradient`, `accentColor`,
+`rib`, `children` on the two headers (+ `showBadge` on `PicksHeader`), `label` on
+`StandingsCard`, `children` on `WidgetGrid` — every one defaulting to golf's exact prior
+literal value. No golf caller (`TournamentDetail.jsx`, `Picks.jsx`, `DemoTournament.jsx`,
+`DemoPicks.jsx`) passes any new prop, so golf renders byte-identically; verified line-by-
+line in senior review rather than just asserted (`agents/senior-dev/reviews/
+cfb-ui-phase1-foundation.md`).
+
+**Why:** `docs/CFB_BUILD_PLAN.md`'s Finding 1 flagged these shells as hardcoding golf's
+colors/labels/widgets inline, which would have forced CFB to fork its own copies (and
+then the two sports' shells drift the moment either changes) rather than the "shared
+chrome, per-page data source" pattern the rest of the app relies on. Prop-ifying with
+golf-matching defaults keeps the one-shell-both-sports guarantee CLAUDE.md documents.
+
+**What we gave up:** nothing — this is additive and backward-compatible by construction
+(default parameters), not a rewrite.
+
+**Revisit if:** a third sport needs a shell customization these props can't express (e.g.
+a fundamentally different header layout, not just different colors) — that's the signal
+to stop prop-threading and consider a real theme-object/render-prop redesign.
+
 ## 2026-08-13 — CFB: slate import automated (hourly poller), not manual per-week admin action
 
 **Decision:** Replaced the PR3 admin-triggered `importWeekSlate()` flow with

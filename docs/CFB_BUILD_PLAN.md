@@ -17,7 +17,10 @@
 > pool creation + weekly slate-import ops (the admin half of PR8/PR9, landed early)
 > shipped 2026-08-13, PR #46; slate import automated (hourly `poll-cfb-lines` poller +
 > `cfb.spread_history`, replacing PR3's manual per-week import) shipped 2026-08-13,
-> PR #47** — see the PR sequence table below; the schema sketch reflects what actually
+> PR #47; CFB player UI Phase 1 — the locked "Varsity Navy" theme, backward-compatible
+> prop-ification of the shared pool shells (Finding 1, resolved), and two placeholder
+> player routes (`/cfb/pool/:id`, `/cfb/pool/:id/picks`) — shipped 2026-08-13, PR #48**
+> — see the PR sequence table below; the schema sketch reflects what actually
 > shipped, including four integrity constraints senior review added beyond this doc's
 > original sketch in PR1, plus PR3's `underdog_spread` CHECK, plus PR #46's
 > per-pool-events correction (`cfb.games` re-keyed `UNIQUE(week_id, cfbd_game_id)` — see
@@ -64,6 +67,13 @@ gradient inline (not as a prop); `WidgetGrid.jsx` hardcodes an import of golf's 
 the moment CFB needs its own register. Fix = small, backward-compatible prop-ification
 (golf's current values become the defaults), which also puts the unused
 `public.sports.theme` column to work. Must land before CFB reuses the shells.
+**Resolved 2026-08-13, PR #48** — `PoolHeader`/`PicksHeader` take `gradient`/
+`accentColor`/`rib`/`children` (+ `showBadge` on the picks header), `StandingsCard`
+takes `label`, `WidgetGrid` renders `children` in place of golf's hardcoded widgets when
+supplied. Golf passes none of the new props, so it renders byte-identically (verified in
+senior review — see `agents/senior-dev/reviews/cfb-ui-phase1-foundation.md`). The
+`public.sports.theme` column itself is still unused; CFB's theme is a plain JS constants
+module (`src/theme/cfb.js`), not driven from that column yet.
 
 **Finding 2 — golf's row-by-row pick RLS can't enforce CFB's whole-card rules.**
 Golf's `golf.picks` policies validate one row at a time (one pick = one tier, independently
@@ -422,11 +432,12 @@ per the CFB prod-as-dev pattern.
   FBS-vs-FBS-with-a-line at import), pick 5 ATS on distinct games, flag one double-down, pick
   one underdog on a sixth distinct game. Client-side validation mirrors the RPC rules (live
   counters, disabled submit, collision warning) — UX only; the RPC is the real enforcement.
-- **Reuses the shared shells** after the Finding-1 prop-ification: `PoolHeader`/`PicksHeader`
-  take a `theme` prop (golf's gradient as default), `StandingsCard` takes a `label` prop,
-  `WidgetGrid` takes widgets via render-prop/children. Build CFB's own
+- **Reuses the shared shells** after the Finding-1 prop-ification (**shipped 2026-08-13,
+  PR #48**): `PoolHeader`/`PicksHeader` take `gradient`/`accentColor`/`rib`/`children` props
+  (golf's values as defaults), `StandingsCard` takes a `label` prop, `WidgetGrid` renders
+  widgets passed as `children` in place of golf's hardcoded set. Build CFB's own
   `src/components/leaderboard/CfbWidgets.jsx` ("This Week's Slate," "Weekly Points" — not
-  golf's "PGA Leaders").
+  golf's "PGA Leaders") — not built yet, lands with the real pool-detail body (Phase 2).
 - **Badge** — `SportBadge` is already sport-agnostic (renders whatever `badge_config` it's
   handed). CFB just needs its own `badge_config` values — a single static CFB badge for v1
   (not 130 team-specific arts; that's a scope trap).
@@ -447,10 +458,13 @@ season total; the **week selector scopes the expand + widgets to a chosen week**
 re-rank the standings to that week's points. A "Live — scores update as games go final" line sets
 the in-progress expectation.
 
-**Visual direction (exploratory — from a Claude Design pass, NOT locked into tokens yet):**
-midnight-navy ground + brick-red accent over the existing warm-cream neutrals, golf's
-scorecard-expand carried over with a red bar. Reads collegiate-Saturday, distinct from fairway
-green, coherent with the Poold system. Two fixes to carry into the real build:
+**Visual direction — "Varsity Navy," locked 2026-08-13 (PR #48):** navy `#101C3D→#0A1229`
+header gradient + brick `#D6291B` accent + green `#2E8F4F` cover/win, over the existing
+warm-cream neutrals; golf's scorecard-expand carried over with a brick bar in place of gold.
+Reads collegiate-Saturday, distinct from fairway green, coherent with the Poold system.
+Constants live in `src/theme/cfb.js` (`CFB_THEME`, `cfbBadge()`); applied so far only to the
+two Phase-1 placeholder shells (real bodies land Phases 2–3). Two fixes carried into the
+real build:
 1. Use a neutral sample pool name in mocks — avoid "Warpath"-style Native American war imagery.
 2. Double-down copy must reflect the **strict** rule: "cover by more than N · win by X+" — the
    buffer is a strictly-greater threshold, so an inclusive "N+" is wrong for spreads whose buffer
@@ -510,8 +524,8 @@ green, coherent with the Poold system. Two fixes to carry into the real build:
 | 5b | *(optional)* wire `pool_standings` for golf | Closes F1's other half; not required to ship CFB | none blocking — keep it from gating CFB |
 | 5c | CFB live in-game scores (data layer only) — **shipped 2026-08-13, inserted between PR5 and PR6** | `poll-cfb-scores` + `cfb.games.live`; CFBD Tier 2 (30k/mo) unlocks `/scoreboard`; shared `_shared/cfbGrading.ts` | poller's look-ahead window vs. cron cadence governs whether the season fits the 30k cap — tightened to 30min in-branch, full tuning + arming still a PR9 founder call |
 | 8a | **CFB admin: pool creation + weekly slate-import ops — shipped 2026-08-13, PR #46 (the admin half of PR8/PR9, landed early, out of sequence).** `createCfbPool()` (event(cfb) → pool → `cfb.event_details` → seed `cfb.weeks` on a weekly lock cadence from a now-required first-week lock); `CfbAdmin`/`CreateCfbPool`/`CfbPoolOps` admin pages (`/admin/cfb`, `/admin/cfb/create-pool`, `/admin/cfb/pool/:id` — general admin register, no sport colorway); per-week lock edit + slate import + CFBD usage meter. Surfaced the founder requirement that forced the per-pool-events correction above (`agents/pm/DECISIONS.md`, 2026-08-13) — `cfb.games` re-keyed `UNIQUE(week_id, cfbd_game_id)`, migration `20260813000000_cfb_games_per_week_unique.sql`. | per-pool events means admin slate imports scale with (pools × weeks) — accepted trade-off, see DECISIONS; still no sport-dispatch (`Join`/`Dashboard` don't branch on `sport_id` yet), so a real pool exists but only an admin can reach it via a direct `/admin/cfb/pool/:id` link — not through the normal join flow |
-| 6 | Weekly picks UI + shell theme-props | `CfbPicks`/`CfbWeekPicker`; prop-ify the shells (Finding 1) | shell changes must not visually change golf (defaults) |
-| 7 | CFB pool detail / leaderboard | `CfbPoolDetail`, `CfbWidgets`; `WidgetGrid` → render-prop | first page reading `pool_standings` — validates Decision #3; also first UI reader of `cfb.games.live` |
+| 6 | Weekly picks UI + shell theme-props — **Phase 1 (theme + shells + route scaffold) shipped 2026-08-13, PR #48**; Phase 3 (the real `CfbPicks`/`CfbWeekPicker` builder) still open | `CfbPicks`/`CfbWeekPicker`; prop-ify the shells (Finding 1) | shell changes must not visually change golf (defaults) — verified in senior review, PR #48 |
+| 7 | CFB pool detail / leaderboard — **Phase 1 placeholder shipped 2026-08-13, PR #48** (`/cfb/pool/:id` renders the Varsity Navy header + a "coming soon" card); Phase 2 (real standings/widgets) still open | `CfbPoolDetail`, `CfbWidgets`; `WidgetGrid` → render-prop | first page reading `pool_standings` — validates Decision #3; also first UI reader of `cfb.games.live` |
 | 8 | Sport-dispatch + remaining CFB pool-creation surgery | `lib/pools.js`; `Join`/`Dashboard` branch on sport; CFB routes for player-facing pages. **Admin pool creation itself already shipped as 8a above** — what's left here is making a created pool reachable through the normal join-code flow instead of only a direct admin link. | Dashboard surgery — golf must be byte-identical after |
 | 9 | Remaining weekly admin ops + cron | Grade-week button (import is now automated per 5d; lock-edit already shipped in 8a). Then pg_cron (golf's pattern) — **arms THREE CFB crons**: hourly slate/lines (`poll-cfb-lines`), ~1-minute live scores (`poll-cfb-scores`), weekly grading (`grade-cfb-week`). **Must also close three deferred items** (`agents/pm/DECISIONS.md`, 2026-08-12 and 2026-08-13): two PR5 grader gaps (an admin "finalize week as-is" override for a stuck week, and a `lock_time` guard on the manual "Grade week" button), plus the live-scores cron-cadence tuning (confirm the 30-min look-ahead, decide windowed-vs-year-round schedule, deploy `poll-cfb-scores` + arm the cron). Also deploys `poll-cfb-lines` + applies the `spread_history` migration (5d). | a stuck week burns CFBD calls every cron run until the override ships; an unarmed live poller means no live scores until this PR; an unarmed slate poller means no NEW games/spreads land until this PR (existing slates from PR3-era manual imports still work) |
 | 10 | Auto-fill on missed deadline | Random fill of missing slots, DD forfeiture, `auto_filled` flag | partial-card semantics (see CFB_FORMAT open questions) |
