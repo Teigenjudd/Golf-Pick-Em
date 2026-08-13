@@ -4,6 +4,8 @@
 // spec changes, this file changes with it.
 
 import { describe, it, expect } from 'vitest'
+import * as engine from './cfbScoring'
+import { FIXTURES } from './cfbScoring.fixtures'
 import {
   doubleDownBuffer,
   doubleDownWinBy,
@@ -15,6 +17,18 @@ import {
   pickMargin,
   projectSeasonStandings,
 } from './cfbScoring'
+
+// The shared fixtures (also run against the server-side TS mirror in the parity
+// test) driven against the JS engine — so the same contract covers both impls.
+describe('shared fixtures (JS engine)', () => {
+  for (const [fn, cases] of Object.entries(FIXTURES)) {
+    for (const c of cases) {
+      it(`${fn}: ${c.label}`, () => {
+        expect(engine[fn](...c.args)).toEqual(c.expected)
+      })
+    }
+  }
+})
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe('doubleDownBuffer', () => {

@@ -232,3 +232,18 @@ export async function importWeekSlate({ weekId, seasonYear, weekNumber }) {
 
   return { imported: rows.length, fetched: (games ?? []).length }
 }
+
+// Trigger authoritative grading of one week (admin "Grade week" button, PR9). Invokes
+// the grade-cfb-week edge function, which runs as service_role — it pulls final scores
+// from CFBD, grades every pick with the shared scoring engine, and recomputes each
+// affected pool's season standings. Grading is NOT done client-side (users must not be
+// able to score their own picks); this is just the trigger. Returns the function's
+// summary ({ graded, standings, cfbd_calls }). Omit weekId to grade all due weeks.
+export async function gradeCfbWeek(weekId) {
+  const { data, error } = await supabase.functions.invoke('grade-cfb-week', {
+    body: weekId ? { week_id: weekId } : {},
+  })
+  if (error) throw error
+  if (data && data.error) throw new Error(data.error)
+  return data
+}
