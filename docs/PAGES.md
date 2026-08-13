@@ -465,6 +465,50 @@ poller 2026-08-13 (PR #47, `cfb-auto-lines-poller` — see `agents/pm/DECISIONS.
 
 ---
 
+### 10f. CFB Pool Detail — `/cfb/pool/:id`
+
+**Theme:** Sport-specific (CFB — "Varsity Navy": navy `#101C3D→#0A1229` gradient header,
+brick `#D6291B` accent, green `#2E8F4F` cover/win, brick/cream/brick rib stripe under the
+header. Constants in `src/theme/cfb.js`.)
+
+**What it does:** CFB's pool leaderboard page — the CFB counterpart to TournamentDetail.
+**Phase 1 (shipped 2026-08-13, PR #48) is a themed placeholder only:** renders the real
+`PoolHeader` shell (badge, hero name, season sub-label) in the Varsity Navy register, and a
+"Leaderboard is coming soon" card. `getCfbPool(poolId)` refuses a non-CFB pool id (returns
+null → this page shows "Pool not found.") — added in this PR's senior review so Phase 2
+can't accidentally build the real standings on top of a golf pool's data. Season
+standings, the week selector, the scorecard-expand, and CFB-specific widgets are Phase 2
+(`docs/CFB_BUILD_PLAN.md` PR7) — not built. Not linked from anywhere in the UI yet
+(reachable only by typing the URL); the dashboard doesn't branch on sport (PR8/Phase 4).
+
+**Data available:**
+- Pool + season year via `getCfbPool(poolId)` (`src/lib/cfb.js`)
+
+**What must be on this page (Phase 1):**
+- `PoolHeader` shell themed via `gradient`/`accentColor`/`rib` from `CFB_THEME`, badge via `cfbBadge(seasonYear)`
+- "Season Standings" placeholder card; "Pool not found." error state; "Loading…" state
+
+---
+
+### 10g. CFB Weekly Picks — `/cfb/pool/:id/picks`
+
+**Theme:** Sport-specific (CFB — Varsity Navy, same tokens as 10f)
+
+**What it does:** CFB's weekly card-builder page — the CFB counterpart to Picks. **Phase 1
+(shipped 2026-08-13, PR #48) is a themed placeholder only:** renders the real `PicksHeader`
+shell (no badge — `showBadge={false}`, per the design comp) with a "The weekly card builder
+is coming soon" card. The real 5 ATS + double-down + underdog builder with live validity is
+Phase 3 (`docs/CFB_BUILD_PLAN.md` PR6) — not built. Not linked from anywhere in the UI yet.
+
+**Data available:**
+- Pool + season year via `getCfbPool(poolId)` (`src/lib/cfb.js`)
+
+**What must be on this page (Phase 1):**
+- `PicksHeader` shell themed via `gradient`/`accentColor`/`rib` from `CFB_THEME`, `showBadge={false}`
+- Placeholder card; "Pool not found." error state
+
+---
+
 ### 11. Demo Landing — `/demo`
 
 **Theme:** General (with golf pool tile)
@@ -528,13 +572,18 @@ The full chrome of the leaderboard and picks pages is shared so the live pages a
 demo can't drift apart. Pages supply their own data source (Supabase vs `src/demo/`
 fixture); the shells are identical. **When restyling a pool/picks page, edit the shell.**
 
+Prop-ified for a second sport 2026-08-13 (PR #48 — CFB player UI Phase 1): `PoolHeader`,
+`PicksHeader`, `StandingsCard`, and `WidgetGrid` now accept theme/content props that
+default to golf's exact prior values, so golf renders byte-identically (verified in senior
+review) while CFB's placeholder pages (10f/10g) pass their own.
+
 | Shell | Props | Used by |
 |---|---|---|
-| `PoolHeader` | `backTo`, `backLabel`, `badgeConfig`, `subLabel`, `heroName`, `metaParts[]`, `roundBadge`, `updatedLabel`, `action` | TournamentDetail, DemoTournament |
-| `PicksHeader` | `backTo`, `backLabel`, `badgeConfig`, `eyebrow`, `title`, `subtitle` | Picks, DemoPicks |
+| `PoolHeader` | `backTo`, `backLabel`, `badgeConfig`, `subLabel`, `heroName`, `metaParts[]`, `roundBadge`, `updatedLabel`, `action`, `gradient` (default golf's fairway gradient), `accentColor` (default gold), `rib` (default null — segmented stripe under the header), `children` (default null) | TournamentDetail, DemoTournament, CfbPoolDetail |
+| `PicksHeader` | `backTo`, `backLabel`, `badgeConfig`, `eyebrow`, `title`, `subtitle`, `gradient` (default fairway), `accentColor` (default gold), `rib` (default null), `showBadge` (default true), `children` (default null) | Picks, DemoPicks, CfbPicks |
 | `PicksSubmitBar` | `selectedCount`, `totalCount`, `onSubmit`, `submitting`, `hasExistingPicks` | Picks, DemoPicks |
-| `StandingsCard` | `children` (standings table or empty state) | TournamentDetail, DemoTournament |
-| `WidgetGrid` | `leaderboardData`, `picks`, `stakeAmount`, `participantCount`, `payoutStructure` | TournamentDetail, DemoTournament |
+| `StandingsCard` | `children` (standings table or empty state), `label` (default `"Pick'em Standings"`) | TournamentDetail, DemoTournament |
+| `WidgetGrid` | `leaderboardData`, `picks`, `stakeAmount`, `participantCount`, `payoutStructure`, `children` (when supplied, renders in place of golf's hardcoded widget set) | TournamentDetail, DemoTournament |
 
 ### `BottomNav` — `src/components/BottomNav.jsx`
 

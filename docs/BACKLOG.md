@@ -264,9 +264,10 @@
     new `poll-cfb-scores` function does the same thing whenever a game flips final
     (both call the same shared `supabase/functions/_shared/cfbGrading.ts`), so standings
     can now move mid-slate, not just on `grade-cfb-week`'s scan. No app screen reads
-    `pool_standings` yet (CFB's leaderboard, `CfbPoolDetail`, is `docs/CFB_BUILD_PLAN.md`
-    PR7) — so this closes the "never written" half of the complaint but not the "no
-    reader" half. **Golf's half is still open:** `submitPicks` writes
+    `pool_standings` yet — `CfbPoolDetail.jsx` exists as a placeholder route (Phase 1,
+    2026-08-13, PR #48) but its real standings body, which will be the first reader, is
+    `docs/CFB_BUILD_PLAN.md` PR7/Phase 2 — so this closes the "never written" half of the
+    complaint but not the "no reader" half. **Golf's half is still open:** `submitPicks` writes
     `pool_participants` but nothing on the golf side writes `pool_standings`, and D3's
     client-side `computeScores` recompute is unchanged. Wiring golf
     (`docs/CFB_BUILD_PLAN.md` PR5b, optional, not required to ship CFB) would close D3
