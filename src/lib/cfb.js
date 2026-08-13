@@ -178,7 +178,7 @@ export function buildGameRows(games, lines, fbsTeams) {
 
 // Import one week's slate into cfb.games. Fetches games + lines + the FBS team
 // set through the proxy, shapes them with buildGameRows, and upserts on
-// cfbd_game_id (so a re-import as lines move just refreshes the rows —
+// (week_id, cfbd_game_id) (so a re-import as lines move just refreshes the rows —
 // already-submitted picks are unaffected because they carry a frozen
 // locked_spread). The three proxy calls run sequentially on purpose: each
 // increments the shared api_usage.cfbd_calls counter with a read-then-write, so
@@ -224,9 +224,12 @@ export async function importWeekSlate({ weekId, seasonYear, weekNumber }) {
   const rows = buildGameRows(games, lines, fbsTeams).map(r => ({ ...r, week_id: weekId }))
 
   if (rows.length) {
+    // Upsert on (week_id, cfbd_game_id): CFB uses per-pool events, so the same real
+    // CFBD game appears once per pool's week — the key must be per-week, not global,
+    // or one pool's import would overwrite another's rows (see the 20260813 migration).
     const { error } = await cfb()
       .from('games')
-      .upsert(rows, { onConflict: 'cfbd_game_id' })
+      .upsert(rows, { onConflict: 'week_id,cfbd_game_id' })
     if (error) throw error
   }
 

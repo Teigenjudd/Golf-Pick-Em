@@ -35,10 +35,13 @@ export default function CreateCfbPool() {
   const payoutSum = payouts.reduce((s, p) => s + (parseFloat(p) || 0), 0)
 
   const weeksValid = Number(startWeek) >= 1 && Number(endWeek) >= Number(startWeek)
-  const canSubmit = name.trim() && seasonYear && weeksValid
+  const canSubmit = name.trim() && seasonYear && weeksValid && firstLockTime
 
   async function handleCreate() {
-    if (!canSubmit) { setError('Please fill in the pool name, season, and a valid week range.'); return }
+    if (!canSubmit) {
+      setError('Fill in the pool name, season, a valid week range, and the first-week lock time.')
+      return
+    }
     if (Number(stakeAmount) > 0) {
       const nums = payouts.map(Number)
       if (!nums.length || nums.some(n => !(n > 0)) || nums.reduce((a, b) => a + b, 0) !== 100) {
@@ -137,7 +140,7 @@ export default function CreateCfbPool() {
 
           <div>
             <label className={labelClass}>
-              Week 1 Lock <span className="normal-case font-normal text-warm-400">(each week steps +7 days; editable later)</span>
+              Week 1 Lock <span className="normal-case font-normal text-warm-400">· required (each week steps +7 days; editable later)</span>
             </label>
             <input
               type="datetime-local"
