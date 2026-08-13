@@ -13,6 +13,82 @@
 
 ---
 
+## 2026-08-12 — CFB PR5: double-down minimum-line rule declined; `effectiveDoubleDownLine` added instead
+
+**Decision:** Considered requiring a minimum spread (e.g. 5.5) for a pick to be double-down
+eligible, to stop a bettor from "farming" a bonus point off a coin-flip favorite. **Declined** —
+the existing 4-point buffer floor (`doubleDownBuffer`) already blocks that: a small favorite like
+Georgia `-1.5` earns the cover point on any win but needs to win by 6+ to also clear the buffer
+and earn the double-down bonus, so there's no free bonus to farm. Instead of a gating rule, added
+a pure helper, `effectiveDoubleDownLine(lockedSpread) = lockedSpread - doubleDownBuffer(lockedSpread)`,
+returning the buffer-adjusted line in the picked team's own sign convention (favorite `-1.5` →
+`-5.5`; `+7` underdog → `+3`). It doesn't change any scoring rule; it exists so PR6's picks UI can
+render the real bar a double-down has to clear ("this pick is really `-5.5`") instead of leaving
+players to infer the buffer math themselves.
+
+**Why:** A minimum-line gate would be a second, redundant floor on top of one that already works,
+adding a rule surface with no scoring benefit. The buffer already does the job; the gap was
+communication, not rules, so the fix is a UI-facing helper, not a new constraint.
+
+**Gave up:** Nothing — no scoring behavior changed. `effectiveDoubleDownLine` is additive (JS
+engine + TS mirror, covered by the shared fixtures/parity test).
+
+**Directive for PR6:** surface `effectiveDoubleDownLine`'s output in the double-down copy, not
+just the raw locked spread.
+
+**Revisit if:** live play shows the buffer floor isn't actually deterring farming in practice
+(unlikely — it's the same arithmetic already unit-tested in PR4).
+
+---
+
+## 2026-08-12 — CFB PR5: stuck-week finalization deferred to PR9
+
+**Decision:** `grade-cfb-week` only marks a week `graded` once every game in it reports
+`completed: true` from CFBD. A cancelled, postponed, or rescheduled game leaves the week stuck at
+`locked` forever, and scan mode re-fetches CFBD for that week on every cron run (one call against
+the 1000/mo cap, per run, indefinitely) since it stays outside `status = 'graded'`. Senior review
+(`agents/senior-dev/reviews/cfb-pr5-grading.md`, Finding 1 / Question 1) flagged this. **Decision:
+punt to PR9** — when the admin grading UI and cron wiring land, add both an admin "finalize week
+as-is" override and treat a game the provider stops returning as a no-contest so the week can
+still reach `graded`. Safe to defer because nothing auto-triggers the grader yet (no cron, no
+admin button) — PR5 ships as pure library/edge-function code with zero live callers.
+
+**Why:** A truly stuck game is rare (most weeks fully finalize within a day) and the fix requires
+UI (an admin decision point), which doesn't exist until PR9 anyway. Building the override now
+would be speculative — no caller could reach it.
+
+**Gave up:** Some near-term cap-safety margin — a single genuinely stuck week between now and PR9
+would burn one CFBD call per cron run if the cron were live. Not a live risk today since PR9 is
+what wires up the cron.
+
+**Revisit if:** PR9 is delayed and a manual/interim cron gets wired up before then — the override
+would need to land first.
+
+**MUST be handled in PR9** — tracked in `docs/CFB_BUILD_PLAN.md`'s PR9 row.
+
+---
+
+## 2026-08-12 — CFB PR5: manual grade-by-id lock guard deferred to PR9
+
+**Decision:** The scan path in `grade-cfb-week` only grades weeks whose `lock_time` has passed;
+the targeted `{week_id}` path (built for PR9's future "Grade week" admin button) has no such
+check today, so an admin could in principle grade a week that's still open for picks. Senior
+review (`agents/senior-dev/reviews/cfb-pr5-grading.md`, Question 2) flagged it. **Decision: defer
+the guard to PR9**, when that admin button actually gets a caller — it's a one-line addition
+(`lock_time IS NOT NULL AND lock_time <= now()`) and there is no live caller of the by-id path
+today (PR5 ships `gradeCfbWeek(weekId)` in `src/lib/cfb.js` as an unused invoker; no UI wires it
+until PR9).
+
+**Why:** No code path can trigger this today, so adding the guard now is speculative work ahead
+of its consumer. It's cheap enough to land alongside PR9's admin button with full context.
+
+**Gave up:** Nothing live — idempotent re-grading after the true lock also self-corrects any
+early manual grade, so the risk window is small even once PR9 ships.
+
+**MUST be handled in PR9** — tracked in `docs/CFB_BUILD_PLAN.md`'s PR9 row.
+
+---
+
 ## 2026-08-12 — CFB PR4: double-down is legal on an underdog ATS pick; UI copy must phrase it generally
 
 **Decision:** A double-down flag may be placed on any of the 5 ATS picks, including one where

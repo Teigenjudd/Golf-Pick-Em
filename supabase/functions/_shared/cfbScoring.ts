@@ -1,29 +1,31 @@
-// CFB scoring engine — pure, import-free (same discipline as src/utils/scoring.js).
-// The rules-of-record are docs/CFB_FORMAT.md; this module implements them verbatim
-// and is the tested source of truth. Authoritative grading runs server-side (the
-// grade-cfb-week job, PR5), which mirrors this arithmetic in
-// supabase/functions/_shared/cfbScoring.ts — keep the two in sync.
+// ⚠️ SERVER-SIDE MIRROR of src/utils/cfbScoring.js — keep the two byte-for-byte in
+// sync. The JS file is the tested source of truth (src/utils/cfbScoring.test.js);
+// this TS copy exists only because Deno edge functions (grade-cfb-week, auto-fill)
+// can't cleanly import from src/. Both are checked against the SAME shared fixtures
+// (src/utils/cfbScoring.fixtures.js) by src/utils/cfbScoring.parity.test.js, so any
+// drift between this file and the JS original fails the test suite. If you change
+// scoring logic, change BOTH files and update the fixtures. (BACKLOG F7 precedent:
+// .design-sync/scoring-preview.js.)
 //
-// Sign convention throughout: every spread is from the PICKED team's perspective,
-// frozen at submit time as `locked_spread` (negative = your pick is favored / laying
-// points; positive = your pick is the underdog / getting points). Margins are integer
-// football margins from the picked team's perspective:
+// Pure, import-free arithmetic. Rules of record: docs/CFB_FORMAT.md.
 //
-//   margin        = picked_team_score − opponent_score   (negative if your pick lost)
-//   cover_margin  = margin + locked_spread               (how much they beat the spread by)
-//
+// Sign convention: every spread is from the PICKED team's perspective, frozen at
+// submit as locked_spread (negative = your pick is favored / laying points; positive
+// = your pick is the underdog / getting points). Margins are integer football margins
+// from the picked team's perspective:
+//   margin       = picked_team_score − opponent_score   (negative if your pick lost)
+//   cover_margin = margin + locked_spread               (how much they beat the spread by)
 // A null margin means the game isn't final yet — every grader returns a null result
-// and 0 points for it rather than guessing.
+// and 0 points rather than guessing.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Double-down buffer
 // ─────────────────────────────────────────────────────────────────────────────
 
 // buffer = max(|spread| × 0.5, 4), rounded to the nearest 0.5 with quarter-point
-// ties rounding UP. Because CFBD lines are at most half-points, |spread| × 0.5 is
-// always an exact quarter-point (0.25/0.5/0.75/0.0 — all exact in binary float),
-// so no epsilon guard is needed. Math.round rounds .5 toward +∞ for positive
-// numbers, which is exactly the "ties up" rule: 4.25 → round(8.5)=9 → 4.5.
+// ties rounding UP. |spread| × 0.5 is always an exact quarter-point (CFBD lines are
+// at most half-points), so no epsilon guard is needed; Math.round rounds .5 toward
+// +∞ for positive numbers, which is exactly "ties up": 4.25 → round(8.5)=9 → 4.5.
 export function doubleDownBuffer(spread) {
   const raw = Math.max(Math.abs(spread) * 0.5, 4)
   return Math.round(raw * 2) / 2

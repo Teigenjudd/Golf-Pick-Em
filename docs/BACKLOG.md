@@ -252,10 +252,16 @@
     `golf()`), repoint `createGolfPool`, and stop discarding that call's error — *then*
     drop `pga_event_badges` with the rest. Tracked together with F1 rather than split
     out, since it's a precondition for the same cleanup.
-  - **`public.pool_standings` is scaffolded but never used.** It was created to cache
-    normalized standings so shared UI needn't compute; `submitPicks` writes
-    `pool_participants` but nothing ever writes `pool_standings`, and no reader exists.
-    Either wire it (removes D3's client compute) or drop it and note it as future work.
+  - **`public.pool_standings` — CFB half now writes it (2026-08-12, PR #44).**
+    `supabase/functions/grade-cfb-week/index.ts` is the first code in the repo to write
+    this table: after grading a week it recomputes each affected pool's season-cumulative
+    standings via `projectSeasonStandings` and upserts `pool_standings`. No app screen
+    reads it yet (CFB's leaderboard, `CfbPoolDetail`, is `docs/CFB_BUILD_PLAN.md` PR7) —
+    so this closes the "never written" half of the complaint but not the "no reader"
+    half. **Golf's half is still open:** `submitPicks` writes `pool_participants` but
+    nothing on the golf side writes `pool_standings`, and D3's client-side
+    `computeScores` recompute is unchanged. Wiring golf (`docs/CFB_BUILD_PLAN.md` PR5b,
+    optional, not required to ship CFB) would close D3 too.
 
   **Fix:** resolve the `pga_event_badges` dependency above first, confirm zero
   references to the remaining legacy tables in prod (query `pg_stat_user_tables` for row
