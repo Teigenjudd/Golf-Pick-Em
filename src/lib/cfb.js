@@ -260,3 +260,149 @@ export async function refreshCfbScores() {
   if (data && data.error) throw new Error(data.error)
   return data
 }
+
+// ── Admin: CFB pool creation + weekly ops ────────────────────────────────────
+
+// Create a CFB pool end to end: event(cfb) -> pool -> cfb.event_details -> seed
+// cfb.weeks. Unlike golf (create-once, one lock), a CFB pool spans a season of weekly
+// windows, so we seed one cfb.weeks row per week with a lock_time on a weekly (7-day)
+// cadence from the Week-1 lock; the admin can fine-tune individual weeks in the ops
+// page afterward. The pool's own lock_time doubles as the season join cutoff ("join
+// before Week 1 locks", per docs/CFB_FORMAT.md). If any step fails, the event is
+// deleted, which cascades away everything already created (same safety as createGolfPool).
+export async function createCfbPool({
+  name, seasonYear, startWeek, endWeek, firstLockTime,
+  stakeAmount, payouts, createdBy, joinCode,
+}) {
+  const hasStake = Number(stakeAmount) > 0
+  const first = Number(startWeek)
+  const last = Number(endWeek)
+
+  const { data: event, error: eErr } = await supabase
+    .from('events')
+    .insert({ sport_id: 'cfb', name: `${seasonYear} College Football — ${name}`, status: 'open' })
+    .select('id')
+    .single()
+  if (eErr) throw eErr
+
+  try {
+    const { data: pool, error: pErr } = await supabase
+      .from('pools')
+      .insert({
+        event_id: event.id,
+        name,
+        join_code: joinCode,
+        status: 'open',
+        // Pool lock = the Week-1 lock = the season join cutoff.
+        lock_time: firstLockTime ? new Date(firstLockTime).toISOString() : null,
+        stake_amount: hasStake ? Number(stakeAmount) : null,
+        payout_structure: hasStake ? payouts.map(Number) : null,
+        created_by: createdBy,
+      })
+      .select('id')
+      .single()
+    if (pErr) throw pErr
+
+    const { error: dErr } = await cfb().from('event_details').insert({
+      event_id: event.id,
+      season_year: Number(seasonYear),
+    })
+    if (dErr) throw dErr
+
+    // Seed weeks first..last. Lock times step 7 days from the Week-1 lock (weekly
+    // Saturday cadence); left null if no first lock was given.
+    const base = firstLockTime ? new Date(firstLockTime) : null
+    const weekRows = []
+    for (let wn = first; wn <= last; wn++) {
+      let lock = null
+      if (base) {
+        const d = new Date(base)
+        d.setDate(d.getDate() + 7 * (wn - first))
+        lock = d.toISOString()
+      }
+      weekRows.push({
+        event_id: event.id,
+        week_number: wn,
+        label: `Week ${wn}`,
+        lock_time: lock,
+        status: 'scheduled',
+      })
+    }
+    if (weekRows.length) {
+      const { error: wErr } = await cfb().from('weeks').insert(weekRows)
+      if (wErr) throw wErr
+    }
+
+    return { eventId: event.id, poolId: pool.id }
+  } catch (err) {
+    await supabase.from('events').delete().eq('id', event.id) // cascades to all children
+    throw err
+  }
+}
+
+// All CFB pools for the admin index (newest first), with their season year.
+export async function getAdminCfbPools() {
+  const { data: events } = await supabase.from('events').select('id').eq('sport_id', 'cfb')
+  const eventIds = (events ?? []).map(e => e.id)
+  if (!eventIds.length) return []
+
+  const { data: pools } = await supabase
+    .from('pools')
+    .select('id, name, status, lock_time, join_code, created_at, event_id')
+    .in('event_id', eventIds)
+    .order('created_at', { ascending: false })
+  if (!pools?.length) return []
+
+  const { data: eds } = await cfb()
+    .from('event_details').select('event_id, season_year').in('event_id', eventIds)
+  const seasonByEvent = {}
+  ;(eds ?? []).forEach(e => { seasonByEvent[e.event_id] = e.season_year })
+
+  return pools.map(p => ({ ...p, season_year: seasonByEvent[p.event_id] ?? null }))
+}
+
+// One CFB pool + its season, for the ops page header.
+export async function getCfbPool(poolId) {
+  const { data: pool } = await supabase
+    .from('pools')
+    .select('id, name, status, join_code, event_id, lock_time')
+    .eq('id', poolId)
+    .maybeSingle()
+  if (!pool) return null
+  const { data: ed } = await cfb()
+    .from('event_details').select('season_year').eq('event_id', pool.event_id).maybeSingle()
+  return { ...pool, season_year: ed?.season_year ?? null }
+}
+
+// The pool's weeks with a slate (game) count each, for the ops table.
+export async function getCfbPoolWeeks(eventId) {
+  const { data: weeks } = await cfb()
+    .from('weeks')
+    .select('id, week_number, label, lock_time, status')
+    .eq('event_id', eventId)
+    .order('week_number')
+  if (!weeks?.length) return []
+
+  const weekIds = weeks.map(w => w.id)
+  const { data: games } = await cfb().from('games').select('week_id').in('week_id', weekIds)
+  const countByWeek = {}
+  ;(games ?? []).forEach(g => { countByWeek[g.week_id] = (countByWeek[g.week_id] ?? 0) + 1 })
+
+  return weeks.map(w => ({ ...w, game_count: countByWeek[w.id] ?? 0 }))
+}
+
+export async function updateWeekLockTime(weekId, lockTime) {
+  const { error } = await cfb()
+    .from('weeks')
+    .update({ lock_time: lockTime ? new Date(lockTime).toISOString() : null })
+    .eq('id', weekId)
+  if (error) throw error
+}
+
+// Current month's CFBD API usage against the Tier-2 cap, for the ops meter.
+export async function getCfbdUsage() {
+  const month = new Date().toISOString().slice(0, 7)
+  const { data } = await supabase
+    .from('api_usage').select('cfbd_calls').eq('month', month).maybeSingle()
+  return { month, calls: data?.cfbd_calls ?? 0, cap: 30000 }
+}
