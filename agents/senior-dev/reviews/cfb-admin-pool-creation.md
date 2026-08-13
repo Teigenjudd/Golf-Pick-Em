@@ -1,137 +1,120 @@
 # Senior review — cfb-admin-pool-creation
 
-- **Reviewed:** 2026-08-13
-- **Head:** eea2ea0
-- **Verdict:** CHANGES NEEDED
+- **Reviewed:** 2026-08-13 (re-review; first pass same day)
+- **Head:** 1e7de95
+- **Verdict:** APPROVE
 
-## Summary
-This PR builds the first CFB *frontend*: an admin can create a season pool
-(`CreateCfbPool`), see all CFB pools (`CfbAdmin`), and run a season week-by-week
-(`CfbPoolOps` — edit locks, import the CFBD slate, watch the API meter). The three pages
-are clean, well-scoped, additive (only `App.jsx` routes + one `AdminDashboard` link touch
-shared files — golf is untouched), and the React/state/effect patterns are correct. The
-plumbing is faithful to the `lib/cfb.js` seam, the datetime round-trip is timezone-safe,
-and the week-seeding math is correct across month/DST boundaries. Build passes, 159 tests
-green.
+## Re-review summary (2026-08-13)
 
-The problem is one level up: `createCfbPool` mints a brand-new `public.events` row for
-**every** pool, mirroring golf. But CFB's recorded architecture (PR1 decision + build
-plan) is the opposite — **one season = one shared event, and many pools hang off it.**
-That contradiction isn't cosmetic: because `cfb.games.cfbd_game_id` is globally unique and
-`importWeekSlate` upserts on it, the moment a *second* CFB pool imports an overlapping
-week, it silently reassigns the first pool's game rows to itself — the first pool's slate
-vanishes (or the import errors once picks exist). A single test pool works fine today, so
-this doesn't block "make one operable pool," but it's a design-contract violation with a
-data-corruption failure mode that must be decided before a second pool is created or player
-screens are built on top of it.
+The one blocker from the first pass is **resolved**, correctly, via the founder's chosen
+path (b): CFB keeps **per-pool events** (like golf's D3 hinge) on purpose, and the
+`cfb.games` table is re-keyed so that decision is safe. The reasoning behind (b) holds up
+against the actual code — grading and the live poller never depended on a game's
+`cfbd_game_id` being globally unique, so letting the same real CFBD game exist once per
+pool's week does not break anything downstream. Migration `20260813000000` is correct,
+idempotent, and safe on the empty prod table. `npm test` green (159), build passes, lint
+clean. Shipping this is fine.
 
-## Findings
+The original PR1 "one shared event per season" note is now formally superseded — that
+contradiction (my first-pass blocker) is closed by a real decision + migration, not
+papered over. Docs still say the old thing in a couple of places; that's pm-sync's job,
+not a merge blocker.
 
-### 1. [Blocker / decision] `createCfbPool` mints a per-pool event; CFB is specced as one shared event per season
-`src/lib/cfb.js` `createCfbPool` (lines ~77-137). It unconditionally
-`INSERT`s a new `public.events` row (+ `cfb.event_details` + a fresh set of `cfb.weeks`)
-on every call, with no "does this season already have an event?" lookup. The commit
-message even says this is intentional ("mirroring createGolfPool").
+### 1. Blocker — RESOLVED. The re-key is correct and downstream is clean.
 
-That directly contradicts the recorded design:
-- `agents/pm/DECISIONS.md:409-412` (PR1): *"A CFB event is one season shared by every pool
-  on it (unlike golf, which mints a fresh event per pool), so … a second pool created
-  against the same season could otherwise double-insert Week 5."*
-- `docs/CFB_BUILD_PLAN.md:84-88` / the schema sketch: *"CFB's event_id = one season, with
-  weeks/games hanging off it and shared by every pool on that season (reuses the D3
-  multiple-pools-per-event hinge)."*
+**Migration (`20260813000000_cfb_games_per_week_unique.sql`).** Verified:
 
-Concrete failure (multi-pool):
-- Pool A (event A, week A1 = Week 1 2025) imports → ~48 `cfb.games` rows with
-  `week_id = A1`, `cfbd_game_id = g1…g48`.
-- Pool B (event B, week B1 = Week 1 2025) imports → `importWeekSlate` upserts
-  `onConflict: 'cfbd_game_id'`. g1…g48 already exist, so the upsert **updates** them,
-  setting `week_id = B1`. Pool A's week now has **zero** games; A's slate is silently
-  gone. If A already has picks, the composite FK `cfb.picks (game_id, week_id)` blocks the
-  `week_id` change and B's import errors instead — either way, broken.
-- The `UNIQUE (event_id, week_number)` guard added in PR1 specifically to catch "a second
-  pool on the same season" never even fires, because each pool now has a *different*
-  `event_id`.
-- Secondary cost: each pool re-imports the whole season's slate against its own event,
-  multiplying CFBD API calls per-pool instead of per-season — the same trap documented for
-  golf's per-pool-per-event polling, but here it also corrupts.
+- **Drop is reliable.** It resolves the column's `attnum`, then finds the unique
+  constraint whose `conkey` is exactly `ARRAY[that_attnum]` (a single-column unique on
+  `cfbd_game_id`). PR1 declared `cfbd_game_id text UNIQUE` inline, which Postgres
+  materializes as a real `pg_constraint` row (contype `'u'`), so the lookup finds it. The
+  exact-array match means it can **not** accidentally catch the two composite uniques on
+  this table (`cfb_games_id_week (id, week_id)` — 2-element conkey; the new
+  `(week_id, cfbd_game_id)` — 2-element conkey); neither equals the 1-element array. No FK
+  references `cfbd_game_id` (the picks FK points at `(id, week_id)`), so the drop has no
+  dependents and succeeds.
+- **New key does the job.** `UNIQUE (week_id, cfbd_game_id)` makes the same real game
+  repeatable across different pools' weeks but unique within one week — exactly what stops
+  Pool B's import from stealing Pool A's rows. `importWeekSlate` upserts
+  `onConflict: 'week_id,cfbd_game_id'` and every row it writes carries `week_id` (stamped
+  in `.map(r => ({ ...r, week_id: weekId }))`), so the upsert resolves against the real
+  constraint and a re-import of the *same* pool's week still refreshes-in-place as before.
+- **Idempotent for repeated `db push`.** Second run: the single-column unique is already
+  gone, so the drop lookup returns NULL and is skipped; the composite add is name-guarded
+  (`cfb_games_week_cfbd_unique`) and skipped. `'cfb.games'::regclass` is schema-qualified,
+  so it resolves regardless of `search_path`. Safe on the empty table (no dup risk).
 
-Fix direction — two honest options, and this is a founder decision:
-- **(a) Honor the spec:** `createCfbPool` should find-or-create *one* event per
-  `(sport='cfb', season_year)` — reuse the existing season event (and its weeks) if it
-  exists, and only ever insert a new `public.pools` row pointing at it. Slate import then
-  happens once per season and every pool sees it. This is the smaller change and matches
-  every downstream assumption already in the DB.
-- **(b) Formally reverse the PR1 decision** (CFB mints per-pool like golf). Then the
-  games model must change too: `cfbd_game_id` global-unique + upsert-on-conflict has to
-  become per-week (e.g. `UNIQUE (week_id, cfbd_game_id)` and upsert on that), or imports
-  keep colliding. That's a migration on the `cfb.games` table.
+**Downstream re-confirmed to not depend on global uniqueness:**
 
-Either way, the current code is unsafe for 2+ CFB pools. It's fine to ship a single test
-pool first, but this needs a conscious call before anything is built on it.
+- **Grading (`_shared/cfbGrading.ts` `gradeWeek`).** Selects games with
+  `.eq('week_id', week.id)` (scoped to one week), looks up the final score by
+  `cfbd_game_id` *value* in a map, and writes back by `.eq('id', g.id)` — the primary key.
+  It never assumes one global row per `cfbd_game_id`; it happily updates whichever
+  per-week row it's iterating. Correct under the new key.
+- **Live poller (`poll-cfb-scores/index.ts`).** Same shape: selects candidate games in the
+  live window, indexes the `/scoreboard` payload by `cfbd_game_id` value, then updates each
+  candidate by `.eq('id', g.id)`. Multiple pool rows sharing one `cfbd_game_id` each get
+  the identical score fanned in — this is the intended "dedup by real (season, week), fan
+  the payload across events" behavior, and it works precisely *because* the DB row is
+  addressed by `id`, not by `cfbd_game_id`.
+- **Composite FK intact.** `cfb_games_id_week UNIQUE (id, week_id)` and the picks
+  `FOREIGN KEY (game_id, week_id) → cfb.games(id, week_id)` are untouched by the migration.
+  Pick integrity (game-belongs-to-week) still holds.
 
-### 2. [Debt / needs verification] Browser writes to `cfb.*` depend on more than the "Exposed Schemas" toggle
-The create/ops flow writes to `cfb.event_details`, `cfb.weeks`, and `cfb.games` directly
-from the browser via `.schema('cfb')`. The RLS side is fine — the `admin manage …`
-policies are `FOR ALL USING (is_admin())`, and for a `FOR ALL` policy the INSERT
-`WITH CHECK` defaults to the `USING` expression, so admin inserts/updates/deletes are
-permitted; the SQL `GRANT`s to `authenticated` are in place from PR1. **But** reaching a
-table through Supabase's Data API needs the *schema* exposed AND the individual tables
-exposed AND the grants (three layers). The commit assumes flipping the schema toggle is
-enough. If the `cfb` tables aren't also API-visible, every `createCfbPool` call will fail
-at the first `cfb.*` write — the rollback then deletes the event, so it fails *cleanly*
-(no corruption), but CFB simply won't work. Verify the full round-trip (create a pool,
-confirm rows land in `cfb.event_details`/`cfb.weeks`) right after flipping exposure, not
-just that the toggle is on.
+### 2. Per-pool model delivers the requirement — confirmed.
 
-### 3. [Nit / decision] A pool can be created with a blank Week-1 lock → no join cutoff and never-locking weeks
-`CreateCfbPool` `canSubmit = name.trim() && seasonYear && weeksValid` — `firstLockTime` is
-not required. If left blank, `pool.lock_time` and every seeded week's `lock_time` are
-`null`. Per `cfb_submit_week_picks`, a null `lock_time` with status `scheduled` means the
-week never locks and the season has no join cutoff, until an admin sets each lock by hand
-on the ops page. It's recoverable, but easy to ship a "picks never lock" pool by accident.
-Consider requiring the Week-1 lock at creation (or a visible warning when it's empty).
+`createCfbPool` seeds `cfb.weeks` for `wn = startWeek..endWeek` only, each with its own
+`lock_time` stepped +7 days from the first-week lock (`7 * (wn - first)`, so the first
+seeded week gets exactly `firstLockTime`). A pool with `startWeek=4` seeds weeks 4..end and
+nothing earlier, with its own lock schedule. Its week-4 slate import writes rows keyed
+`(that pool's week-4 id, cfbd_game_id)`, which cannot collide with another pool's week-4
+rows (different `week_id`). `importWeekSlate`'s week guard (asserts the stored
+`week_number` and `season_year` match the CFBD week being pulled) is consistent with this —
+it prevents storing one week's games under another week's id, orthogonal to the uniqueness
+fix. The two guards compose cleanly.
 
-### 4. [Nit] CFBD cap `30000` is now a third hardcoded copy of the same magic number
-`getCfbdUsage` returns `cap: 30000`, matching `MONTHLY_CAP` in `cfd-proxy/index.ts` — whose
-comment already says "keep this value in sync with grade-cfb-week and poll-cfb-scores." Now
-the frontend meter is a fourth place that drifts if Tier changes. Not wrong today; consider
-sourcing the cap from one place (e.g. return it from the proxy or a shared const).
+### 3. Required Week-1 lock — good call, correctly wired.
 
-### 5. [Nit] `getCfbPoolWeeks` fetches every game row just to count them
-It pulls all `cfb.games` for the pool's weeks into the browser and counts in JS. For a full
-season (~15 weeks × ~50 games ≈ 750 rows) that's wasteful, and it risks the default
-PostgREST 1000-row ceiling silently undercounting a large season. Fine for now; a grouped
-`head:true` count per week would be leaner if this ever feels slow.
+`canSubmit` now includes `firstLockTime`, the error copy lists it, and the label reads
+"required". This closes the first-pass nit #3 (no more "picks never lock" pool by
+accident). The pool's `lock_time` (= season join cutoff) and every seeded week's lock are
+now always populated at creation.
 
-### 6. [Low] Rollback delete return value is unchecked
-`createCfbPool`'s `catch` does `supabase.from('events').delete().eq('id', event.id)` and
-ignores its error before re-throwing. If that delete itself fails (transient network), the
-orphan event+pool persist. This mirrors `createGolfPool` exactly, so it's pre-existing
-pattern debt, not new — noting for completeness, not asking for a fix here.
+### 4. Previously-clean parts unaffected — confirmed.
+
+The rollback cascade (`events.delete()` → cascades to pool/details/weeks/games), the RLS
+admin-write path (`FOR ALL USING (is_admin())` grants from PR1/PR2), and the three pages
+(`CreateCfbPool`, `CfbAdmin`, `CfbPoolOps`) are untouched by the rework beyond the
+`canSubmit` line. No golf code touched.
+
+## Carried-forward items (intentionally deferred — not re-litigated)
+
+- **#4 CFBD cap `30000` now in a 4th spot** — still a drift risk if Tier changes; acceptable
+  to leave, as agreed.
+- **#5 `getCfbPoolWeeks` counts by full fetch** — fine at season scale; acceptable.
+- **#6 Rollback ignores its own delete error** — mirrors `createGolfPool`; pre-existing
+  pattern debt, acceptable.
+- **#2 `cfb` API exposure round-trip** — was "verify by creating a real pool after flipping
+  the Exposed Schemas toggle." Still worth doing before relying on the screens, but it fails
+  *cleanly* (rollback deletes the event) if exposure is half-done, so it's not a merge
+  blocker. Not a code issue.
+
+## New (low) observation
+
+- **Low / cosmetic.** The lock field is labeled "Week 1 Lock" but for a pool that starts at,
+  say, Week 4, it actually sets the **Week 4** lock (the first *seeded* week). Behavior is
+  correct (it's the first-week lock = join cutoff); only the label is literal. Consider
+  "First-week lock" if start weeks other than 1 will be common. Not blocking.
 
 ## Questions for the founder
 
-1. **CFB pools sharing a season (the big one).** Your own build notes say a CFB "event" is
-   one season that *many* pools share — like one shared scoreboard everyone's pool reads
-   from. But the create function you're merging makes a brand-new season (new event, new
-   weeks, new slate) every time someone makes a pool — the golf way, which the docs
-   explicitly say CFB should *not* do. With the way the games table is keyed, the second
-   pool that imports the same week will quietly steal the first pool's games. One test pool
-   is safe today. Before a second pool exists, which world do you want: **(a)** the second
-   pool *joins* the same season and shares its slate (matches the spec, smaller code
-   change), or **(b)** CFB really is per-pool like golf — in which case we also owe a small
-   database change to the games table so imports stop colliding? This is a real fork worth
-   deciding now, not after player screens are built on it.
+None blocking. One worth a moment's thought, not a gate:
 
-2. **Turning `cfb` on.** Making these admin screens actually write to the database needs
-   more than the one "Exposed Schemas" switch — Supabase needs the schema *and* each `cfb`
-   table marked visible to the API (the grants are already done). Can you confirm, by
-   actually creating one pool and checking the rows appear, that the whole switch-on is
-   complete? If it's half-done, pool creation will fail (cleanly — nothing corrupts — but
-   nothing works either).
-
-3. **Blank lock time.** Right now an admin can create a CFB pool without setting the Week-1
-   lock, which produces a season with no join cutoff and weeks that never lock until fixed
-   by hand. Do you want the form to require a lock at creation, or is "set it later on the
-   ops page" the intended workflow?
+1. **Per-pool slate imports cost a little more CFBD budget.** With per-pool events, each pool
+   imports its own copy of a week's games — so two pools on the 2025 season both spend a few
+   admin API calls importing Week 6, instead of sharing one import. Live *scoring* is
+   unaffected (still one `/scoreboard` call fanned out). At your expected pool counts this is
+   comfortably inside the 1000/mo cap, and it's the price of the per-pool flexibility you
+   chose. Just confirming you're happy that admin-side import calls scale with (pools ×
+   weeks), not (seasons × weeks) — same shape as golf's per-pool polling, and fine unless CFB
+   pools proliferate faster than expected.
