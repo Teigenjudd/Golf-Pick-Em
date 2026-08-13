@@ -25,12 +25,17 @@ import { gradeWeek, recomputeStandings } from '../_shared/cfbGrading.ts'
 
 const CFBD_BASE = 'https://api.collegefootballdata.com'
 const MONTHLY_CAP = 30000 // CFBD Tier 2 (30k/mo); keep in sync with cfd-proxy + grade-cfb-week
-// A game is "live-window" from kickoff until this many hours after — bounds how long a
-// stuck/cancelled game keeps the poller awake.
+// A game is "live-window" from shortly before kickoff until this many hours after.
+// The after-bound keeps polling through a long game / overtime and also bounds how
+// long a stuck/cancelled game keeps the poller awake (it drops out 6h after kickoff).
 const LIVE_WINDOW_AFTER_MS = 6 * 60 * 60 * 1000
-// Also pull in games kicking off soon (today's slate) so a scheduled game transitions
-// cleanly the moment it starts.
-const LIVE_WINDOW_AHEAD_MS = 18 * 60 * 60 * 1000
+// The look-ahead is intentionally SMALL: the gate spends an API call whenever a game
+// sits in the window, so a wide look-ahead burns calls for hours before kickoff on
+// nothing but "scheduled" rows — real idle spend against the monthly cap. 30 min is
+// plenty to catch a kickoff on the next 1-minute tick (with margin for early starts /
+// clock skew) while eliminating pre-game dead-air polling. (PR9 cron-cadence tuning —
+// windowed schedule vs year-round every-minute — is a separate founder decision.)
+const LIVE_WINDOW_AHEAD_MS = 30 * 60 * 1000
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
