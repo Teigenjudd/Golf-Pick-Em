@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   getCfbPool, getCfbPoolWeeks, getCfbdUsage,
-  updateWeekLockTime, importWeekSlate,
+  updateWeekLockTime, refreshCfbSlates,
 } from '../../../lib/cfb'
 
-// Admin: the recurring CFB ops surface golf never needed — where a season is run week
-// by week. Per-week: edit the lock time, import the CFBD slate, see the game count and
-// status. Plus the shared Tier-2 CFBD usage meter. General admin register.
-// See docs/CFB_UI_PLAN.md §9b.
+// Admin: the CFB season ops surface. Slates are imported AUTOMATICALLY by the
+// poll-cfb-lines poller (hourly) — the admin never imports by hand. This page is for
+// visibility (which weeks have loaded games, their status) + tuning lock times, with a
+// manual "Refresh slates now" override. See docs/CFB_UI_PLAN.md §9b.
 
 function toLocalInput(iso) {
   if (!iso) return ''
@@ -42,25 +42,33 @@ export default function CfbPoolOps() {
 
   const [lockEdits, setLockEdits] = useState({}) // weekId -> local datetime string
   const [savingWeek, setSavingWeek] = useState(null)
-  const [importingWeek, setImportingWeek] = useState(null)
-  const [results, setResults] = useState({}) // weekId -> message
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshMsg, setRefreshMsg] = useState(null)
 
-  const load = useCallback(async () => {
-    try {
+  // Initial load. Async IIFE so setState only happens after an await (the lint-clean
+  // effect pattern used elsewhere in the app); `active` guards against a late resolve
+  // after unmount.
+  useEffect(() => {
+    let active = true
+    ;(async () => {
       const p = await getCfbPool(poolId)
+      if (!active) return
       if (!p) { setError('Pool not found.'); setLoading(false); return }
       setPool(p)
       const [w, u] = await Promise.all([getCfbPoolWeeks(p.event_id), getCfbdUsage()])
-      setWeeks(w)
-      setUsage(u)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+      if (!active) return
+      setWeeks(w); setUsage(u); setLoading(false)
+    })().catch(err => { if (active) { setError(err.message); setLoading(false) } })
+    return () => { active = false }
   }, [poolId])
 
-  useEffect(() => { load() }, [load])
+  // Refetch weeks + usage after an admin action (called from event handlers, not an
+  // effect).
+  async function reload() {
+    if (!pool) return
+    const [w, u] = await Promise.all([getCfbPoolWeeks(pool.event_id), getCfbdUsage()])
+    setWeeks(w); setUsage(u)
+  }
 
   function lockValue(w) {
     return lockEdits[w.id] !== undefined ? lockEdits[w.id] : toLocalInput(w.lock_time)
@@ -75,7 +83,7 @@ export default function CfbPoolOps() {
     try {
       await updateWeekLockTime(w.id, lockEdits[w.id] || null)
       setLockEdits(e => { const next = { ...e }; delete next[w.id]; return next })
-      await load()
+      await reload()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -83,25 +91,21 @@ export default function CfbPoolOps() {
     }
   }
 
-  async function handleImport(w) {
-    if (!pool?.season_year) { setError('This pool has no season year set.'); return }
-    setImportingWeek(w.id)
+  async function handleRefreshSlates() {
+    setRefreshing(true)
     setError(null)
-    setResults(r => ({ ...r, [w.id]: null }))
+    setRefreshMsg(null)
     try {
-      const res = await importWeekSlate({
-        weekId: w.id,
-        seasonYear: pool.season_year,
-        weekNumber: w.week_number,
-      })
-      setResults(r => ({ ...r, [w.id]: `Imported ${res.imported} eligible of ${res.fetched} games` }))
-      const [freshWeeks, freshUsage] = await Promise.all([getCfbPoolWeeks(pool.event_id), getCfbdUsage()])
-      setWeeks(freshWeeks)
-      setUsage(freshUsage)
+      const res = await refreshCfbSlates()
+      setRefreshMsg(
+        `Refreshed — ${res.game_rows_written ?? 0} game rows written, ` +
+        `${res.spread_moves_logged ?? 0} spread moves logged (${res.cfbd_calls ?? 0} CFBD calls).`,
+      )
+      await reload()
     } catch (err) {
-      setResults(r => ({ ...r, [w.id]: `Error: ${err.message}` }))
+      setError(err.message)
     } finally {
-      setImportingWeek(null)
+      setRefreshing(false)
     }
   }
 
@@ -113,7 +117,7 @@ export default function CfbPoolOps() {
         <Link to="/admin/cfb" className="text-[13px] text-warm-400 no-underline">← CFB Admin</Link>
         <span className="text-[#EAD8C4] text-base select-none">|</span>
         <span className="font-display font-extrabold text-[22px] text-brand tracking-[.06em]">POOLD</span>
-        <span className="font-display font-bold text-[16px] text-[#1C1610] tracking-[.04em]">Weekly Ops</span>
+        <span className="font-display font-bold text-[16px] text-[#1C1610] tracking-[.04em]">Season Ops</span>
       </div>
 
       <div className="max-w-3xl mx-auto px-[18px] py-6">
@@ -127,7 +131,7 @@ export default function CfbPoolOps() {
           <p className="text-sm text-warm-400 py-4">Loading…</p>
         ) : pool ? (
           <>
-            <div className="flex items-end justify-between gap-4 mb-5 flex-wrap">
+            <div className="flex items-end justify-between gap-4 mb-4 flex-wrap">
               <div>
                 <div className="font-display font-extrabold text-[28px] text-[#1C1610] leading-none">{pool.name}</div>
                 <p className="text-[13px] text-warm-400 mt-[6px]">
@@ -144,6 +148,25 @@ export default function CfbPoolOps() {
               )}
             </div>
 
+            {/* Automated-slate banner + manual override */}
+            <div className="bg-white border border-[#EAD8C4] rounded-[14px] p-4 mb-5 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex-1 min-w-[240px]">
+                <p className="text-[13px] text-[#1C1610] font-medium">Slates &amp; spreads update automatically every hour.</p>
+                <p className="text-[12px] text-warm-400 mt-[3px]">
+                  Games appear as CFBD posts lines — roughly 1–2 weeks before kickoff — so far-out weeks stay empty until then.
+                  Each game&apos;s spread freezes at kickoff.
+                </p>
+                {refreshMsg && <p className="text-[12px] text-fairway mt-[6px]">{refreshMsg}</p>}
+              </div>
+              <button
+                onClick={handleRefreshSlates}
+                disabled={refreshing}
+                className="text-[13px] font-bold px-4 py-[9px] rounded-[9px] border-none text-white bg-brand hover:opacity-90 disabled:opacity-50 cursor-pointer transition-opacity"
+              >
+                {refreshing ? 'Refreshing…' : 'Refresh slates now'}
+              </button>
+            </div>
+
             {weeks.length === 0 ? (
               <p className="text-sm text-warm-400 py-4">No weeks seeded for this pool.</p>
             ) : (
@@ -156,11 +179,12 @@ export default function CfbPoolOps() {
                         <WeekStatus status={w.status} />
                       </div>
                       <span className="text-[12px] text-warm-400">
-                        {w.game_count} {w.game_count === 1 ? 'game' : 'games'}
+                        {w.game_count} {w.game_count === 1 ? 'game' : 'games'} loaded
                       </span>
                     </div>
 
                     <div className="flex items-center gap-[10px] flex-wrap">
+                      <label className="text-[11px] font-semibold uppercase tracking-[.1em] text-warm-400">Lock</label>
                       <input
                         type="datetime-local"
                         value={lockValue(w)}
@@ -174,21 +198,7 @@ export default function CfbPoolOps() {
                       >
                         {savingWeek === w.id ? 'Saving…' : 'Save lock'}
                       </button>
-
-                      <button
-                        onClick={() => handleImport(w)}
-                        disabled={importingWeek === w.id}
-                        className="ml-auto text-[13px] font-bold px-4 py-[8px] rounded-[9px] border-none text-white bg-brand hover:opacity-90 disabled:opacity-50 cursor-pointer transition-opacity"
-                      >
-                        {importingWeek === w.id ? 'Importing…' : w.game_count > 0 ? 'Re-import slate' : 'Import slate'}
-                      </button>
                     </div>
-
-                    {results[w.id] && (
-                      <p className={`text-[12px] mt-[10px] ${results[w.id].startsWith('Error') ? 'text-birdie' : 'text-fairway'}`}>
-                        {results[w.id]}
-                      </p>
-                    )}
                   </div>
                 ))}
               </div>
