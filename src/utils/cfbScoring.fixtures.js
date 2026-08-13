@@ -41,6 +41,16 @@ export const FIXTURES = {
     { label: '+10 underdog → -4 (lose by ≤4 or win)', args: [10], expected: -4 },
   ],
 
+  // the double-down's effective line = locked_spread − buffer (picked-team sign)
+  effectiveDoubleDownLine: [
+    { label: '-1.5 favorite → -5.5', args: [-1.5], expected: -5.5 },
+    { label: '-3 favorite → -7', args: [-3], expected: -7 },
+    { label: '-6.5 favorite → -10.5', args: [-6.5], expected: -10.5 },
+    { label: '-9 favorite → -13.5 (buffer scales)', args: [-9], expected: -13.5 },
+    { label: '+7 underdog → +3 (lose by ≤2 or win)', args: [7], expected: 3 },
+    { label: '+10 underdog → +5', args: [10], expected: 5 },
+  ],
+
   gradeAtsPick: [
     { label: '7-fav wins by 10 → cover', args: [{ margin: 10, lockedSpread: -7 }], expected: { result: 'cover', points: 1 } },
     { label: '7-fav wins by exactly 7 → push', args: [{ margin: 7, lockedSpread: -7 }], expected: { result: 'push', points: 0 } },

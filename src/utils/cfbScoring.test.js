@@ -16,6 +16,7 @@ import {
   gradeWeekCard,
   pickMargin,
   projectSeasonStandings,
+  effectiveDoubleDownLine,
 } from './cfbScoring'
 
 // The shared fixtures (also run against the server-side TS mirror in the parity
@@ -74,6 +75,11 @@ describe('doubleDownWinBy — strict "win by X+" copy helper', () => {
 
   it('a 9 favorite must win by 14+ (buffer 4.5, threshold 13.5)', () => {
     expect(doubleDownWinBy(-9)).toBe(14)
+  })
+
+  it('effective double-down line = the pick shifted by the buffer (Georgia -1.5 -> -5.5)', () => {
+    expect(effectiveDoubleDownLine(-1.5)).toBe(-5.5)
+    expect(effectiveDoubleDownLine(7)).toBe(3) // +7 dog -> cover +3 (lose by <=2 or win)
   })
 
   it('an underdog double-down is legal: a +10 dog returns the correct ≤0 margin threshold (−4)', () => {

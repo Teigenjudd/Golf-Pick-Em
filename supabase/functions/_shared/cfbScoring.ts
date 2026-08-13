@@ -51,6 +51,20 @@ export function doubleDownWinBy(lockedSpread) {
   return Math.floor(threshold) + 1
 }
 
+// The double-down bonus is exactly "does your pick cover a line shifted by the
+// buffer?" This returns that adjusted line, in the picked team's own sign convention
+// (negative = laying points; positive = getting them), so the UI can be intentional:
+// "a double-down on Georgia −1.5 is really taking Georgia −5.5."
+//   effective = locked_spread − buffer
+//   favorite  −1.5 (buffer 4)   → −5.5 (bonus needs a win by 6+)
+//   favorite  −9   (buffer 4.5) → −13.5
+//   underdog  +7   (buffer 4)   → +3   (bonus needs a loss by ≤2, or a win)
+// The bonus fires iff the pick STRICTLY covers this line (a margin landing exactly on
+// it is a push → no bonus), matching gradeDoubleDown's cover_margin > buffer.
+export function effectiveDoubleDownLine(lockedSpread) {
+  return lockedSpread - doubleDownBuffer(lockedSpread)
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Per-pick grading
 // ─────────────────────────────────────────────────────────────────────────────
