@@ -68,8 +68,10 @@ writing code.
   tables, RLS deny-all, no policies yet). **PR2 (RLS policies + the
   `cfb_submit_week_picks` submit RPC) shipped 2026-08-11, PR #41.** **PR3 (`cfd-proxy` +
   the weekly slate importer) shipped 2026-08-12.** **PR4 (`cfbScoring.js` grading engine +
-  the repo's first unit tests) shipped 2026-08-12, PR #43.** Grading, adapters, and UI are
-  still not built — those are PR5+.
+  the repo's first unit tests) shipped 2026-08-12, PR #43.** **PR5 (`grade-cfb-week`
+  grading job + the first write path to `pool_standings` + a JS/TS drift guard) shipped
+  2026-08-12, PR #44.** Picks UI and the sport-dispatch layer are still not built —
+  those are PR6+.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -262,6 +264,45 @@ writing code.
   "win by X+". This starts closing BACKLOG F4 (golf's `scoring.js`/`tierBuilder.js`/
   `format.js` remain uncovered). Grading, adapters, and UI are still not built — PR5
   onward.
+- **CFB PR5 — `grade-cfb-week` grading job + `pool_standings` + JS/TS drift guard
+  shipped 2026-08-12 (PR #44).** `supabase/functions/grade-cfb-week/index.ts` is the
+  authoritative CFB grader: a service-role edge function, cron-secret-or-admin-JWT
+  gated (golf's `poll-leaderboard` pattern). Grades one targeted week (`{week_id}`,
+  for PR9's future admin button) or scans every week whose `lock_time` has passed and
+  isn't yet `graded` (cron mode, wired in PR9). CFBD's `/games` is deduped by the real
+  `(season, week_number)` — one fetch fanned to every event's games sharing it,
+  mirroring golf's per-tournament dedup (D3) — and counted against
+  `public.api_usage.cfbd_calls` under the shared 1000/mo cap. Writes final scores to
+  `cfb.games`, grades every pick with the shared scoring engine, sets week status to
+  `graded`/`locked`, and recomputes each affected pool's season-cumulative
+  `public.pool_standings` via `projectSeasonStandings` — **the first code in the repo
+  to write `pool_standings`**, closing the CFB half of BACKLOG F1 (golf's half is
+  still open). Only completed games grade; re-running is idempotent.
+  `supabase/functions/_shared/cfbScoring.ts` is the hand-kept TS mirror of
+  `src/utils/cfbScoring.js` (Deno can't import `src/`), and the PR4-promised drift
+  guard shipped alongside it: `src/utils/cfbScoring.fixtures.js` holds the shared
+  worked-example cases, run against both the JS engine (`cfbScoring.test.js`) and the
+  TS mirror (new `cfbScoring.parity.test.js`), asserting identical output — **152
+  tests pass**, the repo's first server/client parity suite. Also added:
+  `effectiveDoubleDownLine(lockedSpread)` (both engine + mirror) — the buffer-adjusted
+  double-down line in the picked team's sign convention (favorite `-1.5` → `-5.5`;
+  `+7` underdog → `+3`), for PR6's picks UI to surface. `src/lib/cfb.js` adds
+  `gradeCfbWeek(weekId)`, a thin invoker for PR9's admin "Grade week" button; no
+  migration (all tables already exist; service role bypasses RLS). No app screen
+  reads `pool_standings` yet (CFB's leaderboard is PR7); no cron/admin UI calls this
+  function yet (PR9). Senior review (`agents/senior-dev/reviews/cfb-pr5-grading.md`,
+  APPROVE WITH QUESTIONS) traced the sign conventions, grader→engine wiring, cap
+  accounting, and standings recompute and found the happy path correct with no
+  blockers; it raised two questions, both resolved by founder decision — **deferred to
+  PR9** (`agents/pm/DECISIONS.md`, 2026-08-12): a minimum double-down line was
+  considered and declined (the existing buffer floor already prevents a small-favorite
+  double-down from being a free bonus; `effectiveDoubleDownLine` covers the actual
+  need, which was UI clarity, not a new rule); a stuck week (cancelled/rescheduled
+  game never reports `completed`) can never reach `graded` and re-polls CFBD every
+  cron run — PR9 must add an admin "finalize week as-is" override; and the manual
+  `{week_id}` grade path doesn't check `lock_time` — PR9 must add that one-line guard
+  when its admin button gets a caller. Picks UI, adapters, and the sport-dispatch
+  layer are still not built — PR6 onward.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.
