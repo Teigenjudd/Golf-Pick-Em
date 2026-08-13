@@ -13,6 +13,49 @@
 
 ---
 
+## 2026-08-13 — CFB: per-pool events, not one shared event per season (supersedes PR1's original note)
+
+**Decision:** CFB pools use **per-pool `public.events` rows** — each pool gets its own event,
+`cfb.event_details`, `cfb.weeks`, and `cfb.games`, exactly like golf's per-pool event pattern
+(`createGolfPool`/D3). This **supersedes** the assumption written into `docs/CFB_BUILD_PLAN.md`'s
+original schema sketch (and echoed in `agents/pm/PM.md`/`agents/senior-dev/reviews/
+cfb-pr1-schema-scaffold.md`) that "CFB's `event_id` = one season, shared by every pool on that
+season." That assumption never shipped in working form and is now formally wrong — fixed in this
+PR's doc-sync, not just noted.
+
+**Why:** A founder requirement surfaced while building CFB admin pool creation (PR #46): two pools
+on the same real season need to be able to start at different weeks and carry different lock
+schedules, and each pool's admin should only see that pool's own weeks. A single shared
+season-level event can't represent "pool A starts Week 1, pool B starts Week 4" — there's only one
+`cfb.weeks` row per `(event, week_number)`. Per-pool events fix this the same way `createGolfPool`
+already solves "multiple pools, each with its own settings" for golf. The grading and live-score
+functions (`grade-cfb-week`, `poll-cfb-scores`, `_shared/cfbGrading.ts`) already dedupe CFBD calls
+by the *real* `(season, week_number)` across events rather than assuming one DB row per real game —
+so they needed zero changes to keep working under per-pool events.
+
+**What shipped to make it safe:** `cfb.games` was re-keyed from a **global**
+`UNIQUE (cfbd_game_id)` (PR1's original constraint) to `UNIQUE (week_id, cfbd_game_id)` — migration
+`20260813000000_cfb_games_per_week_unique.sql`. Under the old global key, a second pool importing
+an overlapping week would silently steal the first pool's game rows via the upsert's `onConflict`.
+`importWeekSlate`'s upsert now targets `onConflict: 'week_id,cfbd_game_id'` to match. Caught by
+senior review's first pass (CHANGES NEEDED) on this PR; the re-key + re-review (APPROVE) both
+landed in-branch same day. `docs/CFB_BUILD_PLAN.md`'s schema sketch, PR sequence, and status
+header are corrected in this doc-sync rather than left to silently contradict the code.
+
+**Gave up:** Admin slate imports now scale with `(pools × weeks)` instead of `(seasons × weeks)` —
+two pools on the same real season each spend their own CFBD import calls for an overlapping week,
+rather than sharing one import. Live-score cost is unchanged (`poll-cfb-scores`'s `/scoreboard`
+call is already global-per-tick, independent of pool count). Founder-accepted as the price of
+per-pool flexibility, same shape as golf's per-pool leaderboard polling (see
+`per_pool_per_event_polling` in project memory).
+
+**Revisit if:** CFB pool counts per season grow large enough that redundant per-pool imports
+meaningfully approach the CFBD monthly cap (30k/mo at Tier 2) — at that point a shared-import-cache
+layer (import once per real `(season, week)`, fan into every pool's `cfb.games` rows) would be
+worth building, but is not needed at expected pool counts today.
+
+---
+
 ## 2026-08-13 — CFB: live in-game scores added to the build (scope insert between PR5 and PR6)
 
 **Decision:** Founder requested in-app live scores for CFB — a player should be able to watch

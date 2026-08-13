@@ -72,8 +72,14 @@ writing code.
   grading job + the first write path to `pool_standings` + a JS/TS drift guard) shipped
   2026-08-12, PR #44.** **Live in-game scores (data layer only, inserted between PR5
   and PR6) shipped 2026-08-13** — CFBD Tier 2 upgrade (30k/mo, `/scoreboard`), the
-  `poll-cfb-scores` poller, and shared grading via `_shared/cfbGrading.ts`. Picks UI and
-  the sport-dispatch layer are still not built — those are PR6+.
+  `poll-cfb-scores` poller, and shared grading via `_shared/cfbGrading.ts`. **CFB admin —
+  pool creation + weekly slate-import ops shipped 2026-08-13, PR #46** (the admin half of
+  PR8/PR9, landed early): `createCfbPool()` + three new `/admin/cfb*` admin pages, general
+  register (no sport colorway). Corrected a load-bearing architecture assumption in the
+  same PR — CFB uses **per-pool events**, not the "one shared event per season" the build
+  plan originally sketched (`agents/pm/DECISIONS.md`, 2026-08-13). Picks UI and the
+  sport-dispatch layer are still not built — those are PR6+; a CFB pool today is only
+  reachable via a direct admin link, not the normal join-code flow.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -342,6 +348,35 @@ writing code.
   must-settle item. No migration applied to prod, no function deployed, no cron armed —
   all deferred to PR9 per the CFB prod-as-dev pattern. UI is still PR6/7; nothing golf
   reads is touched.
+- **CFB admin — pool creation + weekly slate-import ops shipped 2026-08-13, PR #46.**
+  The first CFB *frontend* work, and the admin half of `docs/CFB_BUILD_PLAN.md`'s PR8/PR9
+  landing early. `src/lib/cfb.js` adds `createCfbPool()` — seeds `public.events`(cfb) →
+  `public.pools` → `cfb.event_details` → `cfb.weeks` (one row per week in the chosen
+  range, lock times stepped 7 days from a now-required first-week lock, which doubles as
+  the season join cutoff), with the same rollback-deletes-the-event-on-failure safety as
+  `createGolfPool` — plus `getAdminCfbPools`/`getCfbPool`/`getCfbPoolWeeks`/
+  `updateWeekLockTime`/`getCfbdUsage`. Three new admin pages/routes, all `AdminRoute`-gated,
+  general register (no sport colorway): `CfbAdmin.jsx` (`/admin/cfb`, pool index),
+  `CreateCfbPool.jsx` (`/admin/cfb/create-pool`, season setup form), `CfbPoolOps.jsx`
+  (`/admin/cfb/pool/:id`, per-week lock edit + slate import + CFBD usage meter). This is
+  what makes a real, operable CFB pool exist for the first time — an admin can now create
+  one and import weekly slates end to end (still only reachable via a direct admin link;
+  the join-code flow and player-facing pages are still PR6/8). **Also corrected a
+  load-bearing architecture assumption, caught by senior review's first pass (CHANGES
+  NEEDED → fixed in-branch → APPROVE):** CFB uses **per-pool events** — each pool gets its
+  own `public.events` row + `cfb.weeks` + `cfb.games`, mirroring golf's per-pool pattern
+  (D3) — not the "one shared event per season" `docs/CFB_BUILD_PLAN.md` originally
+  sketched. This is what lets two pools on the same real season start at different weeks
+  with different lock schedules and see only their own weeks; grading and the live poller
+  already dedupe CFBD calls by real `(season, week_number)` across events, so neither
+  needed to change. `cfb.games` was re-keyed from a global `UNIQUE(cfbd_game_id)` to
+  `UNIQUE(week_id, cfbd_game_id)` (migration `20260813000000_cfb_games_per_week_unique.sql`)
+  so a second pool's slate import can no longer overwrite a first pool's rows — the bug the
+  first review pass caught. Trade-off (founder-accepted): admin slate imports now scale
+  with (pools × weeks) rather than (seasons × weeks); live-score cost is unchanged. Full
+  reasoning in `agents/pm/DECISIONS.md`, 2026-08-13. **The prod Exposed Schemas cutover
+  is now done** (flipped 2026-08-13, ahead of this PR — all schemas/tables/functions
+  exposed), closing the deferred cutover step noted in earlier CFB PR entries below.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.

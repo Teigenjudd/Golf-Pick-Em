@@ -11,6 +11,9 @@ import Privacy from './pages/legal/Privacy'
 import Terms from './pages/legal/Terms'
 import CreateTournament from './pages/admin/CreateTournament'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import CfbAdmin from './pages/admin/cfb/CfbAdmin'
+import CreateCfbPool from './pages/admin/cfb/CreateCfbPool'
+import CfbPoolOps from './pages/admin/cfb/CfbPoolOps'
 import TournamentDetail from './pages/TournamentDetail'
 import { DemoProvider } from './demo/DemoContext'
 import DemoLayout from './demo/DemoLayout'
@@ -80,6 +83,9 @@ function App() {
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/create-tournament" element={<AdminRoute><CreateTournament /></AdminRoute>} />
+          <Route path="/admin/cfb" element={<AdminRoute><CfbAdmin /></AdminRoute>} />
+          <Route path="/admin/cfb/create-pool" element={<AdminRoute><CreateCfbPool /></AdminRoute>} />
+          <Route path="/admin/cfb/pool/:id" element={<AdminRoute><CfbPoolOps /></AdminRoute>} />
           <Route path="/tournament/:id" element={<ProtectedRoute><TournamentDetail /></ProtectedRoute>} />
           <Route path="/tournament/:id/picks" element={<ProtectedRoute><Picks /></ProtectedRoute>} />
         </Routes>

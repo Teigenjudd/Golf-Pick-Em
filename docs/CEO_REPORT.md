@@ -1,13 +1,13 @@
 # Poold — CEO Report
 
-*Updated 2026-08-13 · latest: CFB live in-game scores (data layer)*
+*Updated 2026-08-13 · latest: CFB admin — pool creation + weekly ops (PR #46)*
 
-**Status:** 🟢 Golf live in prod · 🟡 CFB in build — PR5 of ~10 shipped, plus a live-scores data-layer PR · Sports live: **1**
+**Status:** 🟢 Golf live in prod · 🟡 CFB in build — PR5 of ~10 shipped, plus a live-scores PR and the PR8/PR9 admin foundation, landed early · Sports live: **1**
 
-**State of the app.** Golf pick'em is live in production (auth, pools, picks, live leaderboards, prize-pool math). CFB is in active build; standings can now update live as games finish, not only on a scheduled grading run.
+**State of the app.** Golf pick'em is live in production (auth, pools, picks, live leaderboards, prize-pool math). CFB is in active build; an admin can now stand up a real CFB pool and run it week by week, though nobody but an admin can reach it yet.
 
-**Recent wins.** CFB now has a live-scores data layer: one API call refreshes the whole live college-football slate, and a game going final automatically grades its week and updates standings. This runs on an upgraded data plan (30k calls/month) bought specifically to make live scores affordable. Earlier this month: the grading job posted CFB's first-ever standings (PR5), and the scoring engine (PR4).
+**Recent wins.** An admin can now create a CFB season pool and import each week's game slate — the first CFB screens anyone can click through, and what finally makes a real, testable CFB pool exist. Building it surfaced an important fix: each CFB pool now gets its own season data instead of sharing one across pools, so two office pools on the same season can start at different weeks. Caught and fixed before merge by our review process.
 
-**Next up.** CFB PR6 — the weekly picks screen players will actually use; live scores reach the UI in PR6/7.
+**Next up.** The weekly picks screen players will actually use (PR6), then wiring a CFB pool into the normal join-link flow so players — not just admins — can reach one.
 
-**Pitfalls to watch.** Review caught the live-score checker looking too far ahead of kickoff, which could have burned a chunk of the monthly data budget on idle time before games start. Tightened before merge; the exact polling schedule is still a decision to lock down before this goes live in PR9.
+**Pitfalls to watch.** None new. The live-score polling-schedule decision flagged last update is still open, unchanged.

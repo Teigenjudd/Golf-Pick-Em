@@ -168,6 +168,12 @@ function TournamentsTab() {
             </button>
           )}
           <Link
+            to="/admin/cfb"
+            className="text-[13px] text-warm-400 font-semibold no-underline hover:text-charcoal transition-colors"
+          >
+            🏈 CFB pools
+          </Link>
+          <Link
             to="/admin/create-tournament"
             className="text-[13px] text-brand font-semibold no-underline hover:text-brand/80 transition-colors"
           >
