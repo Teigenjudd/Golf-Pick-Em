@@ -13,6 +13,14 @@ import { supabase } from './supabase'
 // All cfb-schema access funnels through here.
 const cfb = () => supabase.schema('cfb')
 
+// A week is "locked" for picking once it's graded/locked or its lock_time has passed.
+// Shared by the CFB pool-detail and picks pages so they can't drift.
+export function weekIsLocked(w) {
+  if (!w) return false
+  if (w.status === 'locked' || w.status === 'graded') return true
+  return !!(w.lock_time && new Date(w.lock_time) <= new Date())
+}
+
 // ── Server-side job triggers ─────────────────────────────────────────────────
 // These invoke edge functions that run as service_role. The heavy lifting (fetching
 // CFBD, grading, writing standings/slates) is server-side so users can't tamper with

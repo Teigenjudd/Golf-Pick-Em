@@ -9,7 +9,7 @@ import CfbStandings from '../../components/cfb/CfbStandings'
 import CfbWidgets from '../../components/cfb/CfbWidgets'
 import {
   getCfbPool, getCfbPoolWeeks, getCfbStandings, getCfbParticipants,
-  getCfbWeekGames, getCfbWeekPicks,
+  getCfbWeekGames, getCfbWeekPicks, weekIsLocked,
 } from '../../lib/cfb'
 import { gradeWeekCard, pickMargin } from '../../utils/cfbScoring'
 import { pickLine } from '../../utils/cfbFormat'
@@ -20,12 +20,6 @@ import { CFB_THEME, cfbBadge } from '../../theme/cfb'
 // selector scopes the scorecard-expand + the widgets to a chosen week WITHOUT
 // re-ranking the standings. Grading for the expand is recomputed client-side with the
 // shared scoring engine off each game's live/final scores.
-
-function weekIsLocked(w) {
-  if (!w) return false
-  if (w.status === 'locked' || w.status === 'graded') return true
-  return !!(w.lock_time && new Date(w.lock_time) <= new Date())
-}
 
 // Build one user's selected-week card into a display-ready shape for CfbStandings.
 function shapeCard(userPicks, gamesById) {

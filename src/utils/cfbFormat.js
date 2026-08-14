@@ -24,3 +24,16 @@ export function formatKick(iso) {
     weekday: 'short', hour: 'numeric', minute: '2-digit',
   })
 }
+
+// A lock timestamp → a full local label like "Sat, Sep 21, 12:00 PM PDT" for the
+// picks-page "Locks …" subtitle. Includes date + local tz so a player knows exactly
+// which deadline. Null-safe. Viewer's own timezone (not hardcoded ET).
+export function formatLockLabel(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString(undefined, {
+    weekday: 'short', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  })
+}

@@ -6,9 +6,10 @@ import CfbGameCard from '../../components/cfb/CfbGameCard'
 import CfbCardTracker from '../../components/cfb/CfbCardTracker'
 import {
   getCfbPool, getCfbPoolWeeks, getCfbWeekGames, getCfbWeekPicks, submitCfbWeekPicks,
+  weekIsLocked,
 } from '../../lib/cfb'
 import { cfbCardValidity, buildPicksPayload } from '../../utils/cfbCard'
-import { formatKick } from '../../utils/cfbFormat'
+import { formatLockLabel } from '../../utils/cfbFormat'
 import { CFB_THEME } from '../../theme/cfb'
 
 // CFB Weekly Picks builder (docs/CFB_UI_PLAN.md §7) — PR-A. The interactive card
@@ -21,12 +22,6 @@ import { CFB_THEME } from '../../theme/cfb'
 // slate-not-posted, open-empty, open-editing (existing card pre-filled), and
 // success-after-submit. The rich READ-ONLY locked/auto-filled/graded card views are
 // PR-B — not built here; see CfbPoolDetail's scorecard-expand for that data shape.
-
-function weekIsLocked(w) {
-  if (!w) return false
-  if (w.status === 'locked' || w.status === 'graded') return true
-  return !!(w.lock_time && new Date(w.lock_time) <= new Date())
-}
 
 function Shell({ poolId, eyebrow, title, subtitle, children }) {
   return (
@@ -233,7 +228,7 @@ export default function CfbPicks() {
   }
 
   const weekEyebrow = (targetWeek.label ?? `Week ${targetWeek.week_number}`).toUpperCase()
-  const subtitle = targetWeek.lock_time ? `Locks ${formatKick(targetWeek.lock_time)}` : null
+  const subtitle = targetWeek.lock_time ? `Locks ${formatLockLabel(targetWeek.lock_time)}` : null
 
   if (submitted) {
     return (
