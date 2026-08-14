@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import {
   getCfbPool, getCfbPoolWeeks, getCfbdUsage,
   updateWeekLockTime, refreshCfbSlates, refreshCfbScores,
-  gradeCfbWeek, finalizeCfbWeek, weekIsLocked,
+  gradeCfbWeek, finalizeCfbWeek, autofillCfbWeek, weekIsLocked,
 } from '../../../lib/cfb'
 
 // Admin: the CFB season ops surface. Slates are imported AUTOMATICALLY by the
@@ -49,6 +49,7 @@ export default function CfbPoolOps() {
   const [refreshingScores, setRefreshingScores] = useState(false)
   const [scoresMsg, setScoresMsg] = useState(null)
   const [gradingWeek, setGradingWeek] = useState(null) // weekId currently grading/finalizing
+  const [autofillingWeek, setAutofillingWeek] = useState(null) // weekId currently auto-filling
   const [weekMsgs, setWeekMsgs] = useState({}) // weekId -> { text, isError }
 
   // Initial load. Async IIFE so setState only happens after an await (the lint-clean
@@ -151,6 +152,26 @@ export default function CfbPoolOps() {
       setWeekMsg(w.id, err.message, true)
     } finally {
       setGradingWeek(null)
+    }
+  }
+
+  async function handleAutofillWeek(w) {
+    setAutofillingWeek(w.id)
+    setWeekMsg(w.id, null)
+    setError(null)
+    try {
+      const filled = await autofillCfbWeek(w.id)
+      setWeekMsg(
+        w.id,
+        filled > 0
+          ? `Auto-filled ${filled} missing ${filled === 1 ? 'card' : 'cards'} with random picks (no double-down).`
+          : 'Everyone already has a card in — nothing to auto-fill.',
+      )
+      await reload()
+    } catch (err) {
+      setWeekMsg(w.id, err.message, true)
+    } finally {
+      setAutofillingWeek(null)
     }
   }
 
@@ -281,15 +302,23 @@ export default function CfbPoolOps() {
                       {w.status !== 'graded' && weekIsLocked(w) && (
                         <>
                           <button
+                            onClick={() => handleAutofillWeek(w)}
+                            disabled={autofillingWeek === w.id || gradingWeek === w.id}
+                            title="Fill a random card (no double-down) for every participant who never submitted"
+                            className="text-[13px] font-semibold px-3 py-[7px] rounded-[9px] border-[1.5px] border-[#EAD8C4] text-warm-500 hover:bg-warm-100 disabled:opacity-40 bg-transparent cursor-pointer transition-colors"
+                          >
+                            {autofillingWeek === w.id ? 'Filling…' : 'Auto-fill missing cards'}
+                          </button>
+                          <button
                             onClick={() => handleGradeWeek(w)}
-                            disabled={gradingWeek === w.id}
+                            disabled={gradingWeek === w.id || autofillingWeek === w.id}
                             className="text-[13px] font-bold px-3 py-[7px] rounded-[9px] border-none text-white bg-brand hover:opacity-90 disabled:opacity-50 cursor-pointer transition-opacity"
                           >
                             {gradingWeek === w.id ? 'Working…' : 'Grade week'}
                           </button>
                           <button
                             onClick={() => handleFinalizeWeek(w)}
-                            disabled={gradingWeek === w.id}
+                            disabled={gradingWeek === w.id || autofillingWeek === w.id}
                             title="Escape hatch — grades finished games, marks the rest no-contest, forces the week graded"
                             className="text-[13px] font-semibold px-3 py-[7px] rounded-[9px] border-[1.5px] border-birdie/30 text-birdie hover:bg-birdie/5 disabled:opacity-40 bg-transparent cursor-pointer transition-colors"
                           >
