@@ -443,13 +443,15 @@ mirroring `createGolfPool`. Shipped 2026-08-13, PR #46.
 **Theme:** General (admin utility)
 
 **What it does:** The recurring weekly admin surface golf never needed — where a CFB season is
-run week by week after creation. Slates and spreads are now pulled **automatically** by the
+run week by week after creation. Slates and spreads are pulled **automatically** by the
 hourly `poll-cfb-lines` poller (games appear as CFBD posts lines, roughly 1-2 weeks before
-kickoff) — there is no per-week manual import anymore. This page is for visibility (game count,
-week status) + tuning lock times, plus a single "Refresh slates now" override that triggers the
-poller on demand via `refreshCfbSlates()`. Shows the shared CFBD Tier-2 usage meter (calls this
-month / 30,000 cap). Manual per-week import shipped 2026-08-13 (PR #46); replaced by the automated
-poller 2026-08-13 (PR #47, `cfb-auto-lines-poller` — see `agents/pm/DECISIONS.md`).
+kickoff) — there is no per-week manual import. Live in-game scores are pulled by
+`poll-cfb-scores` (normally a ~1-minute cron once armed). Grading — turning final scores into
+graded picks and season standings — is admin-triggered from this page (**PR9a, shipped**;
+cron-armed grading is a separate later step). Manual per-week import shipped 2026-08-13
+(PR #46); replaced by the automated poller 2026-08-13 (PR #47, `cfb-auto-lines-poller`); grading
++ finalize-override controls shipped 2026-08-13 (PR9a, `feat/cfb-admin-grading-ops` — see
+`agents/pm/DECISIONS.md`).
 
 **Data available:**
 - Pool + season year via `getCfbPool(poolId)`
@@ -459,14 +461,18 @@ poller 2026-08-13 (PR #47, `cfb-auto-lines-poller` — see `agents/pm/DECISIONS.
 **What must be on this page:**
 - Sticky nav: `← CFB Admin | POOLD Season Ops`
 - Pool name, season, join code header; CFBD usage meter (calls / cap) top-right
-- Auto-slate banner: "Slates & spreads update automatically every hour" + note that games appear as lines post (~1-2 wks out) and each game's spread freezes at kickoff, plus the "Refresh slates now" button (via `refreshCfbSlates()`) with an inline result line (game rows written / spread moves logged / CFBD calls spent)
-- Per-week card: label, status badge (scheduled/open/locked/graded), game count ("N games loaded"), editable lock-time input + "Save lock" button (via `updateWeekLockTime`) — no per-week import button anymore
+- Auto-slate banner: "Slates & spreads update automatically every hour" + note that games appear as lines post (~1-2 wks out) and each game's spread freezes at kickoff, plus two buttons — "Refresh scores" (`refreshCfbScores()`, triggers `poll-cfb-scores` on demand — the manual analogue of the live poller) and "Refresh slates now" (`refreshCfbSlates()`) — each with its own inline result line
+- Per-week card: label, status badge (scheduled/open/locked/graded), game count ("N games loaded"), editable lock-time input + "Save lock" button (via `updateWeekLockTime`) — no per-week import button
+- Once a week's `lock_time` has passed and it isn't yet `graded`, the card also shows:
+  - **"Grade week"** (`gradeCfbWeek(weekId)` → `grade-cfb-week` with `{ week_id }`) — grades every final game's picks and recomputes season standings; reports picks scored and whether the week fully finished. The edge function refuses to grade a week before its `lock_time` (a defense-in-depth guard — the UI already only shows the button post-lock).
+  - **"Finalize as-is"** (`finalizeCfbWeek(weekId)` → `grade-cfb-week` with `{ week_id, finalize: true }`), styled as the override (birdie-red outline, not the primary brand button) — the escape hatch for a week stuck on a game that will never report final (cancelled/postponed): grades whatever DID finish normally, scores every other game's picks as a no-contest push (0 points — `cfb.picks.result` has no "void" value), and forces the week to `graded` so it stops showing as due. Gated behind a `window.confirm` naming the week.
+  - An inline result/error line per week for whichever action last ran
 - Empty state if no weeks were seeded
 
 **Design notes:**
 - Same card language as `CfbAdmin`'s pool list (`bg-white border border-[#EAD8C4] rounded-[14px]`).
 - Slate freshness is no longer a per-week admin action — a game either has a line yet or it doesn't, and that's driven by CFBD's own posting schedule, not admin timing.
-- No "Grade week" button yet — grading is still admin-triggered only via the (unbuilt) PR9 surface; this page is now refresh-override + lock only.
+- Grade week / Finalize as-is only appear post-lock and pre-graded, so there's no way to grade a week whose picks are still open.
 
 ---
 
