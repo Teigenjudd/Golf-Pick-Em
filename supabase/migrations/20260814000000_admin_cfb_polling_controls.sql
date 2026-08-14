@@ -35,9 +35,10 @@
 --
 -- Schedules (all UTC, months 8-12,1 = Aug–Dec + Jan bowl season):
 --   cfb-lines  — '0 * * 8-12,1 *'            hourly slate/spread refresh, all season
---   cfb-scores — '*/2 15-23,0-7 * 8-12,1 4-7' every 2 min during Thu–Sun game hours
---                (day-of-week 4-7 = Thu/Fri/Sat/Sun; hours 15-23,0-7 UTC spans
---                the US game window across time zones)
+--   cfb-scores — '*/2 15-23,0-7 * 8-12,1 *' every 2 min during game hours, all days
+--                (hours 15-23,0-7 UTC span the US game window across time zones; runs
+--                every in-season day so Mon CFP championship / weekday bowls get live
+--                scores too — the poller self-gates to zero API calls when nothing's live)
 --   cfb-grade  — '0 8,20 * 8-12,1 *'          twice daily, backstop grading sweep
 CREATE OR REPLACE FUNCTION public.admin_start_cfb_polling()
 RETURNS void
@@ -66,7 +67,7 @@ BEGIN
   FOR rec IN
     SELECT * FROM (VALUES
       ('cfb-lines',  '0 * * 8-12,1 *',              'poll-cfb-lines'),
-      ('cfb-scores', '*/2 15-23,0-7 * 8-12,1 4-7',  'poll-cfb-scores'),
+      ('cfb-scores', '*/2 15-23,0-7 * 8-12,1 *',    'poll-cfb-scores'),
       ('cfb-grade',  '0 8,20 * 8-12,1 *',            'grade-cfb-week')
     ) AS v(jobname, sched, fn_slug)
   LOOP
