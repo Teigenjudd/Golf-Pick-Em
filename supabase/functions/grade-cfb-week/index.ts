@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json()
     targetWeekId = body?.week_id ?? null
-    finalize = body?.finalize === true
+    finalize = body?.finalize === true && targetWeekId != null
   } catch { /* no body → scan mode */ }
 
   // ── Which pools are live, and which event does each belong to. Standings only
