@@ -519,18 +519,66 @@ silent drift by the JS/TS scoring parity test suite. See `agents/pm/DECISIONS.md
 
 **Theme:** Sport-specific (CFB — Varsity Navy, same tokens as 10f)
 
-**What it does:** CFB's weekly card-builder page — the CFB counterpart to Picks. **Phase 1
-(shipped 2026-08-13, PR #48) is a themed placeholder only:** renders the real `PicksHeader`
-shell (no badge — `showBadge={false}`, per the design comp) with a "The weekly card builder
-is coming soon" card. The real 5 ATS + double-down + underdog builder with live validity is
-Phase 3 (`docs/CFB_BUILD_PLAN.md` PR6) — not built. Not linked from anywhere in the UI yet.
+**What it does:** CFB's weekly card-builder page — the CFB counterpart to Picks. **PR-A
+(the interactive builder + submit) shipped 2026-08-13:** build a full 6-pick weekly card —
+5 ATS picks on 5 distinct games, an optional double-down flagged on one of them, and a
+mandatory underdog pick on a separate 6th game — with live validity, then submit via
+`cfb.cfb_submit_week_picks` (the real gate; it validates the whole card and freezes each
+pick's `locked_spread` server-side). Re-submittable until the week locks. **PR-B (deferred,
+not built):** the rich READ-ONLY locked / auto-filled / graded card view — today a locked
+target week just shows a short notice back to the pool instead. Not linked from anywhere in
+the UI yet (reachable only by typing the URL, same as CfbPoolDetail).
 
-**Data available:**
-- Pool + season year via `getCfbPool(poolId)` (`src/lib/cfb.js`)
+**Data available (`src/lib/cfb.js`):**
+- `getCfbPool(poolId)` — pool + season year; `null` → "Pool not found."
+- `getCfbPoolWeeks(eventId)` — this season's `cfb.weeks` (`week_number`, `label`,
+  `lock_time`, `status`), used to resolve the target week
+- `getCfbWeekGames(weekId)` — the target week's `cfb.games` (`home_team`/`away_team` +
+  conferences, `kickoff_at`, `home_spread`, `underdog_team`, `underdog_spread`)
+- `getCfbWeekPicks(poolId, weekId)` — RLS returns only the viewer's own picks before lock,
+  filtered client-side to `user.id` to seed the card when editing an existing submission
+- `submitCfbWeekPicks(poolId, weekId, picks)` — the only write path; throws the RPC's
+  friendly message on rejection (surfaced as-is)
 
-**What must be on this page (Phase 1):**
-- `PicksHeader` shell themed via `gradient`/`accentColor`/`rib` from `CFB_THEME`, `showBadge={false}`
-- Placeholder card; "Pool not found." error state
+**Target-week resolution:** `?week=N` if that week exists and isn't locked, else the
+earliest not-locked week (`weekIsLocked(w)` — status `locked`/`graded`, or `lock_time` in
+the past — exported from `src/lib/cfb.js` and shared with CfbPoolDetail so the two pages
+can't drift). If no unlocked week exists, shows a "No open week right now — check the pool
+for results." notice — this covers both the week-locked and season-over cases in PR-A.
+
+**What's on the page:**
+- `PicksHeader` (CFB theme, `showBadge={false}`) — eyebrow is the week label (e.g.
+  `WEEK 4`), title "Build your card", subtitle `Locks {lock_time}` (via
+  `formatLockLabel` in `src/utils/cfbFormat.js` — full date + local timezone, e.g.
+  "Locks Sat, Sep 21, 12:00 PM PDT")
+- The slate as a scrollable list of `CfbGameCard`s (one per game, kickoff-ordered): two
+  ATS team chips (tap to pick who covers, tap again to clear), a ★ double-down toggle
+  (visible only once this game is an ATS pick, showing the live sign-general bonus copy
+  from `doubleDownWinBy` — "win by N+" for a favorite, "cover — lose by ≤N or win" for an
+  underdog pick), and a 🐕 "Take {underdog_team} outright" action showing the tier payout
+  from `underdogTier`. Mutual exclusion is enforced both in the UI (disabled
+  chips/actions) and again in the page's handlers: a game already the underdog pick can't
+  take an ATS pick and vice versa; once 5 ATS slots are full, other games' ATS chips
+  disable.
+- Sticky `CfbCardTracker` bar: `ATS n/5 · DD n/1 · Dog n/1` (turns `CFB_THEME.positive`
+  when the card is valid), an active-violation warning (e.g. the same game used as both
+  an ATS pick and the underdog), and the submit button ("Submit card →" / "Update card →"
+  when editing an existing card, "Submitting…" while pending) — disabled until valid.
+- Live validity is computed by the pure `cfbCardValidity`/`buildPicksPayload` helpers in
+  `src/utils/cfbCard.js` (unit-tested, `src/utils/cfbCard.test.js`) — a client-side mirror
+  of the RPC's whole-card rule, not a replacement for it.
+
+**States:** loading · pool-not-found · no-open-week/week-locked (notice + link back to
+the pool) · slate-not-posted ("This week's slate drops soon — check back once the lines
+are posted.") · open-empty (fresh card) · open-editing (existing card pre-filled from
+`getCfbWeekPicks`, "Your card's in — you can change it until it locks.") ·
+success-after-submit ("Your card is in for Week N." + link back to the pool) · submit
+error (RPC's thrown message shown inline, stays on the card).
+
+**Not built (PR-B):** the read-only locked/frozen card view (showing each pick's frozen
+`locked_spread`), the auto-filled state (`auto_filled` badge, forfeited double-down), and
+the graded state (results + points — today that's only visible via CfbPoolDetail's
+scorecard-expand).
 
 ---
 
@@ -675,7 +723,7 @@ each one a display-ready shape.
 | `CfbWidgets` | `games[]`, `weekPicks[]`, `weeklyPoints[]`, `weekLabel`, `locked`, `stakeAmount`, `participantCount`, `payoutStructure` | This Week's Slate, Weekly Points, Most-Backed Teams, Underdog Board, and the reused `PrizePoolWidget` — see §10f for the pre-lock hide rule |
 
 Display formatting shared by the picks page too: `src/utils/cfbFormat.js`
-(`formatSpread`, `pickLine`, `formatKick`).
+(`formatSpread`, `pickLine`, `formatKick`, `formatLockLabel`).
 
 ---
 

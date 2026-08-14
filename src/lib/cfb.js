@@ -13,6 +13,14 @@ import { supabase } from './supabase'
 // All cfb-schema access funnels through here.
 const cfb = () => supabase.schema('cfb')
 
+// A week is "locked" for picking once it's graded/locked or its lock_time has passed.
+// Shared by the CFB pool-detail and picks pages so they can't drift.
+export function weekIsLocked(w) {
+  if (!w) return false
+  if (w.status === 'locked' || w.status === 'graded') return true
+  return !!(w.lock_time && new Date(w.lock_time) <= new Date())
+}
+
 // ── Server-side job triggers ─────────────────────────────────────────────────
 // These invoke edge functions that run as service_role. The heavy lifting (fetching
 // CFBD, grading, writing standings/slates) is server-side so users can't tamper with
@@ -256,6 +264,17 @@ export async function getCfbWeekPicks(poolId, weekId) {
     .eq('pool_id', poolId)
     .eq('week_id', weekId)
   return data ?? []
+}
+
+// Submit (or re-submit) a full 6-pick weekly card. picks = array of 6 objects:
+// { game_id, pick_type: 'ats'|'underdog', selected_team, is_double_down }. The RPC is
+// the real gate (validates the whole card, freezes locked_spread server-side); we just
+// send the card and surface its thrown message.
+export async function submitCfbWeekPicks(poolId, weekId, picks) {
+  const { data, error } = await cfb()
+    .rpc('cfb_submit_week_picks', { p_pool_id: poolId, p_week_id: weekId, p_picks: picks })
+  if (error) throw error
+  return data
 }
 
 // Line-movement history for one real game (oldest → newest), for a future UI chart.

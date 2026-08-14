@@ -285,7 +285,8 @@ real gate):**
 
 **Must be on the page:**
 - `PicksHeader` (CFB theme gradient) — eyebrow `WEEK 4`, title *"Build your card"*,
-  subtitle `Locks Sat Sep 21, 12:00 PM ET`
+  subtitle `Locks Sat, Sep 21, 12:00 PM ET` — built as the **viewer's own local
+  timezone**, not a hardcoded "ET" (`formatLockLabel`, `src/utils/cfbFormat.js`)
 - The slate builder (above)
 - Live validity tracker + `PicksSubmitBar` (label reflects CFB: *"Submit card →"* /
   *"Update card →"*)
