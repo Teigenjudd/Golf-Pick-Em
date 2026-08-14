@@ -109,13 +109,22 @@ export async function getLatestLeaderboard(eventId) {
   return data ?? null
 }
 
-// All pools (for the dashboard admin list).
+// Golf pools (for the dashboard admin quick-list). Filters `public.pools` to golf the
+// same way getAdminPools does — a golf pool is one whose event has a golf.event_details
+// row, so CFB pools (which don't) don't leak in and link to the golf /tournament/:id.
 export async function getAllPools() {
-  const { data } = await supabase
+  const { data: pools } = await supabase
     .from('pools')
-    .select('id, name, status, join_code, created_at')
+    .select('id, name, status, join_code, created_at, event_id')
     .order('created_at', { ascending: false })
-  return data ?? []
+  if (!pools?.length) return []
+  const eventIds = [...new Set(pools.map(p => p.event_id))]
+  const { data: details } = await golf()
+    .from('event_details')
+    .select('event_id')
+    .in('event_id', eventIds)
+  const golfEvents = new Set((details ?? []).map(d => d.event_id))
+  return pools.filter(p => golfEvents.has(p.event_id))
 }
 
 // An event's tiers with their players embedded (shape the picker expects):
@@ -261,11 +270,17 @@ export async function getAdminPools() {
     .in('event_id', eventIds)
   const byEvent = {}
   ;(details ?? []).forEach(d => { byEvent[d.event_id] = d })
-  return pools.map(p => ({
-    ...p,
-    slash_golf_tournament_id: byEvent[p.event_id]?.slash_golf_tournament_id ?? null,
-    manual_refresh_count: byEvent[p.event_id]?.manual_refresh_count ?? 0,
-  }))
+  // Golf pools only. `public.pools` is sport-agnostic (a CFB pool lives there too), but
+  // a golf pool is exactly one whose event has a `golf.event_details` row — CFB pools
+  // don't, so they'd otherwise leak into this list and link to the golf /tournament/:id
+  // page (which can't load them). Filter them out here.
+  return pools
+    .filter(p => byEvent[p.event_id])
+    .map(p => ({
+      ...p,
+      slash_golf_tournament_id: byEvent[p.event_id]?.slash_golf_tournament_id ?? null,
+      manual_refresh_count: byEvent[p.event_id]?.manual_refresh_count ?? 0,
+    }))
 }
 
 export async function setPoolStatus(poolId, status) {

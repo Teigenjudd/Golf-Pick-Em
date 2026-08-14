@@ -120,7 +120,7 @@ export default function Dashboard() {
         <span className="font-display font-extrabold text-[26px] text-brand tracking-[.07em]">POOLD</span>
         <div className="flex items-center gap-[13px]">
           {profile?.role === 'admin' && (
-            <Link to="/admin/create-tournament" className="text-[12px] font-medium text-warm-400 no-underline">+ New</Link>
+            <Link to="/admin/create" className="text-[12px] font-medium text-warm-400 no-underline">+ New</Link>
           )}
           <Link to="/profile" className="w-[34px] h-[34px] rounded-full bg-brand flex items-center justify-center no-underline">
             <span className="font-display font-bold text-[13px] text-white">{initials}</span>
@@ -312,7 +312,7 @@ export default function Dashboard() {
                 ))}
                 <div className="flex items-center gap-5 px-4 py-3.5">
                   <Link to="/admin" className="text-[13px] text-brand font-semibold no-underline">Admin Panel →</Link>
-                  <Link to="/admin/create-tournament" className="text-[13px] text-warm-400 no-underline">+ New Tournament</Link>
+                  <Link to="/admin/create" className="text-[13px] text-warm-400 no-underline">+ New Pool</Link>
                 </div>
               </div>
             </div>

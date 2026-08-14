@@ -11,8 +11,7 @@ import {
   getCfbPool, getCfbPoolWeeks, getCfbStandings, getCfbParticipants,
   getCfbWeekGames, getCfbWeekPicks, weekIsLocked,
 } from '../../lib/cfb'
-import { gradeWeekCard, pickMargin } from '../../utils/cfbScoring'
-import { pickLine } from '../../utils/cfbFormat'
+import { shapeCard } from '../../utils/cfbCard'
 import { CFB_THEME, cfbBadge } from '../../theme/cfb'
 
 // CFB Pool Detail / Leaderboard (docs/CFB_UI_PLAN.md §6). The season-cumulative
@@ -20,52 +19,6 @@ import { CFB_THEME, cfbBadge } from '../../theme/cfb'
 // selector scopes the scorecard-expand + the widgets to a chosen week WITHOUT
 // re-ranking the standings. Grading for the expand is recomputed client-side with the
 // shared scoring engine off each game's live/final scores.
-
-// Build one user's selected-week card into a display-ready shape for CfbStandings.
-function shapeCard(userPicks, gamesById) {
-  const enriched = userPicks.map(p => {
-    const g = gamesById[p.game_id] ?? {}
-    // Only FINAL games award points. An in-progress game has a live score (shown in
-    // the game line) but stays ungraded — matches the server grader and keeps points
-    // from flip-flopping mid-game (docs/CFB_UI_PLAN.md §6: "points update as games
-    // go final").
-    const margin = g.status === 'final'
-      ? pickMargin({
-          selectedTeam: p.selected_team,
-          homeTeam: g.home_team, awayTeam: g.away_team,
-          homeScore: g.home_score, awayScore: g.away_score,
-        })
-      : null
-    return { ...p, margin, game: g }
-  })
-
-  const graded = gradeWeekCard(enriched)
-  const ats = graded.picks
-    .filter(p => p.pick_type === 'ats')
-    .sort((a, b) => new Date(a.game.kickoff_at ?? 0) - new Date(b.game.kickoff_at ?? 0))
-  const dogs = graded.picks.filter(p => p.pick_type === 'underdog')
-
-  const displayPicks = [...ats, ...dogs].map(p => {
-    const g = p.game ?? {}
-    return {
-      slot: p.pick_type === 'underdog' ? null : ats.indexOf(p) + 1,
-      pickType: p.pick_type,
-      isDoubleDown: p.is_double_down,
-      autoFilled: p.auto_filled,
-      line: pickLine(p.selected_team, p.locked_spread),
-      matchup: `${g.away_team ?? '?'} @ ${g.home_team ?? '?'}`,
-      awayTeam: g.away_team, homeTeam: g.home_team,
-      awayScore: g.away_score, homeScore: g.home_score,
-      status: g.status, live: g.live, kickoffAt: g.kickoff_at,
-      result: p.result,
-      points: (p.base_points ?? 0) + (p.bonus_points ?? 0),
-      selectedTeam: p.selected_team,
-      lockedSpread: p.locked_spread,
-    }
-  })
-
-  return { total: graded.total, picks: displayPicks }
-}
 
 export default function CfbPoolDetail() {
   const { id: poolId } = useParams()
