@@ -36,6 +36,21 @@ export async function gradeCfbWeek(weekId) {
   return data
 }
 
+// Admin "finalize a stuck week as-is" escape hatch (PR9): a week can get stuck at
+// 'locked' forever if one of its games never reports final (cancelled, postponed) —
+// scan mode would otherwise re-poll CFBD for it every run. This grades whatever games
+// DID finish normally, scores every other game's picks as a no-contest push (0
+// points — there's no partial credit to compute), and forces the week to 'graded' so
+// it stops showing up as due. Use sparingly; it's an override, not the normal path.
+export async function finalizeCfbWeek(weekId) {
+  const { data, error } = await supabase.functions.invoke('grade-cfb-week', {
+    body: { week_id: weekId, finalize: true },
+  })
+  if (error) throw error
+  if (data && data.error) throw new Error(data.error)
+  return data
+}
+
 // Trigger a live-scoreboard poll (admin "Refresh scores"); normally a ~1-min cron.
 export async function refreshCfbScores() {
   const { data, error } = await supabase.functions.invoke('poll-cfb-scores', { body: {} })

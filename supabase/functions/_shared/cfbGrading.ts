@@ -40,11 +40,22 @@ export type FinalScoreMap = Map<
 
 // Update one event's games with final scores, grade its picks, and set the week's
 // status. Returns { picksGraded, allFinal }. Idempotent — re-running refreshes.
+//
+// opts.finalize (default false, PR9's admin "Finalize as-is" override): when true,
+// every game that ISN'T final (cancelled, postponed, stuck) has its picks marked a
+// no-contest push (0 points — cfb.picks.result has no 'void' value) instead of being
+// left ungraded, and the week is forced to 'graded' even though not every game
+// finished. This is how an admin un-sticks a week that would otherwise re-poll CFBD
+// forever in scan mode. Both callers of this function (poll-cfb-scores, and normal
+// grade-cfb-week calls) omit opts, so their behavior is byte-for-byte unchanged.
 export async function gradeWeek(
   supabase: any,
   week: { id: string; status: string; lock_time: string | null },
   scoreByGameId: FinalScoreMap,
+  opts: { finalize?: boolean } = {},
 ) {
+  const finalize = opts.finalize === true
+
   const { data: games, error: gErr } = await supabase.schema('cfb').from('games')
     .select('id, cfbd_game_id, home_team, away_team, status, home_score, away_score')
     .eq('week_id', week.id)
@@ -88,7 +99,18 @@ export async function gradeWeek(
   let picksGraded = 0
   for (const p of picks ?? []) {
     const g = finalById.get(p.game_id)
-    if (!g) continue // game not final yet → leave ungraded (result stays NULL)
+    if (!g) {
+      if (finalize) {
+        // No-contest: this game never finished. There's no score to grade off, so
+        // treat the pick as a push worth zero points rather than leaving it stuck
+        // ungraded forever — applies uniformly to ATS, double-down, and underdog
+        // picks alike (no scoring-engine call; nothing to compute).
+        await supabase.schema('cfb').from('picks')
+          .update({ result: 'push', base_points: 0, bonus_points: 0 }).eq('id', p.id)
+        picksGraded++
+      }
+      continue // game not final yet → leave ungraded (result stays NULL) unless finalizing
+    }
     const margin = pickMargin({
       selectedTeam: p.selected_team,
       homeTeam: g.home_team,
@@ -115,8 +137,11 @@ export async function gradeWeek(
   }
 
   // Week status: 'graded' once every game is final; otherwise reflect that it's past
-  // lock as 'locked'. (Cosmetic — lock_time is the authoritative pick gate.)
-  const nextStatus = allFinal ? 'graded' : 'locked'
+  // lock as 'locked'. (Cosmetic — lock_time is the authoritative pick gate.) The
+  // finalize override forces 'graded' regardless of allFinal — that's the whole point
+  // of the escape hatch: stop scan mode from re-polling a week stuck on a game that
+  // will never report final.
+  const nextStatus = finalize ? 'graded' : (allFinal ? 'graded' : 'locked')
   if (week.status !== nextStatus) {
     await supabase.schema('cfb').from('weeks').update({ status: nextStatus }).eq('id', week.id)
   }

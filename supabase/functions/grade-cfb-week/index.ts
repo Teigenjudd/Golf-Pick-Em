@@ -16,6 +16,9 @@ import { field, toInt, gradeWeek, recomputeStandings } from '../_shared/cfbGradi
 // Trigger: no body → grade every week whose lock_time has passed and isn't fully
 // graded yet (cron / admin "grade all due"); { "week_id": "…" } → grade just that week
 // (admin "Grade week" button, PR9). Grading is idempotent — re-running refreshes.
+// { "week_id": "…", "finalize": true } → the admin "Finalize as-is" escape hatch
+// (PR9): grades whatever's final, treats the rest as no-contest pushes, and forces
+// the week to 'graded' — see gradeWeek's opts.finalize in _shared/cfbGrading.ts.
 //
 // NOTE: live in-game scoring is a separate function (poll-cfb-scores) that also calls
 // gradeWeek when a game flips final, so standings move as games end. This function
@@ -64,9 +67,11 @@ Deno.serve(async (req) => {
 
   // Optional: target a single week (admin "Grade week"); otherwise scan all due weeks.
   let targetWeekId: string | null = null
+  let finalize = false
   try {
     const body = await req.json()
     targetWeekId = body?.week_id ?? null
+    finalize = body?.finalize === true && targetWeekId != null
   } catch { /* no body → scan mode */ }
 
   // ── Which pools are live, and which event does each belong to. Standings only
@@ -96,6 +101,16 @@ Deno.serve(async (req) => {
   }
   const { data: allWeeks, error: weeksErr } = await weeksQuery
   if (weeksErr) return json({ error: weeksErr.message }, 500)
+
+  // Lock guard — targeted path only. The scan path already gates on lock_time <= now
+  // in weeksQuery above; a direct { week_id } grade had no such check, so an admin
+  // (or a stray client call) could grade a week before its pick window even closed.
+  if (targetWeekId) {
+    const targetWeek = (allWeeks ?? []).find((w) => w.id === targetWeekId)
+    if (targetWeek && (!targetWeek.lock_time || new Date(targetWeek.lock_time) > new Date())) {
+      return json({ error: "This week isn't locked yet — you can only grade a week after its lock time." }, 400)
+    }
+  }
 
   // Keep only weeks whose event has a live pool.
   const weeks = (allWeeks ?? []).filter((w) => poolsByEvent.has(w.event_id))
@@ -175,7 +190,7 @@ Deno.serve(async (req) => {
 
     for (const w of group.rows) {
       try {
-        const result = await gradeWeek(supabase, w, scoreByGameId)
+        const result = await gradeWeek(supabase, w, scoreByGameId, { finalize })
         graded.push({ week_id: w.id, picks_graded: result.picksGraded, final: result.allFinal })
         for (const pid of poolsByEvent.get(w.event_id) ?? []) affectedPools.add(pid)
       } catch (err) {

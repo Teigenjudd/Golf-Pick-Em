@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   getCfbPool, getCfbPoolWeeks, getCfbdUsage,
-  updateWeekLockTime, refreshCfbSlates,
+  updateWeekLockTime, refreshCfbSlates, refreshCfbScores,
+  gradeCfbWeek, finalizeCfbWeek, weekIsLocked,
 } from '../../../lib/cfb'
 
 // Admin: the CFB season ops surface. Slates are imported AUTOMATICALLY by the
@@ -44,6 +45,11 @@ export default function CfbPoolOps() {
   const [savingWeek, setSavingWeek] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshMsg, setRefreshMsg] = useState(null)
+
+  const [refreshingScores, setRefreshingScores] = useState(false)
+  const [scoresMsg, setScoresMsg] = useState(null)
+  const [gradingWeek, setGradingWeek] = useState(null) // weekId currently grading/finalizing
+  const [weekMsgs, setWeekMsgs] = useState({}) // weekId -> { text, isError }
 
   // Initial load. Async IIFE so setState only happens after an await (the lint-clean
   // effect pattern used elsewhere in the app); `active` guards against a late resolve
@@ -109,6 +115,69 @@ export default function CfbPoolOps() {
     }
   }
 
+  async function handleRefreshScores() {
+    setRefreshingScores(true)
+    setError(null)
+    setScoresMsg(null)
+    try {
+      const res = await refreshCfbScores()
+      setScoresMsg(res?.message ?? `Refreshed — ${res?.cfbd_calls ?? 0} CFBD calls spent.`)
+      await reload()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setRefreshingScores(false)
+    }
+  }
+
+  function setWeekMsg(weekId, text, isError = false) {
+    setWeekMsgs(m => ({ ...m, [weekId]: { text, isError } }))
+  }
+
+  async function handleGradeWeek(w) {
+    setGradingWeek(w.id)
+    setWeekMsg(w.id, null)
+    setError(null)
+    try {
+      const res = await gradeCfbWeek(w.id)
+      const g = res?.graded?.[0]
+      if (g?.error) {
+        setWeekMsg(w.id, g.error, true)
+      } else {
+        setWeekMsg(w.id, `Graded — ${g?.picks_graded ?? 0} picks scored, week ${g?.final ? 'final' : 'partial (some games still not final)'}.`)
+      }
+      await reload()
+    } catch (err) {
+      setWeekMsg(w.id, err.message, true)
+    } finally {
+      setGradingWeek(null)
+    }
+  }
+
+  async function handleFinalizeWeek(w) {
+    const confirmed = window.confirm(
+      `Finalize ${w.label} as-is? Games that haven't finished will be scored as no-contest pushes and the week will be marked graded.`,
+    )
+    if (!confirmed) return
+    setGradingWeek(w.id)
+    setWeekMsg(w.id, null)
+    setError(null)
+    try {
+      const res = await finalizeCfbWeek(w.id)
+      const g = res?.graded?.[0]
+      if (g?.error) {
+        setWeekMsg(w.id, g.error, true)
+      } else {
+        setWeekMsg(w.id, `Finalized — ${g?.picks_graded ?? 0} picks scored (unfinished games marked no-contest). Week is now graded.`)
+      }
+      await reload()
+    } catch (err) {
+      setWeekMsg(w.id, err.message, true)
+    } finally {
+      setGradingWeek(null)
+    }
+  }
+
   const inputClass = "px-[10px] py-[7px] border-[1.5px] border-[#EAD8C4] rounded-[9px] text-[13px] text-[#1C1610] bg-[#FFFAF6] outline-none"
 
   return (
@@ -157,14 +226,24 @@ export default function CfbPoolOps() {
                   Each game&apos;s spread freezes at kickoff.
                 </p>
                 {refreshMsg && <p className="text-[12px] text-fairway mt-[6px]">{refreshMsg}</p>}
+                {scoresMsg && <p className="text-[12px] text-fairway mt-[6px]">{scoresMsg}</p>}
               </div>
-              <button
-                onClick={handleRefreshSlates}
-                disabled={refreshing}
-                className="text-[13px] font-bold px-4 py-[9px] rounded-[9px] border-none text-white bg-brand hover:opacity-90 disabled:opacity-50 cursor-pointer transition-opacity"
-              >
-                {refreshing ? 'Refreshing…' : 'Refresh slates now'}
-              </button>
+              <div className="flex items-center gap-[10px] flex-wrap">
+                <button
+                  onClick={handleRefreshScores}
+                  disabled={refreshingScores}
+                  className="text-[13px] font-semibold px-4 py-[9px] rounded-[9px] border-[1.5px] border-[#EAD8C4] text-warm-500 hover:bg-warm-100 disabled:opacity-50 bg-transparent cursor-pointer transition-colors"
+                >
+                  {refreshingScores ? 'Refreshing…' : 'Refresh scores'}
+                </button>
+                <button
+                  onClick={handleRefreshSlates}
+                  disabled={refreshing}
+                  className="text-[13px] font-bold px-4 py-[9px] rounded-[9px] border-none text-white bg-brand hover:opacity-90 disabled:opacity-50 cursor-pointer transition-opacity"
+                >
+                  {refreshing ? 'Refreshing…' : 'Refresh slates now'}
+                </button>
+              </div>
             </div>
 
             {weeks.length === 0 ? (
@@ -198,7 +277,32 @@ export default function CfbPoolOps() {
                       >
                         {savingWeek === w.id ? 'Saving…' : 'Save lock'}
                       </button>
+
+                      {w.status !== 'graded' && weekIsLocked(w) && (
+                        <>
+                          <button
+                            onClick={() => handleGradeWeek(w)}
+                            disabled={gradingWeek === w.id}
+                            className="text-[13px] font-bold px-3 py-[7px] rounded-[9px] border-none text-white bg-brand hover:opacity-90 disabled:opacity-50 cursor-pointer transition-opacity"
+                          >
+                            {gradingWeek === w.id ? 'Working…' : 'Grade week'}
+                          </button>
+                          <button
+                            onClick={() => handleFinalizeWeek(w)}
+                            disabled={gradingWeek === w.id}
+                            title="Escape hatch — grades finished games, marks the rest no-contest, forces the week graded"
+                            className="text-[13px] font-semibold px-3 py-[7px] rounded-[9px] border-[1.5px] border-birdie/30 text-birdie hover:bg-birdie/5 disabled:opacity-40 bg-transparent cursor-pointer transition-colors"
+                          >
+                            Finalize as-is
+                          </button>
+                        </>
+                      )}
                     </div>
+                    {weekMsgs[w.id]?.text && (
+                      <p className={`text-[12px] mt-[8px] ${weekMsgs[w.id].isError ? 'text-birdie' : 'text-fairway'}`}>
+                        {weekMsgs[w.id].text}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
