@@ -10,6 +10,7 @@ import Profile from './pages/Profile'
 import Privacy from './pages/legal/Privacy'
 import Terms from './pages/legal/Terms'
 import CreateTournament from './pages/admin/CreateTournament'
+import CreatePoolChooser from './pages/admin/CreatePoolChooser'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import CfbAdmin from './pages/admin/cfb/CfbAdmin'
 import CreateCfbPool from './pages/admin/cfb/CreateCfbPool'
@@ -84,6 +85,7 @@ function App() {
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/create" element={<AdminRoute><CreatePoolChooser /></AdminRoute>} />
           <Route path="/admin/create-tournament" element={<AdminRoute><CreateTournament /></AdminRoute>} />
           <Route path="/admin/cfb" element={<AdminRoute><CfbAdmin /></AdminRoute>} />
           <Route path="/admin/cfb/create-pool" element={<AdminRoute><CreateCfbPool /></AdminRoute>} />

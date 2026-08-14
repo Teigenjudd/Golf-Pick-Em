@@ -1,13 +1,13 @@
 # Poold — CEO Report
 
-*Updated 2026-08-14 · latest: CFB cron-control admin toggle (PR9b, code only) — cutover still pending*
+*Updated 2026-08-14 · latest: CFB read-only picks card + sport-agnostic admin create (PR #55)*
 
-**Status:** 🟢 Golf live in prod · 🟡 CFB in build — PR9b of ~10 shipped (cron-control toggle code; deploy + arming is what's left) · Sports live: **1**
+**Status:** 🟢 Golf live in prod · 🟡 CFB in build — every player and admin screen is now built; only the prod cutover is left · Sports live: **1**
 
-**State of the app.** Golf pick'em is live in production (auth, pools, picks, live leaderboards, prize-pool math). CFB is fully built end to end in code — backend, admin, join/dashboard, live leaderboard, weekly picks builder — but nothing is deployed or cron-armed yet, so it isn't running for real users.
+**State of the app.** Golf pick'em is live in production (auth, pools, picks, live leaderboards, prize-pool math). CFB is fully built end to end in code — backend, admin, join/dashboard, live leaderboard, weekly picks — but not deployed or cron-armed, so it isn't running for real users yet.
 
-**Recent wins.** Admins now have an on/off toggle for CFB's three pollers (slates, live scores, grading), mirroring golf's existing control. The live-score schedule now runs every in-season day, not just game weekends, so the Monday championship and weekday bowls get live scores too — free, since the poller costs nothing when idle.
+**Recent wins.** The weekly picks page now shows a frozen read-only card once a week locks (submitted, auto-filled, or graded) — the last missing CFB player screen. Admin pool creation got a sport chooser plus a Golf|CFB switcher shared by both admin panels, and CFB pools no longer leak into the golf admin list.
 
-**Next up.** The prod cutover: apply the migration, deploy the CFB edge functions, and flip the new toggle on — the step that actually turns CFB on. Then the read-only locked/graded picks view, the last missing player screen.
+**Next up.** The prod cutover: apply the CFB migration, deploy the edge functions, and flip the polling toggle on — the step that actually turns CFB on for real users.
 
 **Pitfalls to watch.** None new.

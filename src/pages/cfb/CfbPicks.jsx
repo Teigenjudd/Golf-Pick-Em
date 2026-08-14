@@ -4,11 +4,12 @@ import { useAuth } from '../../context/AuthContext'
 import PicksHeader from '../../components/pool/PicksHeader'
 import CfbGameCard from '../../components/cfb/CfbGameCard'
 import CfbCardTracker from '../../components/cfb/CfbCardTracker'
+import CfbCardReadonly from '../../components/cfb/CfbCardReadonly'
 import {
   getCfbPool, getCfbPoolWeeks, getCfbWeekGames, getCfbWeekPicks, submitCfbWeekPicks,
   weekIsLocked,
 } from '../../lib/cfb'
-import { cfbCardValidity, buildPicksPayload } from '../../utils/cfbCard'
+import { cfbCardValidity, buildPicksPayload, shapeCard } from '../../utils/cfbCard'
 import { formatLockLabel } from '../../utils/cfbFormat'
 import { CFB_THEME } from '../../theme/cfb'
 
@@ -18,10 +19,11 @@ import { CFB_THEME } from '../../theme/cfb'
 // is a client-side mirror of cfb.cfb_submit_week_picks — that RPC is the real gate and
 // throws the friendly message we surface on a rejected submit.
 //
-// PR-A builds: loading, pool-not-found, no-open-week/week-locked (brief notice),
-// slate-not-posted, open-empty, open-editing (existing card pre-filled), and
-// success-after-submit. The rich READ-ONLY locked/auto-filled/graded card views are
-// PR-B — not built here; see CfbPoolDetail's scorecard-expand for that data shape.
+// States: loading, pool-not-found, no-weeks-yet, slate-not-posted, open-empty,
+// open-editing (existing card pre-filled), success-after-submit, and the READ-ONLY
+// locked/auto-filled/graded card views (PR-B) — once a week locks the card is frozen
+// and rendered via CfbCardReadonly, sharing the graded row shape (shapeCard) and rows
+// (CfbCardRows) with CfbPoolDetail's scorecard-expand so the two can't drift.
 
 function Shell({ poolId, eyebrow, title, subtitle, children }) {
   return (
@@ -66,6 +68,7 @@ export default function CfbPicks() {
   const [games, setGames] = useState([])
   const [gamesLoaded, setGamesLoaded] = useState(false)
   const [hasExistingCard, setHasExistingCard] = useState(false)
+  const [myPicks, setMyPicks] = useState([])
 
   const [atsPicks, setAtsPicks] = useState({})
   const [doubleDownGameId, setDoubleDownGameId] = useState(null)
@@ -90,15 +93,24 @@ export default function CfbPicks() {
     return () => { active = false }
   }, [poolId])
 
-  // Resolve the target week: ?week=N if it exists AND isn't locked, else the earliest
-  // not-locked week. Null if every week is locked/graded (or none exist).
+  // Resolve the target week. Priority (per PR-B): honor ?week=N if it exists — even
+  // when locked, so a deep-link to a past week shows that week's read-only card. Else
+  // the earliest still-open week (the one to build). Else, with nothing open, the most
+  // recent locked/graded week so a returning player lands on their latest card. Null
+  // only when the pool has no weeks at all.
   const targetWeek = useMemo(() => {
     if (!weeks.length) return null
-    const wanted = Number(searchParams.get('week'))
-    const requested = weeks.find(w => w.week_number === wanted)
-    if (requested && !weekIsLocked(requested)) return requested
+    // Only honor ?week when it's actually present and a positive number — a missing
+    // param would otherwise Number()-coerce to 0 and (if a Week 0 ever existed) resolve
+    // to it instead of the current week.
+    const wantedRaw = searchParams.get('week')
+    const wanted = wantedRaw != null ? Number(wantedRaw) : null
+    const requested = wanted ? weeks.find(w => w.week_number === wanted) : null
+    if (requested) return requested
     const open = weeks.filter(w => !weekIsLocked(w)).sort((a, b) => a.week_number - b.week_number)
-    return open[0] ?? null
+    if (open[0]) return open[0]
+    const locked = weeks.filter(w => weekIsLocked(w)).sort((a, b) => b.week_number - a.week_number)
+    return locked[0] ?? null
   }, [weeks, searchParams])
 
   // ── target-week slate + this user's existing card ───────────────────────────
@@ -115,6 +127,7 @@ export default function CfbPicks() {
       setGames(g)
 
       const mine = picks.filter(pk => pk.user_id === user.id)
+      setMyPicks(mine)
       const ats = {}
       let dd = null
       let dog = null
@@ -173,6 +186,16 @@ export default function CfbPicks() {
     [atsPicks, doubleDownGameId, underdogGameId],
   )
 
+  // Once the target week is locked/graded the card is frozen — grade it with the shared
+  // engine off each game's live/final score (same shape the pool-detail expand renders).
+  const isLocked = weekIsLocked(targetWeek)
+  const readonlyCard = useMemo(() => {
+    if (!isLocked || !myPicks.length) return null
+    const gamesById = Object.fromEntries(games.map(g => [g.id, g]))
+    return shapeCard(myPicks, gamesById)
+  }, [isLocked, myPicks, games])
+  const isAutoFilled = !!readonlyCard?.picks.some(p => p.autoFilled)
+
   async function handleSubmit() {
     if (!validity.valid || submitting || !targetWeek) return
     setSubmitting(true)
@@ -213,7 +236,7 @@ export default function CfbPicks() {
       <Shell poolId={poolId} eyebrow={eyebrow} title="Build your card" subtitle={pool.name}>
         <NoticeCard>
           <p className="text-[13px]" style={{ color: CFB_THEME.ink }}>
-            No open week right now — check the pool for results.
+            The season schedule isn't up yet — check back once Week 1 is posted.
           </p>
           <Link
             to={`/cfb/pool/${poolId}`}
@@ -256,6 +279,57 @@ export default function CfbPicks() {
     return (
       <Shell poolId={poolId} eyebrow={weekEyebrow} title="Build your card" subtitle={subtitle}>
         <p className="text-[13px]" style={{ color: CFB_THEME.muted }}>Loading…</p>
+      </Shell>
+    )
+  }
+
+  // ── locked / auto-filled / graded — the read-only frozen card ────────────────
+  if (isLocked) {
+    const weekName = targetWeek.label ?? `Week ${targetWeek.week_number}`
+    const graded = targetWeek.status === 'graded'
+    const lockedSubtitle = graded ? 'Final' : 'Locked'
+
+    if (!readonlyCard) {
+      // The week locked and this player never got a card in (and none was auto-filled).
+      return (
+        <Shell poolId={poolId} eyebrow={weekEyebrow} title="Your card" subtitle={lockedSubtitle}>
+          <NoticeCard>
+            <p className="text-[13px]" style={{ color: CFB_THEME.ink }}>
+              {graded ? `${weekName} is final.` : `Picks are locked for ${weekName}.`} You didn't get a card in this week.
+            </p>
+            <Link
+              to={`/cfb/pool/${poolId}`}
+              className="inline-block mt-3 text-[12.5px] font-semibold no-underline"
+              style={{ color: CFB_THEME.accent }}
+            >
+              ← Back to the pool
+            </Link>
+          </NoticeCard>
+        </Shell>
+      )
+    }
+
+    const notice = isAutoFilled
+      ? 'You missed the deadline — a random card was filled in. No double-down this week.'
+      : graded
+        ? `${weekName} is final.`
+        : `Picks are locked for ${weekName}.`
+
+    return (
+      <Shell poolId={poolId} eyebrow={weekEyebrow} title="Your card" subtitle={lockedSubtitle}>
+        <CfbCardReadonly
+          card={readonlyCard}
+          notice={notice}
+          variant={isAutoFilled ? 'autofilled' : null}
+          weekLabel={weekName}
+        />
+        <Link
+          to={`/cfb/pool/${poolId}`}
+          className="inline-block mt-4 text-[12.5px] font-semibold no-underline"
+          style={{ color: CFB_THEME.accent }}
+        >
+          ← Back to the pool
+        </Link>
       </Shell>
     )
   }

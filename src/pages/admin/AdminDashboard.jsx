@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
+import AdminSportSwitcher from '../../components/admin/AdminSportSwitcher'
 import {
   getAdminPools, getAllPools, setPoolStatus, bumpRefreshCount,
   getPoolPicks, removePoolParticipant,
@@ -167,12 +168,6 @@ function TournamentsTab() {
               {showClosed ? 'Hide closed' : `Show closed (${closedCount})`}
             </button>
           )}
-          <Link
-            to="/admin/cfb"
-            className="text-[13px] text-warm-400 font-semibold no-underline hover:text-charcoal transition-colors"
-          >
-            🏈 CFB pools
-          </Link>
           <Link
             to="/admin/create-tournament"
             className="text-[13px] text-brand font-semibold no-underline hover:text-brand/80 transition-colors"
@@ -520,6 +515,11 @@ export default function AdminDashboard() {
       </div>
 
       <div className="max-w-[620px] mx-auto px-[18px] pt-[22px]">
+        {/* Sport switcher */}
+        <div className="mb-[18px]">
+          <AdminSportSwitcher active="golf" size="lg" />
+        </div>
+
         {/* Tabs */}
         <div className="flex gap-[2px] bg-[#EAD8C4] rounded-[10px] p-[3px] mb-[22px]">
           {TABS.map(tab => (

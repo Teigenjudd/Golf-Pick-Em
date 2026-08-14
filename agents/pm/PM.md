@@ -17,11 +17,11 @@ A no-money-on-platform pick'em app for friend groups. Players join pools, make p
 against a field of athletes, and compete on a shared leaderboard.
 
 **Current state:** Live at getpoold.app (Netlify). React + Vite + Tailwind v4 + Supabase
-(Postgres/Auth/Edge Functions/RLS). Golf is live in prod; CFB (sport #2) is in active
-build — backend, admin, the player leaderboard page, the interactive weekly picks
-builder, and the sport-dispatch layer (a CFB pool is reachable through the normal
-join-code flow and shows on the Dashboard) all exist; the read-only locked/graded card
-view does not. The app runs on the `public` core + per-sport schema split
+(Postgres/Auth/Edge Functions/RLS). Golf is live in prod; CFB (sport #2) is fully built in
+code — backend, admin, the player leaderboard page, the weekly picks builder plus its
+read-only locked/auto-filled/graded card, and the sport-dispatch layer (a CFB pool is
+reachable through the normal join-code flow and shows on the Dashboard) all exist; only
+the prod cutover (deploy + arm cron) is left. The app runs on the `public` core + per-sport schema split
 (`golf`, `cfb`), with `lib/golf.js` / `lib/cfb.js` as the only seams into each. Phase 5
 (dropping the dead legacy `public` golf tables) is the remaining migration cleanup. See
 `docs/CEO_REPORT.md` for the current founder narrative and the status board below.
@@ -65,14 +65,16 @@ writing code.
 
 - No real-money entry fees or payouts through the app (display-only prize pools are OK)
 - No second sport **built** until golf is proven and stable — the schema seam exists
-  (that was the point of the migration). **CFB is the committed sport #2**, in active
-  build: backend, admin, the player leaderboard page, the interactive weekly picks
-  builder, and the sport-dispatch layer exist — a CFB pool is now reachable through the
-  normal join-code flow and shown on the Dashboard, same as golf. Only the read-only
-  locked/graded card view is still missing. This is a deliberate exception to "golf first" — see
-  `agents/pm/DECISIONS.md`. Current architecture: `CLAUDE.md` §Architecture ("Sport #2 =
-  CFB"). Rules: `docs/CFB_FORMAT.md`. Build sequence + progress: `docs/CFB_BUILD_PLAN.md`,
-  `docs/CEO_REPORT.md`.
+  (that was the point of the migration). **CFB is the committed sport #2**, and every
+  player-facing and admin surface is now built: backend, admin (including a
+  sport-agnostic `/admin/create` chooser and a Golf|CFB switcher shared by both admin
+  panels), the player leaderboard page, the weekly picks builder plus its read-only
+  locked/auto-filled/graded card, and the sport-dispatch layer — a CFB pool is reachable
+  through the normal join-code flow and shown on the Dashboard, same as golf. What's left
+  is the prod cutover (deploy the CFB edge functions, arm the cron). This is a deliberate
+  exception to "golf first" — see `agents/pm/DECISIONS.md`. Current architecture:
+  `CLAUDE.md` §Architecture ("Sport #2 = CFB"). Rules: `docs/CFB_FORMAT.md`. Build
+  sequence + progress: `docs/CFB_BUILD_PLAN.md`, `docs/CEO_REPORT.md`.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -148,7 +150,7 @@ writing code.
 
 **Live in prod (golf):** full pick'em end to end — admin creates a tournament, players join by code, make tiered picks, watch a live leaderboard (Slash Golf via the `poll-leaderboard` edge function, cached, pg_cron on tournament weekends), scored with WD/CUT penalties, optional prize-pool display, weather widget, public no-auth `/demo`. Runs on the `public` core + `golf` schema split (`lib/golf.js` is the only golf seam). Branded auth email (Resend SMTP), user-set display names, invite-link previews, and legal pages are all live. Security criticals C1–C4 and A1–A2 are closed.
 
-**In build (CFB, sport #2):** the full backend, the admin surface, the player Pool Detail / leaderboard page, the interactive weekly picks builder, and the sport-dispatch layer (a CFB pool is joinable and visible through the normal join-code flow + Dashboard, same as golf) are live; only the read-only locked/graded card view is not. Current architecture and the exact what-exists / what-doesn't-yet are in `CLAUDE.md` (§Architecture Summary → "Sport #2 = CFB"); progress against the plan and the founder narrative are in `docs/CEO_REPORT.md`, with the sequence in `docs/CFB_BUILD_PLAN.md`.
+**In build (CFB, sport #2):** the full backend, the admin surface (including sport-agnostic pool creation and a Golf|CFB admin switcher), the player Pool Detail / leaderboard page, the weekly picks builder plus its read-only locked/auto-filled/graded card, and the sport-dispatch layer (a CFB pool is joinable and visible through the normal join-code flow + Dashboard, same as golf) are all live in code; only the prod cutover (deploy the edge functions, arm the cron) is left. Current architecture is in `CLAUDE.md` (§Architecture Summary → "Sport #2 = CFB"); progress against the plan and the founder narrative are in `docs/CEO_REPORT.md`, with the sequence in `docs/CFB_BUILD_PLAN.md`.
 
 **Open — launch blockers (gate any growth/marketing push on these):**
 - 🔴 **Supabase free tier auto-pauses the project** after ~7 days idle — it has, taking getpoold.app down with an opaque "load failed" at sign-in. Any quiet week between events can kill the app. Upgrade to Pro or run a heartbeat. (ROADMAP P0.5)

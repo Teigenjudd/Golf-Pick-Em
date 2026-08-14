@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { getAdminCfbPools, getCfbPollingStatus, startCfbPolling, stopCfbPolling } from '../../../lib/cfb'
+import AdminSportSwitcher from '../../../components/admin/AdminSportSwitcher'
 
 // Admin: index of CFB (college football) pools. Entry point to create a new season
 // pool and to open each pool's weekly ops. Kept separate from the golf-centric
@@ -105,13 +106,18 @@ export default function CfbAdmin() {
   return (
     <div className="min-h-screen bg-sand pb-12">
       <div className="bg-white border-b border-[#EAD8C4] px-[18px] h-14 flex items-center gap-[14px] sticky top-0 z-10">
-        <Link to="/admin" className="text-[13px] text-warm-400 no-underline">← Admin</Link>
+        <Link to="/dashboard" className="text-[13px] text-warm-400 no-underline">← Dashboard</Link>
         <span className="text-[#EAD8C4] text-base select-none">|</span>
         <span className="font-display font-extrabold text-[22px] text-brand tracking-[.06em]">POOLD</span>
-        <span className="font-display font-bold text-[16px] text-[#1C1610] tracking-[.04em]">College Football</span>
+        <span className="font-display font-bold text-[16px] text-[#1C1610] tracking-[.04em]">Admin</span>
       </div>
 
       <div className="max-w-3xl mx-auto px-[18px] py-6">
+        {/* Sport switcher */}
+        <div className="mb-[18px]">
+          <AdminSportSwitcher active="cfb" size="lg" />
+        </div>
+
         {error && (
           <div className="mb-5 p-4 bg-birdie/5 border border-birdie/20 rounded-[11px] text-[13px] text-birdie">
             {error}

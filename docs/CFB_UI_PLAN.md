@@ -13,7 +13,9 @@
 > deviations from §5's original spec: the join CTA routes straight to the picks page,
 > not the pool overview; and the tile's "· Live" chip variant was deferred, so a
 > locked-mid-game week and a locked-between-games week both just read "Locked"). §7's
-> read-only locked/graded card view is still not built.
+> read-only locked/auto-filled/graded card view is now built too (PR-B, `docs/PAGES.md`
+> §10g) — see that section for the shipped shape (a simpler live line than this brief's
+> possession-dot/down-distance sketch; results + points are what shipped).
 
 ---
 
