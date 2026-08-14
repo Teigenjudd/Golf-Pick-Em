@@ -51,6 +51,16 @@ export async function finalizeCfbWeek(weekId) {
   return data
 }
 
+// Auto-fill missing cards for a LOCKED week (admin "Auto-fill missing cards"): every
+// pool participant who never submitted gets a random valid card (no double-down),
+// so they stay in the scoring pool. Pure-DB SECURITY DEFINER RPC (no CFBD call);
+// returns the number of cards filled. The RPC refuses to run before the deadline.
+export async function autofillCfbWeek(weekId) {
+  const { data, error } = await cfb().rpc('autofill_week', { p_week_id: weekId })
+  if (error) throw error
+  return data ?? 0
+}
+
 // Trigger a live-scoreboard poll (admin "Refresh scores"); normally a ~1-min cron.
 export async function refreshCfbScores() {
   const { data, error } = await supabase.functions.invoke('poll-cfb-scores', { body: {} })

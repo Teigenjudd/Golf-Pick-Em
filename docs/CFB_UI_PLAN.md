@@ -450,7 +450,7 @@ safety over polish. Make destructive/irreversible actions (lock, grade) confirm.
 | CFB Pool Detail (§6) + `CfbWidgets` (§6a) + standings expand + live line (§7a) | **PR7** |
 | Dashboard CFB tile (§4) + Join branch (§5) + sport-dispatch + Create CFB Pool (§8) | **PR8** |
 | Weekly Ops console (§9b) + cron (grading + **live-poll arming**) | **PR9** |
-| Auto-fill states (§7 locked/auto-filled) | **PR10** |
+| Auto-fill states (§7 locked/auto-filled) | UI **shipped under PR6's PR-B** (`CfbCardReadonly`, PR #55); the backend that actually fills the card (`cfb.autofill_week` + lock cron) **shipped, PR10, PR #56** |
 | CFB `SportBadge` config (§9) | with PR6 (first screen that renders it) |
 
 Design can produce all of §4–§9 now; the PRs consume the designs in this order. The

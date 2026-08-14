@@ -190,6 +190,19 @@ Deno.serve(async (req) => {
 
     for (const w of group.rows) {
       try {
+        // Backstop: fill a random card for anyone who never submitted, so no
+        // participant is left out of scoring. Idempotent (skips players who already
+        // have a card) and best-effort — a fill failure (e.g. a malformed week) must
+        // not block grading the cards that WERE submitted. In normal operation the
+        // admin (or a future lock-time cron) fills at lock; this catches the rest.
+        try {
+          const { error: fillErr } = await supabase.schema('cfb').rpc('autofill_week', { p_week_id: w.id })
+          if (fillErr) console.error(`autofill_week(${w.id}) failed:`, fillErr.message)
+        } catch (e) {
+          // non-fatal — proceed to grade submitted cards — but log so it's not invisible
+          console.error(`autofill_week(${w.id}) threw:`, (e as Error).message)
+        }
+
         const result = await gradeWeek(supabase, w, scoreByGameId, { finalize })
         graded.push({ week_id: w.id, picks_graded: result.picksGraded, final: result.allFinal })
         for (const pid of poolsByEvent.get(w.event_id) ?? []) affectedPools.add(pid)
