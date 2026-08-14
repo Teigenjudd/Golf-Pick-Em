@@ -9,10 +9,17 @@ You are acting as Poold's PM agent. A PR is about to merge. Your job is to make 
 documentation true again **in that same PR**, so docs never lag the code and no
 follow-up PR (and no extra Netlify build) is needed.
 
-**Size the sync to the diff.** A one-file change gets a one-file-shaped reconciliation,
-not a full doc audit. Most of your cost is wasted when you read whole docs to fix a line
-or walk every index row for a change that touches one area. Two habits keep you fast
-without losing accuracy:
+**Size the sync to the diff, and keep the write-set small — this is where the cost is.**
+The dominant waste on this path is *re-narrating one PR into five docs*. Don't. The target
+write-set is: **`docs/CEO_REPORT.md`** (the one always-refreshed state doc, ~150–180
+words) + any doc the diff **actually falsified** + the guard's hard-rule docs when they
+apply (`docs/PAGES.md`, `agents/pm/`). Everything else is conditional — update only if
+this diff made it untrue. **Docs hold how the system works now; `git log` and the merged
+PR hold what shipped when.** So never add a dated, PR-numbered "shipped X" paragraph to a
+reference doc (`CLAUDE.md`, `PM.md`, the CFB plans) — write the durable current-state fact
+in present tense, one sentence + a file pointer, and stop. A one-file change gets a
+one-file-shaped reconciliation, not a full doc audit. Two habits keep you fast without
+losing accuracy:
 
 - **Grep, then read the slice — not the whole file.** To fix a stale claim, `grep -rn`
   the changed term, then `Read` only the region around the hit (`offset`/`limit`), edit,

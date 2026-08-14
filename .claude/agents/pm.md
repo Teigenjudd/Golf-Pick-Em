@@ -28,12 +28,16 @@ source of truth. Read **`agents/pm/PM.md`** first for the ownership index (the c
 you run on), then execute the skill's steps against the current branch:
 
 1. Read the real diff (`git diff origin/main...HEAD`), not the PR title or your memory.
-2. Walk the ownership index — for each owned doc, ask whether this diff made it untrue.
+2. Refresh `docs/CEO_REPORT.md` (the one always-updated state doc, ~150–180 words), then
+   let the **changed paths** pull in only the ownership-index rows they implicate — don't
+   walk all of them. Update a doc only if this diff made it untrue.
 3. Do the reverse pass: grep the docs for claims this PR just *falsified* (a confidently
-   wrong doc is worse than a stale one).
+   wrong doc is worse than a stale one) — this is the pass that catches real bugs.
 4. Log a decision if future-us would otherwise re-litigate the call (append-only).
-5. Verify every claim against the code, use absolute dates, then **commit the docs into
-   this same branch** — never open a second PR.
+5. Keep every edit to a present-tense current-state fact + a file pointer — **no dated,
+   PR-numbered "shipped X" narration in reference docs** (that's what git/the PR are for).
+   Verify claims against the code, use absolute dates where a date is genuinely needed,
+   then **commit into this same branch** — never open a second PR.
 
 ## Boundaries
 

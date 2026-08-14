@@ -28,7 +28,14 @@ If a PR exists, read its body too (`gh pr view --json title,body`) — it often 
 
 ## 2. Review across four axes
 
-Think hard. Trace the control flow and failure modes before writing anything.
+**Scale the effort to the diff.** A large or subtle change (new RPC, migration, scoring
+logic, auth/RLS, cross-schema data flow) earns a full deep trace. A small, mechanical, or
+low-risk diff (a copy tweak, a prop rename, a config bump, a test-only change) gets a
+quick proportionate pass and a short artifact — don't spend a deep review, and don't
+manufacture findings to justify one. Right-size first, then review.
+
+Think hard on the parts that warrant it. Trace the control flow and failure modes before
+writing anything.
 
 - **Correctness** — bugs, unhandled edge cases, races, RLS/permission gaps, broken data
   assumptions. State the concrete failure scenario (inputs → wrong result), not a vibe.
