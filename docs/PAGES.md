@@ -541,14 +541,16 @@ the UI yet (reachable only by typing the URL, same as CfbPoolDetail).
   friendly message on rejection (surfaced as-is)
 
 **Target-week resolution:** `?week=N` if that week exists and isn't locked, else the
-earliest not-locked week (`weekIsLocked` — status `locked`/`graded`, or `lock_time` in the
-past — copied locally, same helper as CfbPoolDetail). If no unlocked week exists, shows a
-"No open week right now — check the pool for results." notice — this covers both the
-week-locked and season-over cases in PR-A.
+earliest not-locked week (`weekIsLocked(w)` — status `locked`/`graded`, or `lock_time` in
+the past — exported from `src/lib/cfb.js` and shared with CfbPoolDetail so the two pages
+can't drift). If no unlocked week exists, shows a "No open week right now — check the pool
+for results." notice — this covers both the week-locked and season-over cases in PR-A.
 
 **What's on the page:**
 - `PicksHeader` (CFB theme, `showBadge={false}`) — eyebrow is the week label (e.g.
-  `WEEK 4`), title "Build your card", subtitle `Locks {lock_time}` (via `formatKick`)
+  `WEEK 4`), title "Build your card", subtitle `Locks {lock_time}` (via
+  `formatLockLabel` in `src/utils/cfbFormat.js` — full date + local timezone, e.g.
+  "Locks Sat, Sep 21, 12:00 PM PDT")
 - The slate as a scrollable list of `CfbGameCard`s (one per game, kickoff-ordered): two
   ATS team chips (tap to pick who covers, tap again to clear), a ★ double-down toggle
   (visible only once this game is an ATS pick, showing the live sign-general bonus copy
@@ -721,7 +723,7 @@ each one a display-ready shape.
 | `CfbWidgets` | `games[]`, `weekPicks[]`, `weeklyPoints[]`, `weekLabel`, `locked`, `stakeAmount`, `participantCount`, `payoutStructure` | This Week's Slate, Weekly Points, Most-Backed Teams, Underdog Board, and the reused `PrizePoolWidget` — see §10f for the pre-lock hide rule |
 
 Display formatting shared by the picks page too: `src/utils/cfbFormat.js`
-(`formatSpread`, `pickLine`, `formatKick`).
+(`formatSpread`, `pickLine`, `formatKick`, `formatLockLabel`).
 
 ---
 
