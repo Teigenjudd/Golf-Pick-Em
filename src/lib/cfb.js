@@ -394,3 +394,26 @@ export async function getMyCfbPools(userId) {
   result.sort((a, b) => (b.seasonYear ?? 0) - (a.seasonYear ?? 0) || a.name.localeCompare(b.name))
   return result
 }
+
+// ── CFB polling controls (admin) ─────────────────────────────────────────────
+// The cfb-* cron jobs (poll-cfb-lines, poll-cfb-scores, grade-cfb-week) are turned
+// on/off through admin-only RPCs (20260814000000_admin_cfb_polling_controls) —
+// the CFB analogue of golf.js's getPollingStatus/startPolling/stopPolling. Each
+// RPC re-checks is_admin() server-side; the admin button just calls them. These
+// throw on error (unlike the read helpers above) — the toggle needs to surface
+// failures, not silently no-op.
+export async function getCfbPollingStatus() {
+  const { data, error } = await supabase.rpc('admin_cfb_polling_status')
+  if (error) throw error
+  return !!data
+}
+
+export async function startCfbPolling() {
+  const { error } = await supabase.rpc('admin_start_cfb_polling')
+  if (error) throw error
+}
+
+export async function stopCfbPolling() {
+  const { error } = await supabase.rpc('admin_stop_cfb_polling')
+  if (error) throw error
+}
