@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getPoolViewByCode } from '../lib/golf'
+import { getPoolByCode, joinPool } from '../lib/pools'
+import { getCfbPool, getCfbParticipants } from '../lib/cfb'
 import { useAuth } from '../context/AuthContext'
 import SportBadge from '../components/SportBadge'
 import Footer from '../components/Footer'
+import { CFB_THEME, cfbBadge } from '../theme/cfb'
 
 export default function Join() {
   const { code } = useParams()
@@ -16,6 +19,13 @@ export default function Join() {
   const [tournamentError, setTournamentError] = useState(null)
   const [badge, setBadge] = useState(null)
 
+  // CFB branch (docs/CFB_UI_PLAN.md §5) — set instead of tournament/badge when the
+  // pool's sport is 'cfb'. Golf's tournament/badge state above is untouched.
+  const [cfbPool, setCfbPool] = useState(null)
+  const [cfbPlayerCount, setCfbPlayerCount] = useState(0)
+  const [joining, setJoining] = useState(false)
+  const [joinError, setJoinError] = useState(null)
+
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [sending, setSending] = useState(false)
@@ -24,17 +34,41 @@ export default function Join() {
   useEffect(() => {
     if (authLoading || !user) return
     setTournamentLoading(true)
-    getPoolViewByCode(code)
-      .then(pool => {
-        if (!pool) {
-          setTournamentError('Invalid or expired join code.')
-        } else {
-          setTournament(pool)
-          setBadge(pool.badge_config ?? null)
-        }
-      })
-      .finally(() => setTournamentLoading(false))
+    ;(async () => {
+      const meta = await getPoolByCode(code)
+      if (!meta) { setTournamentError('Invalid or expired join code.'); return }
+
+      if (meta.sport_id === 'golf') {
+        // Golf: exact existing behavior, untouched.
+        const pool = await getPoolViewByCode(code)
+        if (!pool) { setTournamentError('Invalid or expired join code.'); return }
+        setTournament(pool)
+        setBadge(pool.badge_config ?? null)
+      } else if (meta.sport_id === 'cfb') {
+        const [pool, participants] = await Promise.all([
+          getCfbPool(meta.id),
+          getCfbParticipants(meta.id),
+        ])
+        if (!pool) { setTournamentError('Invalid or expired join code.'); return }
+        setCfbPool(pool)
+        setCfbPlayerCount(participants.length)
+      } else {
+        setTournamentError('Invalid or expired join code.')
+      }
+    })().finally(() => setTournamentLoading(false))
   }, [user, authLoading, code])
+
+  async function handleCfbJoin() {
+    setJoining(true)
+    setJoinError(null)
+    try {
+      await joinPool(cfbPool.id, user.id)
+      navigate(`/cfb/pool/${cfbPool.id}/picks`)
+    } catch (err) {
+      setJoinError(err.message)
+      setJoining(false)
+    }
+  }
 
   async function handleEmailSubmit(e) {
     e.preventDefault()
@@ -150,6 +184,81 @@ export default function Join() {
               <span className="text-brand font-semibold">Go to dashboard →</span>
             </Link>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  /* ── Authenticated: CFB invite card ── */
+  if (cfbPool) {
+    const joinClosed = cfbPool.lock_time && new Date(cfbPool.lock_time) <= new Date()
+
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-sand px-5 py-10">
+        <div className="w-full max-w-[360px]">
+
+          <div className="text-center mb-7">
+            <div className="font-display font-extrabold text-[54px] text-brand tracking-[.08em] leading-none">POOLD</div>
+          </div>
+
+          <div className="bg-white border border-[#EAD8C4] rounded-2xl px-6 py-7 text-center shadow-[0_4px_24px_rgba(28,22,16,.07)]">
+            <div className="font-display font-bold text-[11px] uppercase tracking-[.2em] text-gold mb-1.5">
+              You&apos;re invited
+            </div>
+            <div className="font-display font-extrabold text-[30px] text-[#1C1610] leading-none mb-1">
+              {cfbPool.name}
+            </div>
+            <div className="text-[13px] text-warm-400 mb-6 leading-[1.5]">
+              College Football Pick&apos;em · Season {cfbPool.season_year}
+            </div>
+
+            {/* CFB badge preview strip */}
+            <div className="rounded-[12px] px-4 py-3.5 flex items-center gap-3 mb-5" style={{ background: CFB_THEME.headerGradient }}>
+              <SportBadge config={cfbBadge(cfbPool.season_year)} size="sm" />
+              <div className="flex-1 text-left">
+                <div className="font-display font-bold text-[9px] uppercase tracking-[.14em]" style={{ color: CFB_THEME.accent }}>
+                  {joinClosed ? 'SEASON IN PROGRESS' : 'JOIN OPEN'}
+                </div>
+                <div className="font-display font-extrabold text-[17px] text-cream leading-[1.1]">
+                  {cfbPool.name}
+                </div>
+              </div>
+            </div>
+
+            {/* Format explainer */}
+            <div className="rounded-[12px] bg-warm-100 border border-warm-200 px-4 py-3 text-[12.5px] text-warm-500 text-left leading-[1.5] mb-4">
+              Every week: pick 5 to cover the spread, double-down your best one, and take an underdog to win outright. Points stack all season.
+            </div>
+
+            <div className="text-[12.5px] text-warm-400 mb-5">
+              {cfbPlayerCount} player{cfbPlayerCount !== 1 ? 's' : ''} in
+            </div>
+
+            {joinClosed ? (
+              <div className="rounded-[12px] bg-warm-100 border border-warm-200 px-4 py-3 text-[13px] text-warm-500 mb-3">
+                This pool&apos;s season has already started — joining is closed.
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleCfbJoin}
+                  disabled={joining}
+                  className="block w-full text-white font-bold text-[15px] py-[14px] rounded-[12px] border-none cursor-pointer mb-3 disabled:opacity-50"
+                  style={{ background: CFB_THEME.accent }}
+                >
+                  {joining ? 'Joining…' : 'Join & make picks →'}
+                </button>
+                {joinError && <p className="text-sm text-birdie mb-3">{joinError}</p>}
+              </>
+            )}
+
+            <Link to="/dashboard" className="text-[12.5px] text-warm-400 no-underline">
+              Go to dashboard
+            </Link>
+          </div>
+
+          <Footer />
+
         </div>
       </div>
     )
