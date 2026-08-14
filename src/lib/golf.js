@@ -109,9 +109,11 @@ export async function getLatestLeaderboard(eventId) {
   return data ?? null
 }
 
-// Golf pools (for the dashboard admin quick-list). Filters `public.pools` to golf the
-// same way getAdminPools does — a golf pool is one whose event has a golf.event_details
-// row, so CFB pools (which don't) don't leak in and link to the golf /tournament/:id.
+// Golf pools (for the dashboard admin quick-list). `public.pools` is sport-agnostic, so
+// filter to golf by the event's `sport_id` — the canonical sport marker — rather than
+// probing the golf schema. This keeps CFB pools out of the golf list (they'd otherwise
+// link to the golf /tournament/:id page, which can't load them). Unlike getAdminPools,
+// this list needs no golf-only fields, so it never touches the golf schema at all.
 export async function getAllPools() {
   const { data: pools } = await supabase
     .from('pools')
@@ -119,11 +121,11 @@ export async function getAllPools() {
     .order('created_at', { ascending: false })
   if (!pools?.length) return []
   const eventIds = [...new Set(pools.map(p => p.event_id))]
-  const { data: details } = await golf()
-    .from('event_details')
-    .select('event_id')
-    .in('event_id', eventIds)
-  const golfEvents = new Set((details ?? []).map(d => d.event_id))
+  const { data: events } = await supabase
+    .from('events')
+    .select('id, sport_id')
+    .in('id', eventIds)
+  const golfEvents = new Set((events ?? []).filter(e => e.sport_id === 'golf').map(e => e.id))
   return pools.filter(p => golfEvents.has(p.event_id))
 }
 

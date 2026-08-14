@@ -100,8 +100,12 @@ export default function CfbPicks() {
   // only when the pool has no weeks at all.
   const targetWeek = useMemo(() => {
     if (!weeks.length) return null
-    const wanted = Number(searchParams.get('week'))
-    const requested = weeks.find(w => w.week_number === wanted)
+    // Only honor ?week when it's actually present and a positive number — a missing
+    // param would otherwise Number()-coerce to 0 and (if a Week 0 ever existed) resolve
+    // to it instead of the current week.
+    const wantedRaw = searchParams.get('week')
+    const wanted = wantedRaw != null ? Number(wantedRaw) : null
+    const requested = wanted ? weeks.find(w => w.week_number === wanted) : null
     if (requested) return requested
     const open = weeks.filter(w => !weekIsLocked(w)).sort((a, b) => a.week_number - b.week_number)
     if (open[0]) return open[0]
