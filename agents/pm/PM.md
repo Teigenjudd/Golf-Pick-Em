@@ -16,11 +16,13 @@ thing.
 A no-money-on-platform pick'em app for friend groups. Players join pools, make picks
 against a field of athletes, and compete on a shared leaderboard.
 
-**Current state (July 2026):** Live at getpoold.app (Netlify). Golf-only. React + Vite +
-Tailwind v4 + Supabase (Postgres/Auth/Edge Functions/RLS). The 2026 US Open was the
-first live event. The multi-sport schema migration has **shipped through Phase 4** —
-the app now runs on the `public` core + `golf` schema split, with `lib/golf.js` as the
-only golf data seam. Phase 5 (dropping the legacy tables) is the remaining cleanup.
+**Current state:** Live at getpoold.app (Netlify). React + Vite + Tailwind v4 + Supabase
+(Postgres/Auth/Edge Functions/RLS). Golf is live in prod; CFB (sport #2) is in active
+build — backend, admin, and the player leaderboard page exist, the picks builder and
+sport-dispatch layer do not. The app runs on the `public` core + per-sport schema split
+(`golf`, `cfb`), with `lib/golf.js` / `lib/cfb.js` as the only seams into each. Phase 5
+(dropping the dead legacy `public` golf tables) is the remaining migration cleanup. See
+`docs/CEO_REPORT.md` for the current founder narrative and the status board below.
 
 **Tagline:** "Make it interesting."
 **Descriptor:** "Drop your picks. Jump in the pool. Make it interesting."
@@ -61,32 +63,13 @@ writing code.
 
 - No real-money entry fees or payouts through the app (display-only prize pools are OK)
 - No second sport **built** until golf is proven and stable — the schema seam exists
-  (that was the point of the migration). **CFB is now the committed sport #2 direction**:
-  format decided, full build plan sequenced into ~11 PRs (`docs/CFB_FORMAT.md`,
-  `docs/CFB_BUILD_PLAN.md`, planning-only PR0 shipped 2026-08-11) — **PR1 (the `cfb`
-  schema scaffold) shipped 2026-08-11, PR #40**: an empty, additive `cfb` schema (four
-  tables, RLS deny-all, no policies yet). **PR2 (RLS policies + the
-  `cfb_submit_week_picks` submit RPC) shipped 2026-08-11, PR #41.** **PR3 (`cfd-proxy` +
-  the weekly slate importer) shipped 2026-08-12.** **PR4 (`cfbScoring.js` grading engine +
-  the repo's first unit tests) shipped 2026-08-12, PR #43.** **PR5 (`grade-cfb-week`
-  grading job + the first write path to `pool_standings` + a JS/TS drift guard) shipped
-  2026-08-12, PR #44.** **Live in-game scores (data layer only, inserted between PR5
-  and PR6) shipped 2026-08-13** — CFBD Tier 2 upgrade (30k/mo, `/scoreboard`), the
-  `poll-cfb-scores` poller, and shared grading via `_shared/cfbGrading.ts`. **CFB admin —
-  pool creation + weekly slate-import ops shipped 2026-08-13, PR #46** (the admin half of
-  PR8/PR9, landed early): `createCfbPool()` + three new `/admin/cfb*` admin pages, general
-  register (no sport colorway). Corrected a load-bearing architecture assumption in the
-  same PR — CFB uses **per-pool events**, not the "one shared event per season" the build
-  plan originally sketched (`agents/pm/DECISIONS.md`, 2026-08-13). **Slate import
-  automated shipped 2026-08-13, PR #47** — an hourly `poll-cfb-lines` poller replaced
-  PR #46's manual per-week import (lines only post ~1-2 weeks out, so upfront import
-  never worked at season scale); CFB now has no admin "odds" step at all. **CFB player UI
-  Phase 1 (theme + shared-shell prop-ification + two placeholder routes) shipped
-  2026-08-13, PR #48; Phase 2 (the real Pool Detail/leaderboard body — season standings,
-  week selector, scorecard-expand, widgets) shipped 2026-08-13, PR #49** — see the status
-  board entries below for detail. The weekly picks builder (Phase 3) and the
-  sport-dispatch layer (Phase 4) are still not built; a CFB pool today is still only
-  reachable via a direct admin link, not the normal join-code flow.
+  (that was the point of the migration). **CFB is the committed sport #2**, in active
+  build: backend, admin, and the player leaderboard page exist; the weekly picks builder
+  and the sport-dispatch layer do not, so a CFB pool is reachable only by a direct admin
+  link, not the join-code flow. This is a deliberate exception to "golf first" — see
+  `agents/pm/DECISIONS.md`. Current architecture: `CLAUDE.md` §Architecture ("Sport #2 =
+  CFB"). Rules: `docs/CFB_FORMAT.md`. Build sequence + progress: `docs/CFB_BUILD_PLAN.md`,
+  `docs/CEO_REPORT.md`.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -158,416 +141,22 @@ writing code.
 
 ## Current status board
 
-**Shipped / stable:**
-- Live golf pick'em end to end: create tournament (admin), join via code, tiered picks,
-  live leaderboard (Slash Golf via edge-function proxy, cached, pg_cron polling on
-  tournament weekends), scoring with WD/CUT penalties, optional prize-pool display,
-  weather widget, public no-auth `/demo`.
-- Multi-sport schema migration Phases 0–4.
-- **CFB (sport #2) planning — shipped 2026-08-11 (PR0, docs-only, PR #39).**
-  `docs/CFB_FORMAT.md` is the rules-of-record: weekly against-the-spread, season-cumulative
-  — 5 ATS picks + 1 optional double-down (+1 bonus for clearing a `max(50% spread, 4)`
-  buffer) + 1 mandatory tiered underdog on a separate game; all-or-nothing submission with
-  full random auto-fill (double-down forfeited) on a missed deadline; single join cutoff
-  before Week 1 (no mid-season entry in v1); data from the CollegeFootballData API.
-  `docs/CFB_BUILD_PLAN.md` sequences the build into ~11 PRs, grounded in a full read of the
-  golf implementation: full sport-layer siloing (own `cfb` schema, `lib/cfb.js`, scoring
-  engine, picks UI, `cfd-proxy` data provider) over the shared neutral `public` core, with
-  only the `pool_standings` output shape shared between sports — finally putting that
-  scaffolded-but-unused table to work (BACKLOG F1). No FormatEngine abstraction extracted
-  at two formats (BACKLOG F6 stays deferred, revisit at format #3). See
-  `agents/pm/DECISIONS.md`, 2026-08-11.
-- **CFB PR1 — `cfb` schema scaffold shipped 2026-08-11 (PR #40).** Additive-only
-  migration (`supabase/migrations/20260811000000_cfb_phase1_scaffold.sql`): the `cfb`
-  schema with four empty tables (`event_details`, `weeks`, `games`, `picks`), seeds
-  `public.sports` for `'cfb'`, full grant block for `authenticated`/`service_role`, and
-  RLS enabled with **no policies yet** (deny-all — safe default while empty). Adds `cfb`
-  to `supabase/config.toml`'s exposed schemas for local dev; the **prod dashboard's
-  Exposed Schemas flip is deliberately deferred** to the cutover checklist, not this PR.
-  Nothing golf reads is touched; fully reversible by dropping the new objects. Beyond
-  `docs/CFB_BUILD_PLAN.md`'s original sketch, senior review (`agents/senior-dev/reviews/
-  cfb-pr1-schema-scaffold.md`) prompted four foundation-hardening additions while the
-  tables are still empty: `UNIQUE (event_id, week_number)` on `cfb.weeks` (prevents a
-  duplicate "Week 5" if season setup ever reruns), a composite FK on `cfb.picks
-  (game_id, week_id) → cfb.games(id, week_id)` (makes a pick's game structurally
-  guaranteed to belong to its week, not just RPC-enforced), `CHECK` constraints on the
-  `weeks.status`/`games.status`/`picks.result` enum columns (matching the discipline
-  already used on `picks.pick_type`), and `event_details.season_year NOT NULL`. RLS
-  policies, the `cfb_submit_week_picks` RPC, slate import, scoring, grading, UI, and the
-  sport-dispatch layer are still not built — PR2 onward per `docs/CFB_BUILD_PLAN.md`.
-- **CFB PR2 — RLS + the weekly-card submit RPC shipped 2026-08-11 (PR #41).** One
-  migration (`supabase/migrations/20260811000001_cfb_phase2_rls_and_submit_rpc.sql`):
-  RLS policies for all four `cfb` tables (reference tables = authenticated-read +
-  admin-manage, mirroring golf phase-3), and `cfb.cfb_submit_week_picks(p_pool_id,
-  p_week_id, p_picks)` — a `SECURITY DEFINER` RPC that is now the **only** write path
-  onto `cfb.picks` (no client insert/update/delete policy at all — a deliberate
-  deviation from `docs/CFB_BUILD_PLAN.md`'s original "row policies for defense-in-depth"
-  line, because a per-row policy can't enforce the 6-row whole-card rule; see
-  `agents/pm/DECISIONS.md`, 2026-08-11). It validates pool membership, that the week
-  belongs to the pool's season, that the week is still open (gated on `lock_time`/status,
-  not a separate flag — a week is pickable once its slate is loaded and lock_time hasn't
-  passed, a deliberate founder call, also logged in DECISIONS), and the whole 6-row card
-  (exactly 5 ATS + 1 underdog on 6 distinct games, ≤1 double-down only on an ATS pick,
-  valid team incl. the dog slot being the real underdog) before atomically replacing the
-  card in one transaction. `locked_spread` is frozen server-side from the current
-  `cfb.games` row — the client never sends it. Senior review
-  (`agents/senior-dev/reviews/cfb-pr2-rls-and-submit-rpc.md`, APPROVE WITH QUESTIONS)
-  traced every malformed-card case and confirmed the security properties hold; it
-  flagged one piece of debt now written down for PR3 in `docs/CFB_BUILD_PLAN.md` (the
-  RPC trusts `cfb.games.underdog_team`/`underdog_spread` verbatim — PR3's import must
-  store the real underdog with a positive, non-NULL spread) plus two low-priority nits
-  (a raw Postgres error on garbage-typed input instead of a friendly message; submit is
-  technically allowed before a week is explicitly `'open'`, harmless since no games
-  exist yet to build a card from). **Deploy note:** already applied to prod via
-  `supabase db push` (no users yet, so prod doubles as the CFB dev DB) — the Supabase
-  dashboard's Exposed Schemas toggle is still OFF, so `cfb` isn't reachable by the Data
-  API yet; that flip stays the deferred cutover step. Slate import, scoring, grading,
-  UI, and the sport-dispatch layer are still not built — PR3 onward.
-- **CFB PR3 — `cfd-proxy` + the weekly slate importer shipped 2026-08-12.** The CFBD
-  read path: `supabase/functions/cfd-proxy/index.ts` (admin-JWT gated, cloned from
-  `slash-golf-proxy`, `CFBD_API_KEY` Supabase secret, endpoint allowlist `games`/`lines`/
-  `teams/fbs`, 1000/mo cap tracked via new `public.api_usage.cfbd_calls`), `src/lib/
-  cfbd.js` (browser proxy client), and `src/lib/cfb.js` — the `cfb` schema seam, whose
-  pure `buildGameRows()` filters CFBD's games+lines to FBS-vs-FBS games with a posted
-  line, freezes `home_spread` signed from home's perspective, and stores
-  `underdog_team`/`underdog_spread` positive+non-NULL, the contract PR2's RPC trusts
-  verbatim; `importWeekSlate()` fetches via the proxy and upserts on `cfbd_game_id`.
-  Migration `20260812000000_cfb_phase3_slate_import_support.sql` adds the
-  `api_usage.cfbd_calls` column and a `CHECK (underdog_spread IS NULL OR > 0)` on
-  `cfb.games` as belt-and-suspenders on the importer's `abs()`. Senior review
-  (`agents/senior-dev/reviews/cfb-pr3-slate-import.md`, APPROVE WITH QUESTIONS) surfaced
-  the one structural risk in the design — the underdog contract rests entirely on
-  CFBD's spread-sign convention with no second data source to corroborate it, unlike
-  golf's two-provider cross-check — plus a week-id/week-number trust gap. Both resolved
-  in-branch by founder decision (`agents/pm/DECISIONS.md`, 2026-08-12): a sign
-  cross-check (`chooseLine()`/`favoriteFromFormattedSpread()` compare CFBD's numeric
-  spread against its own `formattedSpread` text label, e.g. `"Michigan -17.5"`; on
-  disagreement the game is skipped and a warning logged, not silently frozen wrong) and
-  a week guard (`importWeekSlate` now asserts the target week row's `week_number`/season
-  match the CFBD week being pulled, else throws). Also resolved: CFBD's free tier is
-  confirmed at 1000 calls/month (not golf's 1800 placeholder), and a nit was fixed
-  (dropped a stray boolean `startTimeTBD` from the `kickoff_at` fallback chain). Verified
-  against real 2025 Week 1 data end-to-end (48 of 96 games eligible, sign mapping correct
-  on every row) plus 25 transform fixtures. Already applied/deployed to prod (migration
-  + edge function); `cfb` stays hidden from the Data API (Exposed Schemas toggle still
-  OFF) — admin writes via `.schema('cfb')` work regardless. No admin UI calls this yet
-  (PR9). Scoring, grading, and UI are still not built — PR4 onward.
-- **CFB PR4 — scoring engine + the repo's first unit tests shipped 2026-08-12 (PR #43).**
-  `src/utils/cfbScoring.js` is a pure, import-free module implementing `docs/CFB_FORMAT.md`
-  verbatim: `doubleDownBuffer` (buffer rounding, quarter-ties up), `doubleDownWinBy` (the
-  UI's margin-threshold copy helper), `gradeAtsPick`/`gradeDoubleDown`/`underdogTier`/
-  `gradeUnderdogPick`, `gradeWeekCard` (whole-card grading emitting the `cfb.picks`
-  `result`/`base_points`/`bonus_points` columns), and `projectSeasonStandings` (the
-  cumulative descending fold into the shared `public.pool_standings`
-  `{user_id, rank, total, display}` shape). `vitest` + a `test`/`test:watch` script landed
-  in `package.json`; `cfbScoring.test.js` is the repo's first unit test suite (44 tests,
-  all passing) covering every boundary in the format spec. No app code imports the engine
-  yet — it's consumed by `grade-cfb-week` (PR5) and the picks UI (PR6). Senior review
-  (`agents/senior-dev/reviews/cfb-pr4-scoring-engine.md`, APPROVE WITH QUESTIONS) traced
-  every rule against the code and confirmed the math is sound on every risky axis (buffer
-  rounding, strict half-point thresholds, underdog tiers, standings rank order); it raised
-  two forward-looking questions, both resolved by founder decision in-branch
-  (`agents/pm/DECISIONS.md`, 2026-08-12): (1) the authoritative grader landing in PR5 will
-  be a hand-kept TypeScript mirror (`supabase/functions/_shared/cfbScoring.ts`, since Deno
-  edge functions can't import `src/`) — PR5 will extract the worked examples into a shared
-  fixtures file both the JS and TS test suites consume, so drift fails a test instead of
-  relying on a "keep in sync" comment; (2) a double-down IS allowed on an underdog ATS pick
-  (e.g. a +10 pick clearing its buffer by covering) — the engine already scored this
-  correctly, so `doubleDownWinBy`'s doc comment (not its logic) was updated to state the
-  returned threshold is **sign-general** (negative for underdogs), and PR6's picks UI must
-  phrase the bonus condition generally ("cover by more than N") rather than favorite-only
-  "win by X+". This starts closing BACKLOG F4 (golf's `scoring.js`/`tierBuilder.js`/
-  `format.js` remain uncovered). Grading, adapters, and UI are still not built — PR5
-  onward.
-- **CFB PR5 — `grade-cfb-week` grading job + `pool_standings` + JS/TS drift guard
-  shipped 2026-08-12 (PR #44).** `supabase/functions/grade-cfb-week/index.ts` is the
-  authoritative CFB grader: a service-role edge function, cron-secret-or-admin-JWT
-  gated (golf's `poll-leaderboard` pattern). Grades one targeted week (`{week_id}`,
-  for PR9's future admin button) or scans every week whose `lock_time` has passed and
-  isn't yet `graded` (cron mode, wired in PR9). CFBD's `/games` is deduped by the real
-  `(season, week_number)` — one fetch fanned to every event's games sharing it,
-  mirroring golf's per-tournament dedup (D3) — and counted against
-  `public.api_usage.cfbd_calls` under the shared 1000/mo cap. Writes final scores to
-  `cfb.games`, grades every pick with the shared scoring engine, sets week status to
-  `graded`/`locked`, and recomputes each affected pool's season-cumulative
-  `public.pool_standings` via `projectSeasonStandings` — **the first code in the repo
-  to write `pool_standings`**, closing the CFB half of BACKLOG F1 (golf's half is
-  still open). Only completed games grade; re-running is idempotent.
-  `supabase/functions/_shared/cfbScoring.ts` is the hand-kept TS mirror of
-  `src/utils/cfbScoring.js` (Deno can't import `src/`), and the PR4-promised drift
-  guard shipped alongside it: `src/utils/cfbScoring.fixtures.js` holds the shared
-  worked-example cases, run against both the JS engine (`cfbScoring.test.js`) and the
-  TS mirror (new `cfbScoring.parity.test.js`), asserting identical output — **152
-  tests pass**, the repo's first server/client parity suite. Also added:
-  `effectiveDoubleDownLine(lockedSpread)` (both engine + mirror) — the buffer-adjusted
-  double-down line in the picked team's sign convention (favorite `-1.5` → `-5.5`;
-  `+7` underdog → `+3`), for PR6's picks UI to surface. `src/lib/cfb.js` adds
-  `gradeCfbWeek(weekId)`, a thin invoker for PR9's admin "Grade week" button; no
-  migration (all tables already exist; service role bypasses RLS). No app screen
-  reads `pool_standings` yet (CFB's leaderboard is PR7); no cron/admin UI calls this
-  function yet (PR9). Senior review (`agents/senior-dev/reviews/cfb-pr5-grading.md`,
-  APPROVE WITH QUESTIONS) traced the sign conventions, grader→engine wiring, cap
-  accounting, and standings recompute and found the happy path correct with no
-  blockers; it raised two questions, both resolved by founder decision — **deferred to
-  PR9** (`agents/pm/DECISIONS.md`, 2026-08-12): a minimum double-down line was
-  considered and declined (the existing buffer floor already prevents a small-favorite
-  double-down from being a free bonus; `effectiveDoubleDownLine` covers the actual
-  need, which was UI clarity, not a new rule); a stuck week (cancelled/rescheduled
-  game never reports `completed`) can never reach `graded` and re-polls CFBD every
-  cron run — PR9 must add an admin "finalize week as-is" override; and the manual
-  `{week_id}` grade path doesn't check `lock_time` — PR9 must add that one-line guard
-  when its admin button gets a caller. Picks UI, adapters, and the sport-dispatch
-  layer are still not built — PR6 onward. **Grading logic later extracted into
-  `_shared/cfbGrading.ts` by the live-scores PR below** — `grade-cfb-week` now imports
-  it instead of defining it inline; behavior unchanged.
-- **CFB live in-game scores (data layer only) shipped 2026-08-13, inserted between PR5
-  and PR6.** Founder-requested: a player should be able to watch their pick's live
-  score/clock/possession inside Poold. Enabled by a CFBD **Tier 2** upgrade — 30k
-  calls/mo, unlocking the `/scoreboard` endpoint — so `MONTHLY_CAP` moved 1000→30000
-  across `cfd-proxy`, `grade-cfb-week`, and the new poller (all three share
-  `public.api_usage.cfbd_calls`). Migration `20260812120000_cfb_live_scores.sql` adds
-  an additive, nullable `cfb.games.live jsonb` (ephemeral in-game blob:
-  period/clock/possession/situation/last_play; the authoritative score/status stay in
-  the existing typed columns, which the poller also mirrors live). New
-  `supabase/functions/poll-cfb-scores/index.ts` is the live poller: CFBD's
-  `/scoreboard` returns the whole live FBS slate in ONE call, so a poll costs one API
-  call regardless of games/pools — and it's self-regulating, gating first on a cheap DB
-  query ("any game in the live window?") and spending zero API calls when nothing's
-  live, so a future ~1-minute cron (armed in PR9) only costs real game hours. When a
-  game flips final it grades that week and recomputes standings via the new
-  `supabase/functions/_shared/cfbGrading.ts` (grading logic extracted out of
-  `grade-cfb-week` so both graders share one implementation — `gradeWeek` gained a
-  branch trusting an already-final-in-DB game so the poller's partial scoreboard map
-  can't un-finalize a week; `grade-cfb-week`'s own behavior is unchanged).
-  `supabase/functions/_shared/cfbLive.ts` is the pure `/scoreboard`→`cfb.games`
-  transform, unit-tested (`src/utils/cfbLive.test.js`, 7 tests — **159 tests pass**
-  repo-wide); exact CFBD live-field names are unconfirmed against a real Tier-2
-  response until the UI is wired. `src/lib/cfb.js` adds `refreshCfbScores()`, a thin
-  invoker for PR9's admin "Refresh scores" button. Senior review
-  (`agents/senior-dev/reviews/cfb-live-scores.md`, APPROVE WITH QUESTIONS) confirmed
-  the correctness holds (mid-game scores never grade, already-final games can't
-  re-trigger grading, `grade-cfb-week` unaffected) and flagged the poller's look-ahead
-  window as the one live decision — an initial 18h look-ahead risked burning idle API
-  calls for most of a game day against the 30k cap; **tightened in-branch to 30
-  minutes**, a PM judgment call still needing founder confirmation
-  (`agents/pm/DECISIONS.md`, 2026-08-13). The broader cron-cadence question (windowed
-  like golf's Thu–Sun schedule vs. year-round every-minute) is an explicit PR9
-  must-settle item. No migration applied to prod, no function deployed, no cron armed —
-  all deferred to PR9 per the CFB prod-as-dev pattern. UI is still PR6/7; nothing golf
-  reads is touched.
-- **CFB admin — pool creation + weekly slate-import ops shipped 2026-08-13, PR #46.**
-  The first CFB *frontend* work, and the admin half of `docs/CFB_BUILD_PLAN.md`'s PR8/PR9
-  landing early. `src/lib/cfb.js` adds `createCfbPool()` — seeds `public.events`(cfb) →
-  `public.pools` → `cfb.event_details` → `cfb.weeks` (one row per week in the chosen
-  range, lock times stepped 7 days from a now-required first-week lock, which doubles as
-  the season join cutoff), with the same rollback-deletes-the-event-on-failure safety as
-  `createGolfPool` — plus `getAdminCfbPools`/`getCfbPool`/`getCfbPoolWeeks`/
-  `updateWeekLockTime`/`getCfbdUsage`. Three new admin pages/routes, all `AdminRoute`-gated,
-  general register (no sport colorway): `CfbAdmin.jsx` (`/admin/cfb`, pool index),
-  `CreateCfbPool.jsx` (`/admin/cfb/create-pool`, season setup form), `CfbPoolOps.jsx`
-  (`/admin/cfb/pool/:id`, per-week lock edit + slate import + CFBD usage meter). This is
-  what makes a real, operable CFB pool exist for the first time — an admin can now create
-  one and import weekly slates end to end (still only reachable via a direct admin link;
-  the join-code flow and player-facing pages are still PR6/8). **Also corrected a
-  load-bearing architecture assumption, caught by senior review's first pass (CHANGES
-  NEEDED → fixed in-branch → APPROVE):** CFB uses **per-pool events** — each pool gets its
-  own `public.events` row + `cfb.weeks` + `cfb.games`, mirroring golf's per-pool pattern
-  (D3) — not the "one shared event per season" `docs/CFB_BUILD_PLAN.md` originally
-  sketched. This is what lets two pools on the same real season start at different weeks
-  with different lock schedules and see only their own weeks; grading and the live poller
-  already dedupe CFBD calls by real `(season, week_number)` across events, so neither
-  needed to change. `cfb.games` was re-keyed from a global `UNIQUE(cfbd_game_id)` to
-  `UNIQUE(week_id, cfbd_game_id)` (migration `20260813000000_cfb_games_per_week_unique.sql`)
-  so a second pool's slate import can no longer overwrite a first pool's rows — the bug the
-  first review pass caught. Trade-off (founder-accepted): admin slate imports now scale
-  with (pools × weeks) rather than (seasons × weeks); live-score cost is unchanged. Full
-  reasoning in `agents/pm/DECISIONS.md`, 2026-08-13. **The prod Exposed Schemas cutover
-  is now done** (flipped 2026-08-13, ahead of this PR — all schemas/tables/functions
-  exposed), closing the deferred cutover step noted in earlier CFB PR entries below.
-- **CFB — slate import automated, replacing PR #46's manual per-week import — shipped
-  2026-08-13, PR #47 (`cfb-auto-lines-poller`).** A real pull against 2025 season data
-  showed betting lines only post ~1-2 weeks before kickoff (Week 1 = 51 games with a
-  posted line, Week 3 = 0), so a season's slate can't be imported upfront the way golf
-  imports its field once — this PR replaces the admin's per-week "Import slate" button
-  with `supabase/functions/poll-cfb-lines/index.ts`, an hourly poller (cron-secret-or
-  admin-JWT gated, service role, sharing the 30k/mo CFBD cap) that makes ONE
-  season-wide CFBD fetch per active season and fans the shaped games onto every pool's
-  `cfb.weeks` for that `(season, week_number)`, deduped. **CFB now has no admin "odds"
-  step at all** — spreads are the CFBD lines, pulled automatically, unlike golf's
-  odds-market pick at pool creation. The CFBD→`cfb.games` transform
-  (`chooseLine`/`favoriteFromFormattedSpread`/`buildGameRows`) moved server-side into
-  `supabase/functions/_shared/cfbSlate.ts` (single source now that import is
-  server-only) and got its first *committed* unit tests
-  (`src/utils/cfbSlate.test.js`, vitest importing the `.ts` directly — the PR3 "25
-  fixtures" were never actually committed) — the tests caught a real latent bug (a
-  lineless provider row read as a phantom pick'em `0` via `Number(null) === 0`) now
-  fixed; 173 tests pass repo-wide. The poller only writes pre-kickoff games (`now <
-  kickoff_at`); once a game kicks off, `home_spread` is left frozen at its last
-  pre-kickoff value — the closing line, displayed forever after — which also keeps the
-  poller from ever clobbering `poll-cfb-scores` (per-pick grading is unaffected; it
-  always uses each player's own frozen `locked_spread`). New migration
-  `20260813010000_cfb_spread_history.sql` adds `cfb.spread_history` — a line-movement
-  log, keyed by the real `cfbd_game_id` (not a per-pool row, since all pools share the
-  same real line), written only when a game's spread actually changes, for a future
-  "opened → closed" UI (`getSpreadHistory()` in `src/lib/cfb.js`, no UI consumer yet).
-  `CfbPoolOps.jsx` now shows an auto-slate status banner plus a single "Refresh slates
-  now" override (`refreshCfbSlates()`, invokes `poll-cfb-lines`). `cfd-proxy` (PR3)
-  stays deployed but is no longer called from the browser — the poller talks to CFBD
-  directly with its own service-role key. Senior review
-  (`agents/senior-dev/reviews/cfb-auto-lines-poller.md`, APPROVE WITH QUESTIONS) caught
-  one scale bug pre-merge, fixed in-branch: change-detection reads one representative
-  `cfb.event_details` row per season (all pools on a season share the same real
-  games/spreads) instead of every pool's own game copies, which would have multiplied
-  with pool count and risked truncating past PostgREST's row cap around ~20 pools; a
-  kept-pick'em test was also added. No migration applied to prod, no function
-  deployed, no cron armed — deferred to PR9, same CFB prod-as-dev pattern as every
-  prior CFB PR. PR9 now arms **three** CFB crons: hourly slate/lines
-  (`poll-cfb-lines`), ~1-minute live scores (`poll-cfb-scores`), and weekly grading
-  (`grade-cfb-week`). Full call in `agents/pm/DECISIONS.md`, 2026-08-13. Picks UI and
-  the sport-dispatch layer are still not built — PR6 onward.
-- **CFB player UI Phase 1 (of 4) — Varsity Navy theme + shared-shell prop-ification +
-  route scaffolds — shipped 2026-08-13, PR #48.** The first CFB *player-facing* UI work
-  (prior CFB PRs were backend + admin). `src/theme/cfb.js` locks the "Varsity Navy"
-  colorway (navy `#101C3D→#0A1229` header gradient, brick `#D6291B` accent, green
-  `#2E8F4F` cover/win) from the founder's Claude Design comp, applied only on the two CFB
-  sport-specific screens. The shared pool shells (`PoolHeader`, `PicksHeader`,
-  `StandingsCard`, `WidgetGrid`) are now prop-ified (`gradient`/`accentColor`/`rib`/
-  `children`/`label`/`showBadge`) with golf's exact prior values as defaults — golf
-  renders byte-identically, confirmed line-by-line in senior review
-  (`agents/senior-dev/reviews/cfb-ui-phase1-foundation.md`). Two new placeholder routes,
-  `/cfb/pool/:id` (`CfbPoolDetail.jsx`) and `/cfb/pool/:id/picks` (`CfbPicks.jsx`), render
-  the real themed shell with a "coming soon" body; `getCfbPool()` now refuses a non-CFB
-  pool id (returns null → "Pool not found"), a review-driven fix so Phase 2 can't
-  accidentally build real standings on top of a golf pool's data. Neither route is linked
-  from the dashboard yet (Phase 4). Full phase breakdown + rationale in
-  `agents/pm/DECISIONS.md`, 2026-08-13. 173 tests pass, unchanged (pure UI scaffolding,
-  no new tests). Real page bodies (standings/week selector = Phase 2, picks builder =
-  Phase 3) are not built.
-- **CFB player UI Phase 2 (of 4) — the real Pool Detail/leaderboard body — shipped
-  2026-08-13, PR #49.** `/cfb/pool/:id` now renders live off the data layer: a
-  season-cumulative standings hero (`CfbStandings`, ranked by `public.pool_standings.total`
-  — never re-ranked by week), a week selector (`CfbWeekSelector`, rendered inside the navy
-  `PoolHeader`) that scopes — but doesn't re-rank — a scorecard-expand and a CFB widget
-  row (`CfbWidgets`: This Week's Slate, Weekly Points, Most-Backed Teams, Underdog Board,
-  plus the reused `PrizePoolWidget`) to one chosen week. Four new read-only queries in
-  `src/lib/cfb.js` (`getCfbStandings`, `getCfbParticipants`, `getCfbWeekGames`,
-  `getCfbWeekPicks`) feed it; `getCfbPool` now also selects `stake_amount`/
-  `payout_structure` so the Prize Pool widget can render. Full spec:
-  `docs/PAGES.md` §10f (design brief: `docs/CFB_UI_PLAN.md` §6/§6a). Senior review
-  (`agents/senior-dev/reviews/cfb-ui-phase2-pool-detail.md`, APPROVE WITH QUESTIONS)
-  traced RLS visibility, week resolution, and the client-side grade and found the
-  correctness sound with no leaks; it raised two presentation questions, both resolved
-  by founder decision and fixed in-branch (`agents/pm/DECISIONS.md`, 2026-08-13): (1) the
-  expand/Weekly-Points total is **recomputed client-side** off live/final game scores
-  (via the shared `gradeWeekCard`/`pickMargin`) so points update the instant a game goes
-  final, rather than waiting on the next server poll — kept deliberately, even though it
-  can briefly lead the server-written season total until the next poll cycle reconciles
-  them; (2) the three pick-derived widgets (Weekly Points/Most-Backed/Underdog Board) are
-  now hidden behind a "reveal when Week N locks" note before the selected week locks,
-  since RLS only returns the viewer's own picks pre-lock and showing just one player's
-  picks read like a near-empty pool. The weekly picks builder (Phase 3) and the
-  sport-dispatch layer (Phase 4, dashboard linking) are still not built.
-- Full design refresh + Poold rebrand across pages.
-- Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
-  + geography, all 48 tournaments designed and seeded.
-- Odds coverage fix (2026-07-13, PR #22) — odds are unioned across all bookmakers
-  (median price) and joined to the field by a layered name matcher instead of an exact
-  string. The Open went from 11 unpriced players to 0. (`docs/NAME_MATCHING.md`)
-- Security audit criticals C1–C4 (pick integrity, pre-lock pick privacy, email
-  exposure, committed cron secret) — fixed.
-- **Sign-in email dark-mode fix + copy rename — shipped 2026-07-17 (PR #36).** The
-  auth email's fairway header band is now a baked PNG (`public/email-header.png`,
-  `npm run og:email`) instead of live HTML text, because Gmail-app/Outlook-mobile
-  force-invert colors in dark mode and flipped the band to light mint — image pixels
-  don't get recolored. Alongside it, user-facing copy renamed "magic link" →
-  "sign-in link" across Login, Join, and Privacy (see `agents/pm/DECISIONS.md`,
-  2026-07-17). Supabase's own dashboard template label ("Magic Link") is unaffected —
-  it's their fixed internal name, never user-facing.
-  **Follow-up, shipped 2026-07-17 (PR #37):** the footer lived in its own trailing
-  `<table>` below the card, and Gmail-app/Outlook-mobile read it as a signature/quoted
-  block and collapsed it behind a "…" expander. Folded it into the main card table as
-  the final row with a `border-top` divider instead — one cohesive block, nothing left
-  to collapse. Template-only resync; the dashboard paste was already live and verified
-  on a real mobile client before this PR landed.
-- **Claude Design sync scaffolding — shipped 2026-07-17 (PR #35).** All 15 shared UI
-  components (`src/components/**`) are now wired into a claude.ai/design project under
-  `.design-sync/` (config, barrel, compiled CSS, preview cards, generated preview data),
-  so future design work happens against the real components + brand tokens instead of a
-  from-scratch mock — no `src/` app code, build config, or user-facing behavior changed.
-  Two preview-only shims exist so the components render in isolation outside the app's
-  Vite build (see `agents/pm/DECISIONS.md`, 2026-07-17); one of them works around a real
-  but production-unreachable latent bug in `scoring.js` (BACKLOG F7).
-- **Branded auth email — shipped 2026-07-16 (PR #34, closes BACKLOG C7).** Supabase
-  now sends auth mail through custom SMTP (Resend, verified on `getpoold.app` —
-  SPF/DKIM/DMARC green) instead of the rate-limited default sender, so magic links
-  arrive from `login@getpoold.app` and look like Poold instead of spam. The branded
-  Magic Link template is live in the dashboard, versioned at
-  `supabase/templates/magic_link.html`. This is send-side only — the receive-side
-  gap (`privacy@getpoold.app` still bounces, BACKLOG A7) is unrelated DNS; the
-  permanent fix is still open, but see the interim mitigation below (PR #38).
-- **A7 interim mitigation — shipped 2026-08-10 (PR #38).** `privacy@getpoold.app`
-  still has no inbound MX and still bounces — that part of A7 is unchanged. What
-  shipped instead: the three user-facing legal contacts (`Privacy.jsx` data-deletion
-  line + Contact section, `Terms.jsx` Contact section — visible text and `mailto:`
-  hrefs both) now point at `tljvllc@gmail.com`, a monitored business/LLC mailbox, so
-  the address Poold actually advertises reaches a live inbox. `CreateTournament.jsx`'s
-  Nominatim `email=` param is a separate, non-user-facing use and was left alone. A
-  real inbound forwarder (ImprovMX/ForwardEmail, or a Resend-inbound webhook) was
-  considered and declined for now — not worth an 8th vendor or bespoke integration for
-  a low-traffic legal-contact address (see `agents/pm/DECISIONS.md`, 2026-08-10).
-- **Invite link previews (P1.1) — shipped 2026-07-14 (PR #26).** A join link pasted into a
-  group chat now unfurls as a branded card with the organizer's name, the pool, and the
-  pick count; `/demo` has its own "no sign-up" pitch; everything else gets a default card.
-  Crawlers don't run JavaScript, so this had to happen in the served HTML — a Netlify edge
-  function rewrites the OG tags in front of the CDN. It reads pool data through a narrow
-  `SECURITY DEFINER` RPC (`pool_preview`) rather than a service-role key. Per-event card
-  images are the leftover (BACKLOG H5).
-- **User-set display names + legal pages — shipped 2026-07-14 (PR #25).** Display names
-  were being seeded from the email local-part, so leaderboards published part of every
-  player's email to their pool. Names are now chosen: new accounts are walled at
-  `/welcome` until they pick one; existing users are nudged toward `/profile` (the "You"
-  tab) rather than force-renamed. `/privacy` and `/terms` shipped alongside, stating
-  plainly that Poold never processes, holds, or transfers money — **the Terms now describe
-  the code, so any future payments feature has to change them first.**
-- **A1 + A2 — fixed 2026-07-14 (PR #24).** The privilege-escalation hole is closed
-  (`profiles` is column-locked; role changes go through the `admin_set_role()` RPC) and
-  the Odds API key now lives behind the `odds-proxy` edge function. **The governing
-  pattern, worth knowing before you touch `profiles`:** RLS cannot restrict *columns*,
-  so column access is enforced by GRANTs, which run before any policy. Privileged reads
-  and writes go through `SECURITY DEFINER` RPCs that re-check `is_admin()`.
+*This is a current-state snapshot, not a changelog. What shipped when lives in `git log` and the merged PRs; the founder-facing narrative lives in `docs/CEO_REPORT.md`. Keep the lists below to present-tense facts and pointers — never append a paragraph per PR.*
+
+**Live in prod (golf):** full pick'em end to end — admin creates a tournament, players join by code, make tiered picks, watch a live leaderboard (Slash Golf via the `poll-leaderboard` edge function, cached, pg_cron on tournament weekends), scored with WD/CUT penalties, optional prize-pool display, weather widget, public no-auth `/demo`. Runs on the `public` core + `golf` schema split (`lib/golf.js` is the only golf seam). Branded auth email (Resend SMTP), user-set display names, invite-link previews, and legal pages are all live. Security criticals C1–C4 and A1–A2 are closed.
+
+**In build (CFB, sport #2):** the full backend, the admin surface, and the player Pool Detail / leaderboard page are live; the weekly picks builder and the sport-dispatch layer are not. Current architecture and the exact what-exists / what-doesn't-yet are in `CLAUDE.md` (§Architecture Summary → "Sport #2 = CFB"); progress against the plan and the founder narrative are in `docs/CEO_REPORT.md`, with the sequence in `docs/CFB_BUILD_PLAN.md`.
 
 **Open — launch blockers (gate any growth/marketing push on these):**
-- 🔴 **Supabase free tier auto-pauses the project** after ~7 days idle — it did, on
-  2026-07-13, and took getpoold.app down with an opaque "load failed" at sign-in.
-  Any quiet week between tournaments can kill the app. Upgrade to Pro or run a
-  heartbeat. (ROADMAP P0.5) **This is now the last infrastructure blocker.**
-- 🔴 **Self-serve pool creation** (ROADMAP P0.2) — still the strategic blocker. With A1
-  and A2 closed, the remaining P0 is no longer about safety; it's that nobody but the
-  founder can start a pool, so there is no acquisition motion at all.
+- 🔴 **Supabase free tier auto-pauses the project** after ~7 days idle — it has, taking getpoold.app down with an opaque "load failed" at sign-in. Any quiet week between events can kill the app. Upgrade to Pro or run a heartbeat. (ROADMAP P0.5)
+- 🔴 **Self-serve pool creation** (ROADMAP P0.2) — pool creation is founder-only, so there is no acquisition motion at all. The strategic blocker.
 
-**Deploy note (2026-07-14):** PR #24 is a *coupled* change — the frontend must reach
-`main` before `supabase db push`, or the live admin UI updates `profiles.role` against a
-grant that no longer permits it. Rotating the old Odds API key is a manual step; it was
-public in the bundle for the life of the project and must be assumed burned.
-
-**Open — significant rough edges:**
-- 🟡 **`privacy@getpoold.app` still has no inbound MX and still bounces** (BACKLOG A7,
-  opened 2026-07-14). No longer the weakest line in either legal document: as of
-  2026-08-10 (PR #38) both pages advertise `tljvllc@gmail.com` instead, a monitored
-  mailbox, so the deletion-request channel the Privacy policy promises actually works.
-  What's left is the permanent fix (real inbound mail for the branded address) —
-  deliberately not built; a real forwarder vendor or webhook wasn't worth it for this
-  address's traffic. Downgraded from 🟠 accordingly; revisit if that changes.
-- Phase 5 cleanup not done: legacy `public.tournaments/tiers/picks/...` tables still
-  exist (dead but a foot-gun); `public.pool_standings` is scaffolded but never
-  written/read — populate or drop. (BACKLOG F1)
-- Reliability gaps: swallowed query errors render blank screens that look like empty
-  states; failed manual score refreshes still burn one of the 3 per-event refreshes.
-  (BACKLOG C2, B2. **C1 — AuthCallback sign-in dead-end — fixed 2026-07-15, PR #27.**)
-- Scoring: unmatched picks silently score as null ("benched") instead of being flagged;
-  DQ/DNS states unhandled. (BACKLOG B1, B3)
-- Zero test coverage anywhere. (BACKLOG F4)
-
+**Open — significant rough edges (see `docs/BACKLOG.md` for the ranked A1–H4 inventory):**
+- 🟡 `privacy@getpoold.app` has no inbound MX and bounces; both legal pages advertise `tljvllc@gmail.com` instead (a monitored mailbox, works). The permanent inbound-forwarder fix is still open. (A7)
+- Phase 5 cleanup: legacy `public.tournaments/tiers/picks/...` tables are dead but still present (a foot-gun); golf's half of `public.pool_standings` is still unwritten (CFB writes its half). (F1)
+- Reliability: swallowed query errors render blank screens that look like empty states; a failed manual score refresh still burns one of the 3/event refreshes. (C2, B2)
+- Scoring: unmatched picks silently score null ("benched") instead of being flagged; DQ/DNS states unhandled. (B1, B3)
+- Test coverage is CFB-only so far — golf's `scoring.js`/`tierBuilder.js`/`format.js` remain uncovered. (F4)
 ---
 
 ## Documentation ownership index
@@ -580,6 +169,18 @@ is about who keeps them true, not where they sit.
 **This table is the contract the `/pm-sync` skill runs on.** When a PR changes
 something, this is how you decide what to update. Keep it current — if you add a doc,
 add a row.
+
+**Size the write-set to the diff — this is the main cost lever.** A pm-sync pass should
+touch the *fewest* docs that makes the docs true again, not every doc it owns. In
+practice that is: (1) **`docs/CEO_REPORT.md`** — the one always-refreshed state doc, held
+to ~150–180 words; (2) any doc the diff **actually falsified** (found by the reverse-pass
+grep — a confidently-wrong doc is the real bug); and (3) the hard-rule docs the guard
+enforces when they apply (`docs/PAGES.md` for page/component changes; `agents/pm/` so the
+guard sees pm-sync ran). Everything else is *conditional* — update it only if this diff
+made it untrue. **Do not narrate the PR into multiple docs.** One state doc
+(CEO_REPORT) + one durable-fact edit where the code changed how something works is the
+target; the per-PR history lives in `git log` and the merged PR, not restated across
+five strategy docs. Prefer a one-sentence fact + a file pointer over a paragraph.
 
 **What the merge guard actually enforces** (`.claude/hooks/merge-guard.mjs`): two agents
 ride with every merge, and the hook checks that both left a committed artifact in the
@@ -606,18 +207,19 @@ a change that breaks the guard. A hook can't safely review its own edit, so this
 
 | Document | Owns (the kind of truth it holds) | Update when a PR… |
 |---|---|---|
-| `agents/pm/PM.md` | How the PM agent works; this index; the status board | …changes how we work, or ships/blocks something on the status board |
+| `agents/pm/PM.md` | How the PM agent works; this index; the current-state status board (a snapshot, **not** a changelog) | …changes how we work, or changes what's true on the status board (a launch blocker opens/closes, a whole surface goes live). **Not** for routine per-PR progress — that's CEO_REPORT + git. |
 | `agents/pm/PRODUCT.md` | What Poold **is today** — features, surfaces, journeys, look, positioning, how we work | …changes anything a user can see or do, or how we operate |
-| `agents/pm/ROADMAP.md` | What we're doing **next** and why — P0–P3, impact/ease, market read, status log | …ships a roadmap item, or reveals a new risk/opportunity. **Always add a status-log line.** |
-| `agents/pm/DECISIONS.md` | **Why** we chose what we chose — the append-only decision log | …makes a call that future-us would otherwise re-litigate. Never rewrite history; append. |
+| `agents/pm/ROADMAP.md` | What we're doing **next** and why — P0–P3, impact/ease, market read | …**changes the plan**: ships/closes a P0–P3 item, reorders priorities, or reveals a new risk/opportunity. Not a per-PR log — skip it for a PR that doesn't move a roadmap item. |
+| `agents/pm/DECISIONS.md` | **Why** we chose what we chose — the append-only decision log (recent entries only; older ones live in `DECISIONS_ARCHIVE.md`) | …makes a call that future-us would otherwise re-litigate. Append a new entry at the **top**; never rewrite history. Grep spans both files. |
+| `agents/pm/DECISIONS_ARCHIVE.md` | **Historical.** Decisions from 2026-08-10 and earlier, split out to keep the live log small. Still authoritative, still grep-searched. | …basically never. Read-only history; new entries go in `DECISIONS.md`, not here. |
 | `docs/BACKLOG.md` | The ranked engineering inventory (A1–H4, severity-tagged). **The** backlog. | …fixes, adds, or invalidates a backlog item. Check items off with a date; don't delete them. |
 | `docs/PAGES.md` | Page-by-page inventory: data, layout, functionality, shared components | …changes any page or shared component. **Hard rule in CLAUDE.md — same PR, no exceptions.** |
 | `DESIGN_SPEC.md` (root) | Design tokens, component specs, screen map | …changes a token, component, or screen |
 | `CLAUDE.md` (root) | Brand voice, working style, architecture summary, design system, routes | …changes architecture, routes, conventions, or the design system. **Must stay at repo root — Claude Code auto-loads it from there.** |
 | `docs/MULTI_SPORT_MIGRATION.md` | The multi-sport architecture plan + phase status | …advances or changes the migration (Phase 5 is what's left) |
 | `docs/CFB_FORMAT.md` | College football (sport #2) rules-of-record — the weekly ATS card, scoring, worked examples, join model. What the `cfb` schema, `cfb_submit_week_picks` RPC, and scoring-engine tests are built against | …changes a CFB rule, scoring boundary, or the join model |
-| `docs/CFB_BUILD_PLAN.md` | CFB's PR-sliced implementation plan — architecture decisions, schema sketch, PR sequence (PR1–PR10), open questions for the founder | …changes CFB build sequencing/architecture, or a PR in its sequence ships |
-| `docs/CFB_UI_PLAN.md` | CFB player-UI design hand-off brief — every CFB screen, its data elements, states, and shell changes required; the source Phase 1–4 (`agents/pm/DECISIONS.md`, 2026-08-13) is built against | …a CFB UI phase ships and changes what a §-section describes, or a screen's design changes |
+| `docs/CFB_BUILD_PLAN.md` | CFB's PR-sliced implementation plan — architecture decisions, schema sketch, PR sequence, open questions for the founder | …changes CFB build **sequencing or architecture**. It's a plan, not a shipped-log — don't narrate each PR into it; track progress as a single "PR N of ~10" line, and let CEO_REPORT + git hold the history. |
+| `docs/CFB_UI_PLAN.md` | CFB player-UI design hand-off brief — every CFB screen, its data elements, states, and required shell changes | …a screen's **design/spec** changes. Not per-phase-ship narration — the shipped page's truth lives in `docs/PAGES.md`. |
 | `docs/CEO_REPORT.md` | The founder/investor-facing executive status report — a single living doc, ~150–180 words, under-2-minute skim. Not per-PR, not a changelog: the layer *above* this status board. | **Every** PR ship — unconditionally, not gated on which files the diff touched. See the update contract below. |
 | `docs/ENTERPRISE_ARCHITECTURE_PROPOSAL.md` | **Reference, not adopted.** Fable's blank-slate ideal architecture for a multi-sport/format platform, plus the review of it against Poold | …basically never. A north-star doc; the actionable takeaway is BACKLOG F6. |
 | `README.md` | The 60-second orientation for a human arriving cold | …changes setup, stack, or a headline architecture decision |

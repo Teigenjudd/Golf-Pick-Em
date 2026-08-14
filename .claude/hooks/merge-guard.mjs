@@ -105,11 +105,12 @@ if (!skipReview && codeChanged && !changed.some(f => REVIEW_ARTIFACT.test(f))) {
 if (!skipPm && !changed.some(f => PM_DOCS.test(f))) {
   problems.push(`• agents/pm/ is untouched — no sign pm-sync ran.
     Dispatch the pm agent (Task tool, subagent_type: "pm") — it runs on Sonnet and won't
-    stall the merge — or run /pm-sync. Walk the ownership index in agents/pm/PM.md:
-      ROADMAP.md   — shipped something, or revealed a risk? Add a status-log line.
-      DECISIONS.md — made a call future-us would re-litigate? Append an entry.
-      PRODUCT.md   — changed what a user can see or do?
-      PM.md        — shipped or blocked something on the status board?`)
+    stall the merge — or run /pm-sync. Size the write-set to the diff (agents/pm/PM.md):
+      CEO_REPORT.md — the one always-refreshed state doc (~150–180 words).
+      + any doc this diff actually FALSIFIED — run the reverse-pass grep; that's the
+        pass that catches real bugs. Update only what the change made untrue.
+      DECISIONS.md  — append (at the top) only if a call would otherwise be re-litigated.
+    Don't narrate the PR across every doc — git log + the PR are the changelog.`)
 }
 
 // 3. Page inventory — standing hard rule.
