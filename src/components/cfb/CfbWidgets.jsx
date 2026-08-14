@@ -195,7 +195,7 @@ function UnderdogWidget({ weekPicks }) {
 }
 
 export default function CfbWidgets({
-  games, weekPicks, weeklyPoints, weekLabel,
+  games, weekPicks, weeklyPoints, weekLabel, locked,
   stakeAmount, participantCount, payoutStructure,
 }) {
   const hasPrize = stakeAmount && payoutStructure?.length
@@ -209,15 +209,33 @@ export default function CfbWidgets({
       <div className="col-span-2">
         <SlateWidget games={games} weekLabel={weekLabel} />
       </div>
-      <div className="col-span-2">
-        <WeeklyPointsWidget weeklyPoints={weeklyPoints} weekLabel={weekLabel} />
-      </div>
-      <div className="col-span-2">
-        <MostBackedWidget weekPicks={weekPicks} />
-      </div>
-      <div className="col-span-2">
-        <UnderdogWidget weekPicks={weekPicks} />
-      </div>
+      {/* The three pick-derived widgets only make sense once everyone's cards are
+          visible — before the week locks, RLS hides other players' picks so they'd
+          show just your own ("1/1"). Hold them behind a note until lock. */}
+      {locked ? (
+        <>
+          <div className="col-span-2">
+            <WeeklyPointsWidget weeklyPoints={weeklyPoints} weekLabel={weekLabel} />
+          </div>
+          <div className="col-span-2">
+            <MostBackedWidget weekPicks={weekPicks} />
+          </div>
+          <div className="col-span-2">
+            <UnderdogWidget weekPicks={weekPicks} />
+          </div>
+        </>
+      ) : (
+        <div className="col-span-2">
+          <div
+            className="rounded-[14px] p-4 text-center"
+            style={{ background: CFB_THEME.cardWhite, border: `1px solid ${CFB_THEME.border}` }}
+          >
+            <p className="text-[12.5px]" style={{ color: CFB_THEME.muted }}>
+              Weekly points, most-backed teams, and the underdog board reveal when {weekLabel} locks.
+            </p>
+          </div>
+        </div>
+      )}
     </>
   )
 }

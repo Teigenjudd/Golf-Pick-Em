@@ -15,8 +15,8 @@ import { formatKick } from '../../utils/cfbFormat'
 //     total,                                 // this selected week's points
 //     picks: [{                              // ordered: 5 ATS then the underdog
 //       slot, pickType, isDoubleDown, autoFilled, line, matchup,
-//       awayTeam, homeTeam, awayScore, homeScore, status, live, possession,
-//       result, points, bonusPoints,
+//       awayTeam, homeTeam, awayScore, homeScore, status, live, kickoffAt,
+//       result, points,
 //     }]
 //   }
 // }]

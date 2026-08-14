@@ -208,7 +208,7 @@ export async function getCfbdUsage() {
 export async function getCfbStandings(poolId) {
   const { data } = await supabase
     .from('pool_standings')
-    .select('user_id, rank, total, display')
+    .select('user_id, rank, total')
     .eq('pool_id', poolId)
   return data ?? []
 }

@@ -304,6 +304,7 @@ export default function CfbPoolDetail() {
             weekPicks={derived?.flatPicks ?? []}
             weeklyPoints={derived?.weeklyPoints ?? []}
             weekLabel={weekLabel}
+            locked={derived?.locked ?? false}
             stakeAmount={pool.stake_amount}
             participantCount={participants.length}
             payoutStructure={pool.payout_structure}

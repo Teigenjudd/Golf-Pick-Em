@@ -7,9 +7,7 @@
 export function formatSpread(n) {
   const v = Number(n)
   if (!Number.isFinite(v) || v === 0) return 'PK'
-  const abs = Math.abs(v)
-  const num = Number.isInteger(abs) ? String(abs) : String(abs)
-  return `${v < 0 ? '−' : '+'}${num}`
+  return `${v < 0 ? '−' : '+'}${Math.abs(v)}`
 }
 
 // "Team −7.5" — a pick rendered as team + its line.
@@ -25,11 +23,4 @@ export function formatKick(iso) {
   return d.toLocaleString(undefined, {
     weekday: 'short', hour: 'numeric', minute: '2-digit',
   })
-}
-
-// Score line for a game row: "31–17" (final/live) or "" (not started). The em-style
-// en-dash separates the two scores.
-export function scoreLine(awayScore, homeScore) {
-  if (awayScore == null || homeScore == null) return ''
-  return `${awayScore}–${homeScore}`
 }
