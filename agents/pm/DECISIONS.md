@@ -16,6 +16,42 @@
 
 ---
 
+## 2026-08-13 — CFB PR9a: finalize-as-is is uniform push/0 and one-way through the UI; `push` reused instead of a new `void` result
+
+**Decision:** Ships the admin escape hatch for a stuck CFB week (`gradeWeek`'s `opts.finalize`,
+`grade-cfb-week`'s `finalize` param, `finalizeCfbWeek()`, "Finalize as-is" on `CfbPoolOps.jsx`) —
+closing the two PR5 review gaps this file flagged as PR9 must-dos (2026-08-12, "stuck-week
+finalization deferred to PR9" and "manual grade-by-id lock guard deferred to PR9"). Both are now
+closed in code: (a) a no-contest game (cancelled/postponed/never reports final) grades **every**
+affected pick — ATS, double-down, and underdog alike — as `result: 'push', base_points: 0,
+bonus_points: 0`, with no double-down "slot refund"; a player who spent their once-per-week
+double-down on the voided game just scores 0 on it, same as anyone else. Simple and symmetric,
+accepted for a rare, no-money escape hatch. (b) Finalize is deliberately **one-way through the
+admin UI** — once a week is stamped `graded`, both buttons disappear (gated on `status !==
+'graded'`) and nothing in the app re-opens it; undoing a too-early finalize needs a raw SQL
+update back to `locked`. Accepted as intended "un-stick it and move on" behavior, guarded by a
+`window.confirm` naming the week. Also: the voided result reuses the existing `push` value rather
+than adding a `void` value to `cfb.picks.result`'s CHECK — `push` already means zero points, and a
+distinct `void` would need a migration for no behavioral gain.
+
+**Why:** Finalize exists only for the rare case a game never finalizes (cancelled/postponed) —
+optimizing its edge semantics (partial refunds, reversibility) isn't worth the complexity for an
+admin-only, confirm-gated, no-money-on-platform override. The lock-time guard (grade-cfb-week's
+targeted `{week_id}` path now refuses a week whose `lock_time` hasn't passed, mirroring the scan
+path's existing gate) closes gap (b) from PR5 the same way.
+
+**Gave up:** No in-UI recovery from an early or mistaken finalize (needs direct DB access); no
+partial double-down credit on a voided game.
+
+**Revisit if:** finalize gets used often enough in practice that "raw SQL to undo" becomes a real
+support burden — add an admin "re-open week" action then, not preemptively.
+
+**Note — deploy status unchanged:** this PR (PR9a, `feat/cfb-admin-grading-ops`) is the admin-code
+half of `docs/CFB_BUILD_PLAN.md`'s PR9 row only. The CFB edge functions are still not deployed and
+no CFB cron is armed — that cutover (PR9b) is still pending; see `docs/CFB_BUILD_PLAN.md`.
+
+---
+
 ## 2026-08-13 — CFB sport-dispatch: neutral `lib/pools.js` seam, explicit join, route straight to picks, client-only cutoff
 
 **Decision:** `src/lib/pools.js` is a new **sport-neutral** data seam — reads/writes

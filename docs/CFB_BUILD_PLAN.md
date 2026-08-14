@@ -3,7 +3,8 @@
 > **Status:** Planning, execution in progress (PR6 of ~10 shipped, plus one inserted
 > live-scores PR ahead of PR6, plus the admin half of PR8/PR9 landed early, plus a
 > slate-import automation PR, plus CFB player UI Phase 2, plus PR6's PR-A (the real
-> weekly picks builder), plus PR8 (sport-dispatch) — see below). Written 2026-08-11 from a dedicated planning
+> weekly picks builder), plus PR8 (sport-dispatch), plus PR9a (admin grading ops —
+> grade-week/finalize-as-is code, no deploy yet) — see below). Written 2026-08-11 from a dedicated planning
 > pass, grounded in a full read of the golf implementation as the template. This is the
 > *how-we-build-it* sequencing doc; the *what-the-game-is* rules live in
 > `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's net-new work. See
@@ -337,8 +338,8 @@ glance at a "keep these in sync" comment.
 
 **Shipped 2026-08-12, PR #44.** `supabase/functions/grade-cfb-week/index.ts` is the
 authoritative CFB grader — a service-role edge function gated cron-secret-or-admin-JWT, the
-same shape as golf's `poll-leaderboard`. Two modes: grade one week (`{ week_id }`, for PR9's
-future admin button) or scan every week whose `lock_time` has passed and isn't yet `graded`
+same shape as golf's `poll-leaderboard`. Two modes: grade one week (`{ week_id }`, for the admin
+"Grade week"/"Finalize as-is" buttons shipped in PR9a) or scan every week whose `lock_time` has passed and isn't yet `graded`
 (cron mode). CFBD's `/games` endpoint is deduped by the real `(season, week_number)` — one
 fetch fanned out to every event's games sharing it, mirroring the golf poller's per-tournament
 dedup (D3) — and counted against `public.api_usage.cfbd_calls` under the shared 1000/mo cap.
@@ -348,26 +349,26 @@ yet `completed`), and recomputes each affected pool's season-cumulative
 `public.pool_standings` via `projectSeasonStandings` — **the first code in the repo that
 writes `pool_standings`** (closes the CFB half of BACKLOG F1; golf's half, F1's other loose
 end, is still open). Only `completed` games are graded, and re-running is idempotent.
-`src/lib/cfb.js` adds `gradeCfbWeek(weekId)` as the thin client-side invoker for PR9's admin
-"Grade week" button; grading itself never runs client-side. No migration — every table the
-function touches already exists, and the service role bypasses RLS. No app screen consumes
-`pool_standings` yet (CFB's leaderboard is PR7); no cron or admin UI calls this function yet
-(PR9), so nothing live is affected by the two gaps below.
+`src/lib/cfb.js` adds `gradeCfbWeek(weekId)` and `finalizeCfbWeek(weekId)` as the client-side
+invokers for `CfbPoolOps.jsx`'s "Grade week"/"Finalize as-is" buttons (shipped PR9a); grading
+itself never runs client-side. No migration — every table the function touches already exists,
+and the service role bypasses RLS. No app screen consumes `pool_standings` yet (CFB's
+leaderboard is PR7); no cron calls this function yet (deploy/cron-arming is PR9b), so nothing
+live was affected by the two gaps below while they stood.
 
 Senior review (`agents/senior-dev/reviews/cfb-pr5-grading.md`, APPROVE WITH QUESTIONS) traced
 the sign conventions, the grader→engine wiring, the cap accounting, and the standings
 recompute, and found the happy path correct with no blockers. It surfaced two founder
-decisions, both resolved by deferring to **PR9** (`agents/pm/DECISIONS.md`, 2026-08-12):
+decisions, both **closed in code by PR9a** (`agents/pm/DECISIONS.md`, 2026-08-12 and 2026-08-13):
 
 - **Stuck-week finalization.** A week with a cancelled/postponed/rescheduled game never
-  reports every game `completed`, so it can never reach `graded` — and scan mode re-fetches
-  CFBD for it on every cron run, indefinitely, against the shared cap. **PR9 must-do:** an
-  admin "finalize week as-is" override, plus treating a game the provider stops returning as
-  a no-contest.
-- **Manual grade-by-id lock guard.** The `{ week_id }` path doesn't check `lock_time` (only
-  scan mode does), so a future admin "Grade week" button could grade a week still open for
-  picks. **PR9 must-do:** add the one-line `lock_time` guard when that button is built (no
-  caller exists today, so it was deferred rather than built speculatively).
+  reports every game `completed`, so it couldn't reach `graded` on its own, and scan mode
+  would re-fetch CFBD for it on every cron run, indefinitely, against the shared cap.
+  **Closed:** `gradeWeek`'s `opts.finalize` (admin "Finalize as-is") grades whatever's final,
+  voids the rest as no-contest pushes, and forces `graded`.
+- **Manual grade-by-id lock guard.** The `{ week_id }` path didn't check `lock_time` (only
+  scan mode did), so a "Grade week" button could have graded a week still open for picks.
+  **Closed:** the targeted path now refuses a week before its `lock_time`.
 
 Three lower-severity nits (a `.single()` vs `.maybeSingle()` on the first `api_usage` row of a
 new month, a `throughWeek` subtitle that can look stale if weeks grade out of order, and
@@ -530,7 +531,7 @@ real build:
 | 6 | Weekly picks UI + shell theme-props — **Phase 1 (theme + shells + route scaffold) shipped 2026-08-13, PR #48**; **PR-A (the real interactive `CfbPicks` builder: 5 ATS + double-down + underdog, live validity, submit via `cfb_submit_week_picks`) shipped 2026-08-13** — `docs/PAGES.md` §10g. PR-B (the read-only locked/auto-filled/graded card view) still open. | `CfbPicks`, `CfbGameCard`, `CfbCardTracker`, `src/utils/cfbCard.js` | shell changes must not visually change golf (defaults) — verified in senior review, PR #48; UI-validity vs. RPC parity confirmed clean in PR-A's review |
 | 7 | CFB pool detail / leaderboard — **Phase 1 placeholder shipped 2026-08-13, PR #48**; **Phase 2 (real season-standings hero, week selector, scorecard-expand, CFB widget row) shipped 2026-08-13, PR #49** — `docs/PAGES.md` §10f | `CfbPoolDetail`, `CfbStandings`, `CfbWeekSelector`, `CfbWidgets`; `WidgetGrid` → render-prop; 4 new `lib/cfb.js` reads (`getCfbStandings`/`getCfbParticipants`/`getCfbWeekGames`/`getCfbWeekPicks`) | first page reading `pool_standings` — validates Decision #3; also first UI reader of `cfb.games.live`. Client-side weekly-points recompute vs. server total, and pre-lock widget visibility, both resolved as founder decisions (`agents/pm/DECISIONS.md`, 2026-08-13) |
 | 8 | Sport-dispatch — **shipped 2026-08-13** | `src/lib/pools.js` (sport-neutral `getPoolByCode`/`joinPool`); `Join.jsx`/`Dashboard.jsx` now branch on `sport_id` — a CFB pool is reachable through the normal join-code flow (no CFB routes needed; both sports use existing `/join/:code`, `/dashboard`). **Admin pool creation shipped earlier as 8a.** | golf path confirmed byte-identical in senior review; CFB's explicit `joinPool` write exists because `cfb_submit_week_picks` requires prior membership, unlike golf's implicit-at-submit (`agents/pm/DECISIONS.md`, 2026-08-13) |
-| 9 | Remaining weekly admin ops + cron | Grade-week button (import is now automated per 5d; lock-edit already shipped in 8a). Then pg_cron (golf's pattern) — **arms THREE CFB crons**: hourly slate/lines (`poll-cfb-lines`), ~1-minute live scores (`poll-cfb-scores`), weekly grading (`grade-cfb-week`). **Must also close three deferred items** (`agents/pm/DECISIONS.md`, 2026-08-12 and 2026-08-13): two PR5 grader gaps (an admin "finalize week as-is" override for a stuck week, and a `lock_time` guard on the manual "Grade week" button), plus the live-scores cron-cadence tuning (confirm the 30-min look-ahead, decide windowed-vs-year-round schedule, deploy `poll-cfb-scores` + arm the cron). Also deploys `poll-cfb-lines` + applies the `spread_history` migration (5d). | a stuck week burns CFBD calls every cron run until the override ships; an unarmed live poller means no live scores until this PR; an unarmed slate poller means no NEW games/spreads land until this PR (existing slates from PR3-era manual imports still work) |
+| 9 | Remaining weekly admin ops + cron | **9a (admin grading code) shipped 2026-08-13, `feat/cfb-admin-grading-ops`:** "Grade week" / "Finalize as-is" buttons on `CfbPoolOps.jsx`; closes both PR5 grader gaps in code — `gradeWeek`'s `opts.finalize` voids a stuck week's ungraded picks as no-contest pushes and forces `graded`, and `grade-cfb-week`'s targeted `{week_id}` path now refuses a week before its `lock_time` (see `agents/pm/DECISIONS.md`, 2026-08-13). **9b (cutover, still open):** deploy the three CFB edge functions, apply the pending migrations, and arm pg_cron (golf's pattern) — **THREE CFB crons**: hourly slate/lines (`poll-cfb-lines`), ~1-minute live scores (`poll-cfb-scores`), weekly grading (`grade-cfb-week`) — plus the live-scores cron-cadence tuning (confirm the 30-min look-ahead, decide windowed-vs-year-round schedule). | until 9b ships: a stuck week still burns CFBD calls every cron run (no cron is armed yet, so not live today); no live scores; no NEW games/spreads land (existing slates from PR3-era manual imports still work) |
 | 10 | Auto-fill on missed deadline | Random fill of missing slots, DD forfeiture, `auto_filled` flag | partial-card semantics (see CFB_FORMAT open questions) |
 | — | **Prod cutover checklist** — **Exposed Schemas flip done 2026-08-13**, ahead of PR #46 | Flipped Exposed Schemas to include `cfb` (and all other schemas/tables/functions) in the Supabase dashboard | resolved — was silent 404s on every `cfb` query if forgotten |
 
