@@ -33,20 +33,23 @@ BEGIN
       AND lock_time <= now()
       AND status NOT IN ('locked', 'graded');
 
-  -- Auto-fill missing cards for every past-deadline, not-yet-graded week. Each week
+  -- Auto-fill missing cards for every recently-locked, not-yet-graded week. Each week
   -- runs in its own sub-block so one bad week (e.g. fewer than 6 games, which
-  -- autofill_week raises on) is skipped without stalling the rest.
+  -- autofill_week raises on) is skipped without stalling the rest — but the failure is
+  -- LOGGED (RAISE WARNING), not silently swallowed, so a broken week surfaces in the
+  -- Postgres logs instead of players quietly dropping out of scoring. The 30-day recency
+  -- bound stops an old stuck week from being retried (and re-logged) every 10 min forever.
   FOR w IN
     SELECT id FROM cfb.weeks wk
     WHERE wk.lock_time IS NOT NULL
       AND wk.lock_time <= now()
+      AND wk.lock_time >= now() - interval '30 days'
       AND wk.status <> 'graded'
   LOOP
     BEGIN
       v_total := v_total + cfb.autofill_week(w.id);
     EXCEPTION WHEN OTHERS THEN
-      -- non-fatal: skip this week, keep going
-      NULL;
+      RAISE WARNING 'process_locked_weeks: autofill_week(%) failed: %', w.id, SQLERRM;
     END;
   END LOOP;
 
