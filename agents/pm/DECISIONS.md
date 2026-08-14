@@ -16,6 +16,39 @@
 
 ---
 
+## 2026-08-13 — CFB sport-dispatch: neutral `lib/pools.js` seam, explicit join, route straight to picks, client-only cutoff
+
+**Decision:** `src/lib/pools.js` is a new **sport-neutral** data seam — reads/writes
+only `public.*` tables, never `golf()`/`cfb()` — distinct from the per-sport
+`lib/golf.js`/`lib/cfb.js` seams. It exists because `Join.jsx` and `Dashboard.jsx` must
+learn a pool's `sport_id` *before* they know which per-sport lib to hand off to.
+`getPoolByCode(code)` does that lookup; `joinPool(poolId, userId)` writes
+`pool_participants` explicitly for CFB — **golf records that membership implicitly at
+pick-submit, but CFB's `cfb_submit_week_picks` RPC requires the row to already exist**,
+so an implicit-at-submit join would just fail the RPC. Three follow-on calls, made in
+the same PR: the CFB join CTA routes to `/cfb/pool/:id/picks` (not `/cfb/pool/:id` as
+`docs/CFB_UI_PLAN.md` §5 originally specced) — drops a new joiner straight into the
+action, matching the CTA copy "Join & make picks →"; the season join-cutoff
+(`joinClosed` in `Join.jsx`) is enforced **client-side only**, hardened in-branch to
+fail *closed* on a null `lock_time` rather than fail open; and the CFB dashboard tile
+ships without golf's "Live" chip variant (no per-game query at the list-endpoint level).
+
+**Why:** This is the real seam a second sport's dispatch has to cross — golf's
+implicit-join pattern (RLS lets a pick-submit insert its own membership row inline)
+quietly assumed there'd only ever be one join mechanism. CFB's RPC-first membership
+requirement broke that assumption, so the fix had to be a new, explicit, sport-neutral
+write path rather than a tweak to `lib/cfb.js`. Routing to picks-first and a
+client-only cutoff were both scoped decisions to ship the funnel now rather than block
+on a fuller join RPC.
+
+**What we gave up:** a server-side backstop on the join cutoff (tracked as BACKLOG A10 —
+today nothing stops a `pool_participants` insert after a pool's season has started
+except the browser check) and the "Live" tile state golf has (BACKLOG G5).
+
+**Revisit if:** CFB ever needs a join step with side effects beyond a plain upsert (e.g.
+payment, waitlist, capacity cap) — at that point the cutoff enforcement belongs in a
+`SECURITY DEFINER` RPC next to `joinPool`, not in the browser.
+
 ## 2026-08-13 — CFB Phase 2: keep the instant client-side weekly-points recompute over the server total
 
 **Decision:** On `/cfb/pool/:id`, the season total (the big number, per player) reads

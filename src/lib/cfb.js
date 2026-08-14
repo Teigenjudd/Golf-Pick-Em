@@ -287,3 +287,95 @@ export async function getSpreadHistory(cfbdGameId) {
   if (error) throw error
   return data ?? []
 }
+
+// ── Player-facing: Dashboard tile feed (docs/CFB_UI_PLAN.md §4) ──────────────
+// One row per CFB pool this user belongs to, shaped for CfbPoolTile. Batches every
+// step with .in(...) so the cost is a handful of queries total, not one per pool.
+export async function getMyCfbPools(userId) {
+  const { data: myParts } = await supabase
+    .from('pool_participants').select('pool_id').eq('user_id', userId)
+  const poolIds = [...new Set((myParts ?? []).map(p => p.pool_id))]
+  if (!poolIds.length) return []
+
+  const { data: pools } = await supabase
+    .from('pools').select('id, name, event_id, lock_time, status').in('id', poolIds)
+  if (!pools?.length) return []
+
+  const eventIds = [...new Set(pools.map(p => p.event_id))]
+  const { data: events } = await supabase
+    .from('events').select('id, sport_id').in('id', eventIds)
+  const cfbEventIds = new Set((events ?? []).filter(e => e.sport_id === 'cfb').map(e => e.id))
+  const cfbPools = pools.filter(p => cfbEventIds.has(p.event_id))
+  if (!cfbPools.length) return []
+
+  const cfbEventIdList = [...new Set(cfbPools.map(p => p.event_id))]
+
+  const [{ data: eds }, { data: weeks }, { data: standings }, { data: parts }] = await Promise.all([
+    cfb().from('event_details').select('event_id, season_year').in('event_id', cfbEventIdList),
+    cfb().from('weeks').select('id, event_id, week_number, label, lock_time, status')
+      .in('event_id', cfbEventIdList).order('week_number'),
+    supabase.from('pool_standings').select('pool_id, rank, total')
+      .eq('user_id', userId).in('pool_id', cfbPools.map(p => p.id)),
+    supabase.from('pool_participants').select('pool_id').in('pool_id', cfbPools.map(p => p.id)),
+  ])
+
+  const seasonByEvent = {}
+  ;(eds ?? []).forEach(e => { seasonByEvent[e.event_id] = e.season_year })
+
+  const weeksByEvent = {}
+  ;(weeks ?? []).forEach(w => { (weeksByEvent[w.event_id] ??= []).push(w) })
+
+  const standingByPool = {}
+  ;(standings ?? []).forEach(s => { standingByPool[s.pool_id] = s })
+
+  const playerCountByPool = {}
+  ;(parts ?? []).forEach(p => { playerCountByPool[p.pool_id] = (playerCountByPool[p.pool_id] ?? 0) + 1 })
+
+  // Current week per pool: the first not-locked week, else the last (highest number).
+  const currentWeekByPool = {}
+  cfbPools.forEach(p => {
+    const ws = weeksByEvent[p.event_id] ?? []
+    if (!ws.length) { currentWeekByPool[p.id] = null; return }
+    currentWeekByPool[p.id] = ws.find(w => !weekIsLocked(w)) ?? ws[ws.length - 1]
+  })
+
+  // This user's pick count for each pool's current week, in one batched query.
+  const currentWeekIds = [...new Set(
+    Object.values(currentWeekByPool).filter(Boolean).map(w => w.id)
+  )]
+  const pickCountByWeek = {}
+  if (currentWeekIds.length) {
+    const { data: picks } = await cfb()
+      .from('picks').select('week_id').eq('user_id', userId).in('week_id', currentWeekIds)
+    ;(picks ?? []).forEach(p => { pickCountByWeek[p.week_id] = (pickCountByWeek[p.week_id] ?? 0) + 1 })
+  }
+
+  const result = cfbPools.map(p => {
+    const w = currentWeekByPool[p.id]
+    const standing = standingByPool[p.id]
+    let cardStatus = 'preseason'
+    if (w) {
+      cardStatus = (pickCountByWeek[w.id] ?? 0) >= 6 ? 'card-in' : 'needs-picks'
+    }
+    return {
+      poolId: p.id,
+      name: p.name,
+      seasonYear: seasonByEvent[p.event_id] ?? null,
+      currentWeek: w ? {
+        id: w.id,
+        week_number: w.week_number,
+        label: w.label,
+        lock_time: w.lock_time,
+        status: w.status,
+        locked: weekIsLocked(w),
+      } : null,
+      cardStatus,
+      rank: standing?.rank ?? null,
+      total: standing?.total ?? 0,
+      playerCount: playerCountByPool[p.id] ?? 0,
+    }
+  })
+
+  result.sort((a, b) => (b.seasonYear ?? 0) - (a.seasonYear ?? 0) || a.name.localeCompare(b.name))
+  return result
+}

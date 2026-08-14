@@ -6,12 +6,14 @@
 > pasted into Claude Design as a self-contained brief while the backend PRs (PR5+)
 > are built in parallel. The *rules* live in `docs/CFB_FORMAT.md`; the *build
 > sequencing* in `docs/CFB_BUILD_PLAN.md`; the golf page inventory this mirrors in
-> `docs/PAGES.md`. **Build status (updated 2026-08-13):** §2's shell prop-ification and
-> §6/§6a (CFB Pool Detail + widgets) are now built — Phase 1 (theme + shells +
-> placeholder routes, PR #48) and Phase 2 (the real Pool Detail body, PR #49) have both
-> shipped; see `docs/PAGES.md` §10f for what actually shipped vs. this brief. §7 (CFB
-> Weekly Picks, Phase 3) and §4/§5/§8b (dashboard tile, join branch, sport-dispatch —
-> Phase 4) are still design-only, not built.
+> `docs/PAGES.md`. **Build status (updated 2026-08-13):** §2's shell prop-ification,
+> §6/§6a (CFB Pool Detail + widgets), §7 (CFB Weekly Picks builder), and §4/§5
+> (dashboard tile + join branch/sport-dispatch) are all now built — see `docs/PAGES.md`
+> §10f/§10g and §6/§4/§5 for what actually shipped vs. this brief (two shipped
+> deviations from §5's original spec: the join CTA routes straight to the picks page,
+> not the pool overview; and the tile's "· Live" chip variant was deferred, so a
+> locked-mid-game week and a locked-between-games week both just read "Locked"). §7's
+> read-only locked/graded card view is still not built.
 
 ---
 
@@ -115,7 +117,9 @@ The pool-detail **week selector** uses a query param (`?week=N`) — no separate
 - **Week status chip**, one of:
   - `Week 4 · Needs picks — locks Sat 12:00` (primary call-to-action) → links to picks
   - `Week 4 · Card in ✓` (confirmed) → links to picks (still editable) 
-  - `Week 4 · Locked · Live` (in-progress)
+  - `Week 4 · Locked` (shipped without the `· Live` variant — no per-game state at the
+    tile level, so a locked-mid-game week and a locked-between-games week read the same;
+    deliberate scope cut, `docs/PAGES.md` §6)
   - `Week 4 · Graded` (between weeks)
   - `Season complete` (archived look)
 - Season snapshot: `#3 · 41 pts` (rank + points)
@@ -147,7 +151,9 @@ state is the most important — it's the weekly re-engagement hook.
   *"Every week: pick 5 to cover the spread, double-down your best one, and take an
   underdog to win outright. Points stack all season."*
 - `N players in` social proof
-- Join CTA → on success routes to `/cfb/pool/:id` (not golf's `/tournament/...`)
+- Join CTA → on success routes to `/cfb/pool/:id/picks` (shipped deviation from this
+  brief's original `/cfb/pool/:id`: drops the joiner straight into the action, "Join &
+  make picks →"; membership is written first either way)
 - Closed state if past the Week 1 cutoff
 - Consent line + Footer (shared, unchanged)
 

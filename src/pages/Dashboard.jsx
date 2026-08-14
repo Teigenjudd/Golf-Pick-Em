@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Navigate, Link } from 'react-router-dom'
 import { getMyPickRows, getPoolViewsByIds, getPoolPicks, getLatestLeaderboard, getAllPools } from '../lib/golf'
+import { getMyCfbPools } from '../lib/cfb'
 import { computeScores, assignRanks, formatScore } from '../utils/scoring'
 import { getInitials } from '../utils/format'
 import SportBadge from '../components/SportBadge'
 import BottomNav from '../components/BottomNav'
 import Footer from '../components/Footer'
+import CfbPoolTile from '../components/cfb/CfbPoolTile'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -33,6 +35,7 @@ export default function Dashboard() {
   const [showClosed, setShowClosed] = useState(false)
   const [showClosedAdmin, setShowClosedAdmin] = useState(false)
   const [myStandings, setMyStandings] = useState({})
+  const [cfbPools, setCfbPools] = useState([])
 
   useEffect(() => {
     if (!user) return
@@ -97,6 +100,11 @@ export default function Dashboard() {
     getAllPools().then(setAdminTournaments)
   }, [user, profile])
 
+  useEffect(() => {
+    if (!user) return
+    getMyCfbPools(user.id).then(setCfbPools)
+  }, [user])
+
   if (loading) return null
   if (!user) return <Navigate to="/" replace />
 
@@ -127,7 +135,7 @@ export default function Dashboard() {
         <div className="font-display font-extrabold text-[38px] text-[#1C1610] leading-none mb-[18px]">{getGreeting()}</div>
 
         {/* Section label */}
-        {myTournaments.length > 0 && (
+        {(myTournaments.length > 0 || cfbPools.length > 0) && (
           <div className="font-display font-bold text-[10px] uppercase tracking-[.22em] text-warm-400 mb-[10px]">
             Your Active Pools
           </div>
@@ -251,6 +259,9 @@ export default function Dashboard() {
           )
         })}
 
+        {/* CFB pool tiles — after golf tiles, per docs/CFB_UI_PLAN.md §4 */}
+        {cfbPools.map(tile => <CfbPoolTile key={tile.poolId} tile={tile} />)}
+
         {/* Show/hide closed */}
         {closedTournaments.length > 0 && (
           <button
@@ -262,7 +273,7 @@ export default function Dashboard() {
         )}
 
         {/* Empty state */}
-        {myTournaments.length === 0 && profile?.role !== 'admin' && (
+        {myTournaments.length === 0 && cfbPools.length === 0 && profile?.role !== 'admin' && (
           <div className="text-center py-16">
             <p className="text-[13px] text-warm-400">You haven&apos;t joined any pools yet.</p>
             <p className="text-[12px] text-warm-300 mt-1">Use a join link from your pool organizer to get started.</p>
