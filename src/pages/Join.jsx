@@ -191,7 +191,7 @@ export default function Join() {
 
   /* ── Authenticated: CFB invite card ── */
   if (cfbPool) {
-    const joinClosed = cfbPool.lock_time && new Date(cfbPool.lock_time) <= new Date()
+    const joinClosed = !cfbPool.lock_time || new Date(cfbPool.lock_time) <= new Date()
 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-sand px-5 py-10">
