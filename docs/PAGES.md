@@ -479,8 +479,9 @@ header. Constants in `src/theme/cfb.js`.)
 **What it does:** CFB's pool leaderboard page — the CFB counterpart to TournamentDetail.
 **Phase 1 (theme + shell + placeholder body) shipped 2026-08-13, PR #48. Phase 2 (the
 real body) shipped 2026-08-13, PR #49** (`docs/CFB_BUILD_PLAN.md` PR7; design brief
-`docs/CFB_UI_PLAN.md` §6/§6a). The page is still not linked from anywhere in the UI
-(reachable only by typing the URL) — that wiring is Phase 4 (`docs/CFB_BUILD_PLAN.md` PR8).
+`docs/CFB_UI_PLAN.md` §6/§6a). Linked from the Dashboard's `CfbPoolTile` (§6 above) and
+from the CFB Join card once a locked/graded week routes back here — the Phase 4
+sport-dispatch wiring (`docs/CFB_BUILD_PLAN.md` PR8).
 
 **IA decision (locked):** the **season-cumulative standings are the hero and stay ranked
 by season total** (`public.pool_standings`, written by `grade-cfb-week`). A **week
@@ -531,8 +532,9 @@ mandatory underdog pick on a separate 6th game — with live validity, then subm
 `cfb.cfb_submit_week_picks` (the real gate; it validates the whole card and freezes each
 pick's `locked_spread` server-side). Re-submittable until the week locks. **PR-B (deferred,
 not built):** the rich READ-ONLY locked / auto-filled / graded card view — today a locked
-target week just shows a short notice back to the pool instead. Not linked from anywhere in
-the UI yet (reachable only by typing the URL, same as CfbPoolDetail).
+target week just shows a short notice back to the pool instead. Linked from the Dashboard's
+`CfbPoolTile` (needs-picks/card-in states) and, for a new joiner, the CFB Join card's
+"Join & make picks →" CTA (`docs/CFB_BUILD_PLAN.md` PR8).
 
 **Data available (`src/lib/cfb.js`):**
 - `getCfbPool(poolId)` — pool + season year; `null` → "Pool not found."

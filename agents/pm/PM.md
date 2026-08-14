@@ -18,9 +18,10 @@ against a field of athletes, and compete on a shared leaderboard.
 
 **Current state:** Live at getpoold.app (Netlify). React + Vite + Tailwind v4 + Supabase
 (Postgres/Auth/Edge Functions/RLS). Golf is live in prod; CFB (sport #2) is in active
-build — backend, admin, the player leaderboard page, and the interactive weekly picks
-builder exist; the read-only locked/graded card view and the sport-dispatch layer do not.
-The app runs on the `public` core + per-sport schema split
+build — backend, admin, the player leaderboard page, the interactive weekly picks
+builder, and the sport-dispatch layer (a CFB pool is reachable through the normal
+join-code flow and shows on the Dashboard) all exist; the read-only locked/graded card
+view does not. The app runs on the `public` core + per-sport schema split
 (`golf`, `cfb`), with `lib/golf.js` / `lib/cfb.js` as the only seams into each. Phase 5
 (dropping the dead legacy `public` golf tables) is the remaining migration cleanup. See
 `docs/CEO_REPORT.md` for the current founder narrative and the status board below.
@@ -65,9 +66,10 @@ writing code.
 - No real-money entry fees or payouts through the app (display-only prize pools are OK)
 - No second sport **built** until golf is proven and stable — the schema seam exists
   (that was the point of the migration). **CFB is the committed sport #2**, in active
-  build: backend, admin, the player leaderboard page, and the interactive weekly picks
-  builder exist; the sport-dispatch layer does not, so a CFB pool is reachable only by a
-  direct admin link, not the join-code flow. This is a deliberate exception to "golf first" — see
+  build: backend, admin, the player leaderboard page, the interactive weekly picks
+  builder, and the sport-dispatch layer exist — a CFB pool is now reachable through the
+  normal join-code flow and shown on the Dashboard, same as golf. Only the read-only
+  locked/graded card view is still missing. This is a deliberate exception to "golf first" — see
   `agents/pm/DECISIONS.md`. Current architecture: `CLAUDE.md` §Architecture ("Sport #2 =
   CFB"). Rules: `docs/CFB_FORMAT.md`. Build sequence + progress: `docs/CFB_BUILD_PLAN.md`,
   `docs/CEO_REPORT.md`.
@@ -146,7 +148,7 @@ writing code.
 
 **Live in prod (golf):** full pick'em end to end — admin creates a tournament, players join by code, make tiered picks, watch a live leaderboard (Slash Golf via the `poll-leaderboard` edge function, cached, pg_cron on tournament weekends), scored with WD/CUT penalties, optional prize-pool display, weather widget, public no-auth `/demo`. Runs on the `public` core + `golf` schema split (`lib/golf.js` is the only golf seam). Branded auth email (Resend SMTP), user-set display names, invite-link previews, and legal pages are all live. Security criticals C1–C4 and A1–A2 are closed.
 
-**In build (CFB, sport #2):** the full backend, the admin surface, the player Pool Detail / leaderboard page, and the interactive weekly picks builder are live; the read-only locked/graded card view and the sport-dispatch layer are not. Current architecture and the exact what-exists / what-doesn't-yet are in `CLAUDE.md` (§Architecture Summary → "Sport #2 = CFB"); progress against the plan and the founder narrative are in `docs/CEO_REPORT.md`, with the sequence in `docs/CFB_BUILD_PLAN.md`.
+**In build (CFB, sport #2):** the full backend, the admin surface, the player Pool Detail / leaderboard page, the interactive weekly picks builder, and the sport-dispatch layer (a CFB pool is joinable and visible through the normal join-code flow + Dashboard, same as golf) are live; only the read-only locked/graded card view is not. Current architecture and the exact what-exists / what-doesn't-yet are in `CLAUDE.md` (§Architecture Summary → "Sport #2 = CFB"); progress against the plan and the founder narrative are in `docs/CEO_REPORT.md`, with the sequence in `docs/CFB_BUILD_PLAN.md`.
 
 **Open — launch blockers (gate any growth/marketing push on these):**
 - 🔴 **Supabase free tier auto-pauses the project** after ~7 days idle — it has, taking getpoold.app down with an opaque "load failed" at sign-in. Any quiet week between events can kill the app. Upgrade to Pro or run a heartbeat. (ROADMAP P0.5)

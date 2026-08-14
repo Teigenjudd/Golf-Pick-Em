@@ -73,6 +73,15 @@
   transit. **Fix:** add a one-line Resend entry alongside Supabase/Netlify. Source
   file, not a doc — flagged here per the ownership index, not fixed in this PR.
 
+- [ ] ⚪ **A10 — CFB's join-season cutoff is enforced client-side only.**
+  `Join.jsx`'s `joinClosed` check (the "season already started" gate) reads
+  `cfbPool.lock_time` in the browser; there's no RLS/RPC backstop preventing a
+  `pool_participants` insert after the cutoff. Fails *closed* if `lock_time` is ever
+  null (hardened in `feat/cfb-sport-dispatch`), so the immediate trap is closed, but the
+  gate itself is still trust-the-client. Accepted for launch — consistent with A5's
+  posture on over-readable join codes. **Fix (if ever prioritized):** move the cutoff
+  check into a `SECURITY DEFINER` join RPC alongside `joinPool`.
+
 ---
 
 ## B. Correctness & Data Integrity
@@ -397,6 +406,14 @@
 
 - [ ] ⚪ **G4 — No "leave pool" / self-service participant management for players.**
   RLS allows `"leave self"` on `pool_participants`, but there's no UI. Minor.
+
+- [ ] ⚪ **G5 — CFB dashboard tile has no "Live" state.**
+  Golf's dashboard tile shows a pulsing "Live" dot while a round is in progress;
+  `CfbPoolTile` (`src/lib/cfb.js`'s `getMyCfbPools`) shows the same "Locked" chip for a
+  locked-mid-game week and a locked-between-games week. A true live check needs
+  per-game status at the tile level, which `getMyCfbPools` deliberately doesn't fetch
+  (would add a query per pool to a list endpoint). Deferred, not a bug — see
+  `docs/CFB_UI_PLAN.md` §4.
 
 ---
 
