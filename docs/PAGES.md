@@ -472,21 +472,46 @@ brick `#D6291B` accent, green `#2E8F4F` cover/win, brick/cream/brick rib stripe 
 header. Constants in `src/theme/cfb.js`.)
 
 **What it does:** CFB's pool leaderboard page — the CFB counterpart to TournamentDetail.
-**Phase 1 (shipped 2026-08-13, PR #48) is a themed placeholder only:** renders the real
-`PoolHeader` shell (badge, hero name, season sub-label) in the Varsity Navy register, and a
-"Leaderboard is coming soon" card. `getCfbPool(poolId)` refuses a non-CFB pool id (returns
-null → this page shows "Pool not found.") — added in this PR's senior review so Phase 2
-can't accidentally build the real standings on top of a golf pool's data. Season
-standings, the week selector, the scorecard-expand, and CFB-specific widgets are Phase 2
-(`docs/CFB_BUILD_PLAN.md` PR7) — not built. Not linked from anywhere in the UI yet
-(reachable only by typing the URL); the dashboard doesn't branch on sport (PR8/Phase 4).
+**Phase 1 (theme + shell + placeholder body) shipped 2026-08-13, PR #48. Phase 2 (the
+real body) shipped 2026-08-13, PR #49** (`docs/CFB_BUILD_PLAN.md` PR7; design brief
+`docs/CFB_UI_PLAN.md` §6/§6a). The page is still not linked from anywhere in the UI
+(reachable only by typing the URL) — that wiring is Phase 4 (`docs/CFB_BUILD_PLAN.md` PR8).
 
-**Data available:**
-- Pool + season year via `getCfbPool(poolId)` (`src/lib/cfb.js`)
+**IA decision (locked):** the **season-cumulative standings are the hero and stay ranked
+by season total** (`public.pool_standings`, written by `grade-cfb-week`). A **week
+selector** (`CfbWeekSelector`, rendered inside the navy `PoolHeader` band) scopes the
+scorecard-expand and the widget row to one chosen week — it does **not** re-rank the
+season standings. Selection lives in a `?week=N` query param; on load it resolves to
+that week if valid, else the first non-graded week, else the last.
 
-**What must be on this page (Phase 1):**
-- `PoolHeader` shell themed via `gradient`/`accentColor`/`rib` from `CFB_THEME`, badge via `cfbBadge(seasonYear)`
-- "Season Standings" placeholder card; "Pool not found." error state; "Loading…" state
+**Data available** (`src/lib/cfb.js`, all read-only):
+- `getCfbPool(poolId)` — pool row + `stake_amount`/`payout_structure` (added this PR so the Prize Pool widget can render)
+- `getCfbPoolWeeks(eventId)` — the season's `cfb.weeks`
+- `getCfbStandings(poolId)` — `public.pool_standings` rows (`user_id, rank, total`); empty until the first week is graded
+- `getCfbParticipants(poolId)` — every pool member + `display_name`, so standings show everyone even pre-season
+- `getCfbWeekGames(weekId)` — the selected week's `cfb.games`, including the live in-game blob and current score/status
+- `getCfbWeekPicks(poolId, weekId)` — picks for the selected week; RLS returns only the viewer's own picks before that week locks, everyone's confirmed picks after
+
+**What's on the page:**
+- **Header** (`PoolHeader`, CFB theme): badge, pool name, `"{season} · College Football"`, player count, a round badge (`Week N · Live/Locked/Final/Open`), and — as the header's `children` — `CfbWeekSelector` (a horizontal segmented control of weeks) plus a "Live — scores update as games go final" line when any selected-week game is `in_progress`. Admins get a "Share invite" button that copies the join link.
+- **Season Standings hero** (`CfbStandings`, inside `StandingsCard`): one row per participant — rank, name, "YOU" tag, season total (leader in the CFB accent), and a subtitle showing the selected week's state (`"+N this week"` / `"No card · Week N"` / hidden). Row expands (brick left-bar, the scorecard-expand pattern) into the selected week's 6 picks: slot marker (1–5 ATS, ★ = double-down, 🐕 = underdog), the pick line (`"Michigan −7.5"`), a live/final/scheduled game line, a result pill (Cover/Push/Miss/Win/Loss), points, an `Auto` badge if auto-filled, and a `TOTAL · Week N` row. Grading for the expand is **recomputed client-side** (`gradeWeekCard`/`pickMargin` from `src/utils/cfbScoring.js`) off each game's live/final score — display-only; the server grader stays authoritative. Only `status === 'final'` games award points; an in-progress game shows its live score but stays ungraded so points don't flip-flop mid-game.
+- **Widget row** (`CfbWidgets`, inside `WidgetGrid`): Prize Pool (reused `PrizePoolWidget`, shown first when `stake_amount` is set) → This Week's Slate (always visible: matchup, spread or live/final score, kickoff time) → Weekly Points, Most-Backed Teams, Underdog Board. **The last three are hidden until the selected week locks**, replaced by a "Weekly points, most-backed teams, and the underdog board reveal when Week N locks" note — before lock, RLS only returns the viewer's own picks, so those widgets would otherwise read as a 1-player pool (`agents/pm/DECISIONS.md`, 2026-08-13).
+
+**States:**
+- **Pre-season** (no `pool_standings` rows yet): standings still list every participant at 0, with a "Season kicks off Week N — standings fill in as weeks are graded" note.
+- **No players joined yet:** "No players have joined yet."
+- **Weeks not seeded yet:** "Weeks for this season haven't been set up yet."
+- **Selected week has no card for a player:** "No card in for Week N." (own card, or after lock) vs. "Picks are hidden until Week N locks." (someone else's, before lock).
+- **Loading** / **Pool not found** (non-CFB pool id, or bad id — `getCfbPool` returns `null`).
+
+**Known trade-off (flagged in senior review, founder-confirmed, kept):** the season total
+(server) and the weekly expand/Weekly-Points total (recomputed client-side) are two
+independent code paths for the same math. They agree once the server's live poller
+re-grades a just-finalized game (normally within one poll cycle), but for that short
+window the weekly number can lead the season number. Deliberate trade for instant
+"points as games go final" feedback instead of waiting on the cron; guarded against
+silent drift by the JS/TS scoring parity test suite. See `agents/pm/DECISIONS.md`,
+2026-08-13.
 
 ---
 
@@ -636,6 +661,21 @@ Four self-contained widgets. All presentational, all conditionally render if dat
 | `PGALeadersWidget` | `leaderboardData` | Top 5 players by score |
 | `MostPopularWidget` | `picks` | Bar chart of most-picked players |
 | `TierValueWidget` | `picks`, `leaderboardData` | Best live score per tier |
+
+### CFB leaf components — `src/components/cfb/`
+
+The CFB analogues of `Standings`/`Widgets` above, added 2026-08-13 (PR #49, CFB player UI
+Phase 2). Presentational only — `CfbPoolDetail.jsx` does all the joining/grading and hands
+each one a display-ready shape.
+
+| Component | Props | Output |
+|---|---|---|
+| `CfbWeekSelector` | `weeks[]` (`id, week_number, label, status`), `selectedNumber`, `onSelect(week)` | Horizontal segmented week scroller, styled for the dark `PoolHeader` ground (rendered as the header's `children`) |
+| `CfbStandings` | `entries[]` (`user_id, display_name, rank, total, week: {state, total, picks[]}`), `currentUserId`, `weekLabel` | Season-standings rows + the scorecard-expand (see §10f) |
+| `CfbWidgets` | `games[]`, `weekPicks[]`, `weeklyPoints[]`, `weekLabel`, `locked`, `stakeAmount`, `participantCount`, `payoutStructure` | This Week's Slate, Weekly Points, Most-Backed Teams, Underdog Board, and the reused `PrizePoolWidget` — see §10f for the pre-lock hide rule |
+
+Display formatting shared by the picks page too: `src/utils/cfbFormat.js`
+(`formatSpread`, `pickLine`, `formatKick`).
 
 ---
 

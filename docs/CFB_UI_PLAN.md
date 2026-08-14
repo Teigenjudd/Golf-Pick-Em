@@ -6,7 +6,12 @@
 > pasted into Claude Design as a self-contained brief while the backend PRs (PR5+)
 > are built in parallel. The *rules* live in `docs/CFB_FORMAT.md`; the *build
 > sequencing* in `docs/CFB_BUILD_PLAN.md`; the golf page inventory this mirrors in
-> `docs/PAGES.md`. **Nothing here is built yet** — no CFB UI exists as of PR4.
+> `docs/PAGES.md`. **Build status (updated 2026-08-13):** §2's shell prop-ification and
+> §6/§6a (CFB Pool Detail + widgets) are now built — Phase 1 (theme + shells +
+> placeholder routes, PR #48) and Phase 2 (the real Pool Detail body, PR #49) have both
+> shipped; see `docs/PAGES.md` §10f for what actually shipped vs. this brief. §7 (CFB
+> Weekly Picks, Phase 3) and §4/§5/§8b (dashboard tile, join branch, sport-dispatch —
+> Phase 4) are still design-only, not built.
 
 ---
 
