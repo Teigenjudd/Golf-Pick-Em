@@ -16,6 +16,29 @@
 
 ---
 
+## 2026-08-14 — CFB cron cadence: windowed/in-season, and `cfb-scores` runs every in-season day, not just Thu–Sun
+
+**Decision:** CFB's three admin-toggled cron jobs (`cfb-lines`, `cfb-scores`, `cfb-grade` —
+`admin_start_cfb_polling()`, `supabase/migrations/20260814000000_admin_cfb_polling_controls.sql`)
+are windowed to the Aug–Jan season (months 8-12,1), not year-round, mirroring golf's seasonal-only
+approach. Within season, `cfb-scores` (the live in-game score poller) runs every 2 min during game
+hours on **every in-season day**, not day-restricted to Thu–Sun the way it was first drafted.
+
+**Why:** `poll-cfb-scores` self-gates to a cheap DB-only check ("is anything in the live window
+right now?") and returns with zero CFBD API spend when nothing's live — so restricting the cron to
+Thu–Sun saves no real API cost, it only drops live scores for whoever's playing outside that
+window: the Monday CFP national championship, weekday bowl games, and Tue/Wed MACtion. Running it
+every day is effectively free and strictly more correct.
+
+**What we gave up:** Nothing measurable — worst case is some extra cheap DB-check invocations on
+days with no games, not extra CFBD API calls.
+
+**What would make us revisit:** If CFBD's `/scoreboard` pricing or rate limits ever change so the
+DB-gate itself becomes non-trivial cost, or if a future poller's self-gate isn't this cheap,
+day-restricting the cron would be worth reconsidering on a case-by-case basis.
+
+---
+
 ## 2026-08-13 — CFB PR9a: finalize-as-is is uniform push/0 and one-way through the UI; `push` reused instead of a new `void` result
 
 **Decision:** Ships the admin escape hatch for a stuck CFB week (`gradeWeek`'s `opts.finalize`,
