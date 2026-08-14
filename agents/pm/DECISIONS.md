@@ -16,6 +16,35 @@
 
 ---
 
+## 2026-08-14 — Golf-pool list filtering: two mechanisms, kept deliberately; graded+auto-filled notice copy left as-is
+
+**Decision (PR #55, senior review Findings 1 & 3):** `getAllPools()` (`src/lib/golf.js`) now
+filters to golf pools via `events.sport_id = 'golf'` — the canonical, indexed sport marker,
+matching CFB's own `getAdminCfbPools` pattern. `getAdminPools()` keeps its original
+`golf.event_details`-presence probe instead of switching to the same `sport_id` filter,
+because that function already fetches `event_details` for golf-only fields (refresh count,
+`slash_golf_tournament_id`) — adding a second query there would cost a round-trip the
+`sport_id` filter doesn't save. Separately, when a week is both graded and auto-filled, the
+picks-page notice leads with "you missed the deadline" rather than "week is final" (finality
+is still conveyed by the card's "Final" subtitle) — left as a deliberate copy call, not a bug.
+
+**Why:** `getAllPools` is a cheap list-only read with no other reason to touch the golf
+schema, so the plain `sport_id` filter is strictly better there and is the pattern to copy
+when sport #3 arrives. `getAdminPools` already pays the `event_details` round-trip for
+legitimate reasons, so the probe is free in that one spot. The notice copy was judged fine
+as-is — the auto-fill warning is the more actionable message for that user in that moment.
+
+**What we gave up:** The codebase now has two different "is this pool golf?" mechanisms
+instead of one — acceptable because they're used in genuinely different cost contexts, but
+worth remembering if a third caller needs the same check (default to `sport_id`, not the
+schema probe).
+
+**What would make us revisit:** If `getAdminPools` ever stops needing `event_details` for
+other reasons, switch it to `sport_id` too and delete the probe. If user feedback says the
+graded+auto-filled notice is confusing, swap it to lead with "final."
+
+---
+
 ## 2026-08-14 — CFB cron cadence: windowed/in-season, and `cfb-scores` runs every in-season day, not just Thu–Sun
 
 **Decision:** CFB's three admin-toggled cron jobs (`cfb-lines`, `cfb-scores`, `cfb-grade` —
