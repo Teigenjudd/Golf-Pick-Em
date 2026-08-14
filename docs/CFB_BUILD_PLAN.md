@@ -4,7 +4,8 @@
 > live-scores PR ahead of PR6, plus the admin half of PR8/PR9 landed early, plus a
 > slate-import automation PR, plus CFB player UI Phase 2, plus PR6's PR-A (the real
 > weekly picks builder), plus PR8 (sport-dispatch), plus PR9a (admin grading ops —
-> grade-week/finalize-as-is code, no deploy yet) — see below). Written 2026-08-11 from a dedicated planning
+> grade-week/finalize-as-is code, no deploy yet), plus PR9b (cron-control admin toggle
+> code, cutover still pending) — see below). Written 2026-08-11 from a dedicated planning
 > pass, grounded in a full read of the golf implementation as the template. This is the
 > *how-we-build-it* sequencing doc; the *what-the-game-is* rules live in
 > `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's net-new work. See
@@ -421,11 +422,13 @@ the correctness holds end-to-end (mid-game scores never grade, already-final gam
 re-trigger grading, `grade-cfb-week` unaffected) and flagged one live decision: the poller's
 initial 18h look-ahead risked burning idle API calls for most of a game day against the 30k cap.
 **Tightened in-branch to 30 minutes** (`agents/pm/DECISIONS.md`, 2026-08-13) — a PM judgment call
-that still needs founder confirmation. The broader question — a windowed cron schedule (golf's
-Thu–Sun business-hours pattern) vs. year-round every-minute, and whether 30 min is the right
-number — is an explicit **PR9 must-settle-before-arming-the-cron** item (added to PR9's row
-below). No migration applied to prod, no function deployed, no cron armed — all deferred to PR9
-per the CFB prod-as-dev pattern.
+that still needs founder confirmation. The broader cron-cadence question — windowed vs.
+year-round — is resolved: `admin_start_cfb_polling()` schedules `cfb-scores` every 2 min during
+game hours on **every in-season day** (Aug–Jan), not golf's Thu–Sun restriction, because the
+poller self-gates to zero API cost when nothing's live, so day-restricting it would only drop
+live scores on the Monday CFP championship / weekday bowls for no real savings (see
+`agents/pm/DECISIONS.md`). No migration applied to prod, no function deployed, no cron armed —
+all deferred to PR9's cutover step per the CFB prod-as-dev pattern.
 
 ---
 
@@ -531,7 +534,7 @@ real build:
 | 6 | Weekly picks UI + shell theme-props — **Phase 1 (theme + shells + route scaffold) shipped 2026-08-13, PR #48**; **PR-A (the real interactive `CfbPicks` builder: 5 ATS + double-down + underdog, live validity, submit via `cfb_submit_week_picks`) shipped 2026-08-13** — `docs/PAGES.md` §10g. PR-B (the read-only locked/auto-filled/graded card view) still open. | `CfbPicks`, `CfbGameCard`, `CfbCardTracker`, `src/utils/cfbCard.js` | shell changes must not visually change golf (defaults) — verified in senior review, PR #48; UI-validity vs. RPC parity confirmed clean in PR-A's review |
 | 7 | CFB pool detail / leaderboard — **Phase 1 placeholder shipped 2026-08-13, PR #48**; **Phase 2 (real season-standings hero, week selector, scorecard-expand, CFB widget row) shipped 2026-08-13, PR #49** — `docs/PAGES.md` §10f | `CfbPoolDetail`, `CfbStandings`, `CfbWeekSelector`, `CfbWidgets`; `WidgetGrid` → render-prop; 4 new `lib/cfb.js` reads (`getCfbStandings`/`getCfbParticipants`/`getCfbWeekGames`/`getCfbWeekPicks`) | first page reading `pool_standings` — validates Decision #3; also first UI reader of `cfb.games.live`. Client-side weekly-points recompute vs. server total, and pre-lock widget visibility, both resolved as founder decisions (`agents/pm/DECISIONS.md`, 2026-08-13) |
 | 8 | Sport-dispatch — **shipped 2026-08-13** | `src/lib/pools.js` (sport-neutral `getPoolByCode`/`joinPool`); `Join.jsx`/`Dashboard.jsx` now branch on `sport_id` — a CFB pool is reachable through the normal join-code flow (no CFB routes needed; both sports use existing `/join/:code`, `/dashboard`). **Admin pool creation shipped earlier as 8a.** | golf path confirmed byte-identical in senior review; CFB's explicit `joinPool` write exists because `cfb_submit_week_picks` requires prior membership, unlike golf's implicit-at-submit (`agents/pm/DECISIONS.md`, 2026-08-13) |
-| 9 | Remaining weekly admin ops + cron | **9a (admin grading code) shipped 2026-08-13, `feat/cfb-admin-grading-ops`:** "Grade week" / "Finalize as-is" buttons on `CfbPoolOps.jsx`; closes both PR5 grader gaps in code — `gradeWeek`'s `opts.finalize` voids a stuck week's ungraded picks as no-contest pushes and forces `graded`, and `grade-cfb-week`'s targeted `{week_id}` path now refuses a week before its `lock_time` (see `agents/pm/DECISIONS.md`, 2026-08-13). **9b (cutover, still open):** deploy the three CFB edge functions, apply the pending migrations, and arm pg_cron (golf's pattern) — **THREE CFB crons**: hourly slate/lines (`poll-cfb-lines`), ~1-minute live scores (`poll-cfb-scores`), weekly grading (`grade-cfb-week`) — plus the live-scores cron-cadence tuning (confirm the 30-min look-ahead, decide windowed-vs-year-round schedule). | until 9b ships: a stuck week still burns CFBD calls every cron run (no cron is armed yet, so not live today); no live scores; no NEW games/spreads land (existing slates from PR3-era manual imports still work) |
+| 9 | Remaining weekly admin ops + cron | **9a (admin grading code) shipped 2026-08-13, `feat/cfb-admin-grading-ops`:** "Grade week" / "Finalize as-is" buttons on `CfbPoolOps.jsx`; closes both PR5 grader gaps in code — `gradeWeek`'s `opts.finalize` voids a stuck week's ungraded picks as no-contest pushes and forces `graded`, and `grade-cfb-week`'s targeted `{week_id}` path now refuses a week before its `lock_time` (see `agents/pm/DECISIONS.md`, 2026-08-13). **9b (cron-control admin toggle) shipped code-only, `feat/cfb-cron-controls`:** `admin_start_cfb_polling()`/`admin_stop_cfb_polling()`/`admin_cfb_polling_status()` (mirroring golf's toggle) plus a "CFB polling" card on `CfbAdmin.jsx` — arms/disarms the three `cfb-*` jobs (`cfb-lines` hourly, `cfb-scores` every 2 min all in-season days, `cfb-grade` twice daily), settling the cron-cadence question as windowed-in-season/all-days (see `agents/pm/DECISIONS.md`, 2026-08-14). **Still open:** the guided cutover itself — apply this migration to prod, deploy the three edge functions, and flip the toggle on. | until the cutover ships: a stuck week still burns CFBD calls every cron run (no cron is armed yet, so not live today); no live scores; no NEW games/spreads land (existing slates from PR3-era manual imports still work) |
 | 10 | Auto-fill on missed deadline | Random fill of missing slots, DD forfeiture, `auto_filled` flag | partial-card semantics (see CFB_FORMAT open questions) |
 | — | **Prod cutover checklist** — **Exposed Schemas flip done 2026-08-13**, ahead of PR #46 | Flipped Exposed Schemas to include `cfb` (and all other schemas/tables/functions) in the Supabase dashboard | resolved — was silent 404s on every `cfb` query if forgotten |
 

@@ -397,9 +397,11 @@ weekly windows, not a single lock. Shipped 2026-08-13, PR #46.
 
 **Data available:**
 - All CFB pools via `getAdminCfbPools()` (`src/lib/cfb.js`): `id`, `name`, `status`, `lock_time`, `join_code`, `created_at`, `season_year` (joined from `cfb.event_details`)
+- CFB polling on/off state — via the `admin_cfb_polling_status()` RPC
 
 **What must be on this page:**
 - Sticky nav: `← Admin | POOLD College Football`
+- **CFB polling on/off** card (`CfbPollingControl`) at the top of the page, above the pool list — the CFB analogue of `AdminDashboard`'s `PollingControl`. A global toggle that arms/disarms three `cfb-*` pg_cron jobs via `admin_start_cfb_polling()` / `admin_stop_cfb_polling()` (`supabase/migrations/20260814000000_admin_cfb_polling_controls.sql`), showing current state from `admin_cfb_polling_status()`. The three jobs, all windowed to the Aug–Jan season: `cfb-lines` (hourly slate/spread refresh via `poll-cfb-lines`), `cfb-scores` (every 2 min during game hours on every in-season day, not just Thu–Sun, so the Monday CFP championship and weekday bowls also get live scores — via `poll-cfb-scores`), and `cfb-grade` (twice-daily grading backstop via `grade-cfb-week`, catching any week the live poller didn't see go final). Shows a green dot + "On — slates, live scores, and grading are running on schedule" when armed. Same `is_admin()`-gated-RPC pattern as golf — the `cfb-*` job-name prefix keeps this toggle from ever touching golf's `poll-*` jobs, and vice versa. The migration is not yet applied to prod and the toggle has not yet been flipped on — see `docs/CFB_BUILD_PLAN.md` PR9.
 - "+ New CFB Pool" link → `/admin/cfb/create-pool`
 - Pool list: name, season year, join code, status badge (open/locked/complete/draft — same badge vocabulary as golf's tournament list)
 - Empty state: "No CFB pools yet. Create one to seed a season of weekly slates."
@@ -407,6 +409,7 @@ weekly windows, not a single lock. Shipped 2026-08-13, PR #46.
 
 **Design notes:**
 - Reuses `AdminDashboard`'s badge color system (`bg-fairway/10 text-fairway` open, `bg-gold/20 text-gold` locked, `bg-warm-200 text-warm-400` complete/draft) and the `bg-sand`/`#EAD8C4`-border card language from `CreateTournament`.
+- `CfbPollingControl` reuses `PollingControl`'s exact card styling (`bg-white border border-[#EAD8C4] rounded-[14px]`, green/warm status dot, birdie-red "Turn off" vs fairway "Turn on" button) — same idiom, no CFB colorway (this page is general admin register).
 
 ---
 
