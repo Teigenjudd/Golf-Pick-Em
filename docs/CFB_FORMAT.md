@@ -32,6 +32,11 @@ A game is **pickable** only if it is **FBS-vs-FBS with a posted CFBD line**. Gam
 are excluded from the slate entirely (not shown, not just unscored) — the underdog pick needs a
 line to determine its tier, so a lineless game can't be used for any slot.
 
+A **pick'em (spread `0`)** game *does* have a posted line, so it's a normal, biddable ATS pick —
+but it has no favorite/underdog side, so it can never fill the mandatory underdog slot. Both
+paths onto `cfb.picks` enforce this: `cfb_submit_week_picks` rejects it for `pick_type='underdog'`,
+and `cfb.autofill_week`'s random underdog draw only samples underdog-eligible games.
+
 ### The spread is frozen at submit time
 The line can move between when you pick and when the game kicks off. Grading uses the
 **`locked_spread` stored on each pick at submission** — never the current line. Source of record

@@ -6,8 +6,10 @@
 > weekly picks builder), plus PR8 (sport-dispatch), plus PR9a (admin grading ops —
 > grade-week/finalize-as-is code, no deploy yet), plus PR9b (cron-control admin toggle
 > code, cutover still pending), plus PR6's PR-B (the read-only locked/auto-filled/graded
-> picks card, shipped 2026-08-14, PR #55 — closes item 6; only the PR9 prod cutover is
-> left on the CFB checklist) — see below). Written 2026-08-11 from a dedicated planning
+> picks card, shipped 2026-08-14, PR #55 — closes item 6); plus PR10 (auto-fill on missed
+> deadline + the always-on lock/auto-fill cron, shipped 2026-08-14, PR #56 — closes item
+> 10; only the PR9 prod cutover of the three billable CFBD pollers is left on the CFB
+> checklist) — see below). Written 2026-08-11 from a dedicated planning
 > pass, grounded in a full read of the golf implementation as the template. This is the
 > *how-we-build-it* sequencing doc; the *what-the-game-is* rules live in
 > `docs/CFB_FORMAT.md` (PR0). Supersedes nothing — it's net-new work. See
@@ -537,7 +539,7 @@ real build:
 | 7 | CFB pool detail / leaderboard — **Phase 1 placeholder shipped 2026-08-13, PR #48**; **Phase 2 (real season-standings hero, week selector, scorecard-expand, CFB widget row) shipped 2026-08-13, PR #49** — `docs/PAGES.md` §10f | `CfbPoolDetail`, `CfbStandings`, `CfbWeekSelector`, `CfbWidgets`; `WidgetGrid` → render-prop; 4 new `lib/cfb.js` reads (`getCfbStandings`/`getCfbParticipants`/`getCfbWeekGames`/`getCfbWeekPicks`) | first page reading `pool_standings` — validates Decision #3; also first UI reader of `cfb.games.live`. Client-side weekly-points recompute vs. server total, and pre-lock widget visibility, both resolved as founder decisions (`agents/pm/DECISIONS.md`, 2026-08-13) |
 | 8 | Sport-dispatch — **shipped 2026-08-13** | `src/lib/pools.js` (sport-neutral `getPoolByCode`/`joinPool`); `Join.jsx`/`Dashboard.jsx` now branch on `sport_id` — a CFB pool is reachable through the normal join-code flow (no CFB routes needed; both sports use existing `/join/:code`, `/dashboard`). **Admin pool creation shipped earlier as 8a.** | golf path confirmed byte-identical in senior review; CFB's explicit `joinPool` write exists because `cfb_submit_week_picks` requires prior membership, unlike golf's implicit-at-submit (`agents/pm/DECISIONS.md`, 2026-08-13) |
 | 9 | Remaining weekly admin ops + cron | **9a (admin grading code) shipped 2026-08-13, `feat/cfb-admin-grading-ops`:** "Grade week" / "Finalize as-is" buttons on `CfbPoolOps.jsx`; closes both PR5 grader gaps in code — `gradeWeek`'s `opts.finalize` voids a stuck week's ungraded picks as no-contest pushes and forces `graded`, and `grade-cfb-week`'s targeted `{week_id}` path now refuses a week before its `lock_time` (see `agents/pm/DECISIONS.md`, 2026-08-13). **9b (cron-control admin toggle) shipped code-only, `feat/cfb-cron-controls`:** `admin_start_cfb_polling()`/`admin_stop_cfb_polling()`/`admin_cfb_polling_status()` (mirroring golf's toggle) plus a "CFB polling" card on `CfbAdmin.jsx` — arms/disarms the three `cfb-*` jobs (`cfb-lines` hourly, `cfb-scores` every 2 min all in-season days, `cfb-grade` twice daily), settling the cron-cadence question as windowed-in-season/all-days (see `agents/pm/DECISIONS.md`, 2026-08-14). **Still open:** the guided cutover itself — apply this migration to prod, deploy the three edge functions, and flip the toggle on. | until the cutover ships: a stuck week still burns CFBD calls every cron run (no cron is armed yet, so not live today); no live scores; no NEW games/spreads land (existing slates from PR3-era manual imports still work) |
-| 10 | Auto-fill on missed deadline | Random fill of missing slots, DD forfeiture, `auto_filled` flag | partial-card semantics (see CFB_FORMAT open questions) |
+| 10 | Auto-fill on missed deadline — **shipped 2026-08-14, PR #56** | `cfb.autofill_week` (pure-DB `SECURITY DEFINER` RPC, no CFBD call) fills every non-draft participant with no card: 5 ATS + 1 underdog-eligible-only underdog, never a double-down, `auto_filled` flag; `cfb.process_locked_weeks()` flips past-deadline weeks to `locked` and runs it, armed as the always-on `cfb-lock-autofill` pg_cron job (every 10 min in-season, zero API spend, independent of the billable pollers in PR9); admin "Auto-fill missing cards" button remains as a manual override | a pick'em (spread-0) game has no underdog side — excluded from the underdog slot but still usable as ATS (senior-review blocker, fixed); per-week `pg_advisory_xact_lock` stops the cron/grader/button from racing into a double-filled card (senior-review finding, fixed) |
 | — | **Prod cutover checklist** — **Exposed Schemas flip done 2026-08-13**, ahead of PR #46 | Flipped Exposed Schemas to include `cfb` (and all other schemas/tables/functions) in the Supabase dashboard | resolved — was silent 404s on every `cfb` query if forgotten |
 
 ---
@@ -549,9 +551,11 @@ Ranked. Load-bearing ones must be answered before the PR that depends on them.
 1. ~~**Double-down buffer rounding**~~ — **Resolved** (in `docs/CFB_FORMAT.md` ahead of PR4):
    round to the nearest 0.5, quarter-point ties up. `cfbScoring.js`'s `doubleDownBuffer` and its
    PR4 tests pin this exactly (`8.5→4.5`, `10.5→5.5`).
-2. **Partial-submission auto-fill** — submit 3 of 6 then miss the deadline: top up only the
-   missing 3 (keep real picks + DD), or wipe the whole card to random? Does a *partial* miss
-   forfeit the DD?
+2. ~~**Partial-submission auto-fill**~~ — **Resolved, PR10 (2026-08-14):** moot by
+   construction. `cfb_submit_week_picks` only accepts a complete 6-pick set (no partial-submit
+   path exists), so "3 of 6 then miss" never happens — a miss is always 0-of-6, and
+   `cfb.autofill_week` always builds a full random 6-pick card (5 ATS + 1 underdog, no
+   double-down). See `docs/CFB_FORMAT.md` §Submission, deadlines, and auto-fill.
 3. **Mid-season joins** — single cutoff before week 1, or join mid-season (and if so, 0 for
    missed weeks)? Affects the standings query.
 4. ~~**CFBD API tier/limits**~~ — **Resolved, PR3 (2026-08-12):** confirmed 1000 calls/month;

@@ -16,6 +16,41 @@
 
 ---
 
+## 2026-08-14 — CFB auto-fill: underdog-eligibility for pick'em games, per-week advisory lock, and an always-on free cron ahead of the billable pollers
+
+**Decision (PR10, PR #56, senior review):** `cfb.autofill_week`'s random underdog draw is
+restricted to underdog-*eligible* games (non-null `underdog_team`/`underdog_spread`); a pick'em
+(spread-0) game is still usable as one of the 5 random ATS picks but can never land in the
+mandatory underdog slot — mirroring the rule `cfb_submit_week_picks` already enforced for a human
+pick, which the first draft of the auto-generator missed (a pick'em drawn into the underdog slot
+triggered a NOT NULL violation and silently dropped that player from scoring). Added a
+`pg_advisory_xact_lock` keyed per week inside `autofill_week` so the cron, the grader's backstop
+call, and the admin "Auto-fill missing cards" button can't race into a 12-pick corrupt card by
+each independently drawing a disjoint random 6. And `cfb.process_locked_weeks()` — the function
+that flips a week to `locked` and runs the fill — is armed as its own always-on `cfb-lock-autofill`
+pg_cron job, live in prod now, separate from and ahead of the three billable CFBD pollers
+(`cfb-lines`/`cfb-scores`/`cfb-grade`), which stay gated behind the admin toggle and are still not
+armed.
+
+**Why:** The underdog-eligibility bug is a correctness bug, not a design choice, but the fix pins
+a rule (pick'em ≠ underdog-eligible) that wasn't written down anywhere before this PR — future
+auto-generation or admin tooling touching the underdog slot needs to know it (now in
+`docs/CFB_FORMAT.md` §Eligibility). The advisory lock is cheap insurance against three independent
+triggers (cron/grader/button) hitting the same week. Arming the lock/fill cron now, ahead of the
+billable pollers, was a deliberate split: it's pure SQL with zero API spend, so there's no cost
+reason to wait for the PR9 cutover, and it's the piece that actually makes "closed at lock_time"
+visible and consequence-free for players.
+
+**What we gave up:** Nothing measurable — the pick'em fix and the lock both shipped in the same
+migration pass senior review required before merge, and the free cron carries no cost tradeoff.
+
+**What would make us revisit:** If a future format change makes pick'em eligible for the underdog
+slot (e.g. treat a 0-spread as pick-either-side), both `cfb_submit_week_picks` and
+`autofill_week`'s eligibility filter need updating together — they're two independent enforcement
+points, not one shared check.
+
+---
+
 ## 2026-08-14 — Golf-pool list filtering: two mechanisms, kept deliberately; graded+auto-filled notice copy left as-is
 
 **Decision (PR #55, senior review Findings 1 & 3):** `getAllPools()` (`src/lib/golf.js`) now
