@@ -82,10 +82,11 @@ writing code.
   PR #46's manual per-week import (lines only post ~1-2 weeks out, so upfront import
   never worked at season scale); CFB now has no admin "odds" step at all. **CFB player UI
   Phase 1 (theme + shared-shell prop-ification + two placeholder routes) shipped
-  2026-08-13, PR #48** — see the status board entry below for detail. The real picks
-  builder, real standings, and the sport-dispatch layer are still not built (Phases 2-4);
-  a CFB pool today is still only reachable via a direct admin link, not the normal
-  join-code flow.
+  2026-08-13, PR #48; Phase 2 (the real Pool Detail/leaderboard body — season standings,
+  week selector, scorecard-expand, widgets) shipped 2026-08-13, PR #49** — see the status
+  board entries below for detail. The weekly picks builder (Phase 3) and the
+  sport-dispatch layer (Phase 4) are still not built; a CFB pool today is still only
+  reachable via a direct admin link, not the normal join-code flow.
 - No public pool discovery — pools are invite/join-code only
 - No mobile native app yet
 - No social features beyond the pool context (no global feeds, no *social* profiles
@@ -442,6 +443,30 @@ writing code.
   `agents/pm/DECISIONS.md`, 2026-08-13. 173 tests pass, unchanged (pure UI scaffolding,
   no new tests). Real page bodies (standings/week selector = Phase 2, picks builder =
   Phase 3) are not built.
+- **CFB player UI Phase 2 (of 4) — the real Pool Detail/leaderboard body — shipped
+  2026-08-13, PR #49.** `/cfb/pool/:id` now renders live off the data layer: a
+  season-cumulative standings hero (`CfbStandings`, ranked by `public.pool_standings.total`
+  — never re-ranked by week), a week selector (`CfbWeekSelector`, rendered inside the navy
+  `PoolHeader`) that scopes — but doesn't re-rank — a scorecard-expand and a CFB widget
+  row (`CfbWidgets`: This Week's Slate, Weekly Points, Most-Backed Teams, Underdog Board,
+  plus the reused `PrizePoolWidget`) to one chosen week. Four new read-only queries in
+  `src/lib/cfb.js` (`getCfbStandings`, `getCfbParticipants`, `getCfbWeekGames`,
+  `getCfbWeekPicks`) feed it; `getCfbPool` now also selects `stake_amount`/
+  `payout_structure` so the Prize Pool widget can render. Full spec:
+  `docs/PAGES.md` §10f (design brief: `docs/CFB_UI_PLAN.md` §6/§6a). Senior review
+  (`agents/senior-dev/reviews/cfb-ui-phase2-pool-detail.md`, APPROVE WITH QUESTIONS)
+  traced RLS visibility, week resolution, and the client-side grade and found the
+  correctness sound with no leaks; it raised two presentation questions, both resolved
+  by founder decision and fixed in-branch (`agents/pm/DECISIONS.md`, 2026-08-13): (1) the
+  expand/Weekly-Points total is **recomputed client-side** off live/final game scores
+  (via the shared `gradeWeekCard`/`pickMargin`) so points update the instant a game goes
+  final, rather than waiting on the next server poll — kept deliberately, even though it
+  can briefly lead the server-written season total until the next poll cycle reconciles
+  them; (2) the three pick-derived widgets (Weekly Points/Most-Backed/Underdog Board) are
+  now hidden behind a "reveal when Week N locks" note before the selected week locks,
+  since RLS only returns the viewer's own picks pre-lock and showing just one player's
+  picks read like a near-empty pool. The weekly picks builder (Phase 3) and the
+  sport-dispatch layer (Phase 4, dashboard linking) are still not built.
 - Full design refresh + Poold rebrand across pages.
 - Tournament badge color system (2026-07-13) — per-event badge colors encoding prestige
   + geography, all 48 tournaments designed and seeded.
@@ -592,6 +617,7 @@ a change that breaks the guard. A hook can't safely review its own edit, so this
 | `docs/MULTI_SPORT_MIGRATION.md` | The multi-sport architecture plan + phase status | …advances or changes the migration (Phase 5 is what's left) |
 | `docs/CFB_FORMAT.md` | College football (sport #2) rules-of-record — the weekly ATS card, scoring, worked examples, join model. What the `cfb` schema, `cfb_submit_week_picks` RPC, and scoring-engine tests are built against | …changes a CFB rule, scoring boundary, or the join model |
 | `docs/CFB_BUILD_PLAN.md` | CFB's PR-sliced implementation plan — architecture decisions, schema sketch, PR sequence (PR1–PR10), open questions for the founder | …changes CFB build sequencing/architecture, or a PR in its sequence ships |
+| `docs/CFB_UI_PLAN.md` | CFB player-UI design hand-off brief — every CFB screen, its data elements, states, and shell changes required; the source Phase 1–4 (`agents/pm/DECISIONS.md`, 2026-08-13) is built against | …a CFB UI phase ships and changes what a §-section describes, or a screen's design changes |
 | `docs/CEO_REPORT.md` | The founder/investor-facing executive status report — a single living doc, ~150–180 words, under-2-minute skim. Not per-PR, not a changelog: the layer *above* this status board. | **Every** PR ship — unconditionally, not gated on which files the diff touched. See the update contract below. |
 | `docs/ENTERPRISE_ARCHITECTURE_PROPOSAL.md` | **Reference, not adopted.** Fable's blank-slate ideal architecture for a multi-sport/format platform, plus the review of it against Poold | …basically never. A north-star doc; the actionable takeaway is BACKLOG F6. |
 | `README.md` | The 60-second orientation for a human arriving cold | …changes setup, stack, or a headline architecture decision |

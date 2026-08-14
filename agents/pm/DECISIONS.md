@@ -13,6 +13,58 @@
 
 ---
 
+## 2026-08-13 — CFB Phase 2: keep the instant client-side weekly-points recompute over the server total
+
+**Decision:** On `/cfb/pool/:id`, the season total (the big number, per player) reads
+straight from `public.pool_standings.total` (server-written by `grade-cfb-week`). The
+selected-week's points — in the standings-row expand and the Weekly Points widget — are
+instead **recomputed live in the browser**, using the shared `gradeWeekCard`/`pickMargin`
+scoring functions against each game's current score. We keep that split rather than
+gating the weekly number on `week.status === 'graded'`.
+
+**Why:** It's the only way a player sees their weekly points update the instant a game
+goes final, instead of waiting for the next live-poller cycle (which does the same
+computation server-side and writes it back to `pool_standings`). Surfaced by senior
+review (`agents/senior-dev/reviews/cfb-ui-phase2-pool-detail.md`, Finding 1) as the one
+place the page trusts its own math over the server's. The two numbers agree once the
+poller re-grades — normally within one poll cycle of a game finalizing — and drift
+between the JS engine the page uses and the TS mirror the server uses is guarded by the
+existing parity test suite (`cfbScoring.parity.test.js`), so this is a *timing* gap, not
+a correctness gap.
+
+**What we gave up:** a brief window (a game going final → the next live-poller run)
+where the weekly number in the expand can lead the season total above it, which could
+read as "these two numbers don't add up" if a player takes a screenshot mid-window. The
+alternative (gate on `week.status === 'graded'`) would have removed that window at the
+cost of "the game just ended and I still see nothing" for however long grading takes.
+
+**Revisit if:** the live-poller cadence ever slows enough (e.g. a cost-driven throttle)
+that the lead window becomes minutes instead of seconds — at that point, gating the
+weekly number on `graded` becomes the better trade.
+
+## 2026-08-13 — CFB Phase 2: hide the three pick-derived widgets until the selected week locks
+
+**Decision:** On `/cfb/pool/:id`, `CfbWidgets`' Weekly Points, Most-Backed Teams, and
+Underdog Board widgets render a "reveal when Week N locks" placeholder instead of live
+data until `weekIsLocked(selectedWeek)` is true. This Week's Slate and Prize Pool are
+unaffected (they don't depend on other players' picks).
+
+**Why:** `cfb.picks` RLS correctly returns only the viewer's own picks before a week
+locks (by design — nobody sees anyone else's card early). Feeding that into the three
+pick-derived widgets pre-lock would have shown e.g. "Most-Backed Teams: Alabama 1/1" —
+not a leak, but a misleading single-player sample that reads like a near-empty pool.
+Senior review flagged this as a presentation-only question (Finding 2, no
+correctness/privacy angle) with three options: leave as-is, hide the three widgets, or
+show a "reveals at lock" note. We took the third.
+
+**What we gave up:** nothing functional — the widgets were only ever going to be
+accurate post-lock; this just stops them from showing a technically-true but confusing
+partial view in the meantime.
+
+**Revisit if:** a future "who's leaning where" pre-lock teaser becomes a deliberate
+product feature (distinct from today's incidental single-player sample) — that would be
+a new, intentional widget, not un-hiding these three.
+
 ## 2026-08-13 — CFB player UI is a 4-phase PR series; PR #48 = Phase 1 (theme + shells + scaffolds)
 
 **Decision:** The CFB player-facing UI (the Claude Design comp "CFB Pool Detail and Picks
