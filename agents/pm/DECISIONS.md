@@ -10,6 +10,9 @@
 >
 > Newest first. Each entry: what we decided, why, what we gave up, and what would make
 > us revisit it.
+>
+> **Older entries (2026-08-10 and earlier) live in `DECISIONS_ARCHIVE.md`.** Grep spans
+> both files; new entries always go here (at the top), never in the archive.
 
 ---
 
