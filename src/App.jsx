@@ -18,6 +18,7 @@ import CreateCfbPool from './pages/admin/cfb/CreateCfbPool'
 import CfbPoolOps from './pages/admin/cfb/CfbPoolOps'
 import CfbPoolDetail from './pages/cfb/CfbPoolDetail'
 import CfbPicks from './pages/cfb/CfbPicks'
+import CfbSlate from './pages/cfb/CfbSlate'
 import TournamentDetail from './pages/TournamentDetail'
 import { DemoProvider } from './demo/DemoContext'
 import DemoLayout from './demo/DemoLayout'
@@ -96,6 +97,7 @@ function App() {
           <Route path="/tournament/:id/picks" element={<ProtectedRoute><Picks /></ProtectedRoute>} />
           <Route path="/cfb/pool/:id" element={<ProtectedRoute><CfbPoolDetail /></ProtectedRoute>} />
           <Route path="/cfb/pool/:id/picks" element={<ProtectedRoute><CfbPicks /></ProtectedRoute>} />
+          <Route path="/cfb/pool/:id/slate" element={<ProtectedRoute><CfbSlate /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

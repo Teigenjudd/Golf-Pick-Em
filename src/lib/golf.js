@@ -285,11 +285,6 @@ export async function getAdminPools() {
     }))
 }
 
-export async function setPoolStatus(poolId, status) {
-  const { error } = await supabase.from('pools').update({ status }).eq('id', poolId)
-  if (error) throw error
-}
-
 export async function bumpRefreshCount(eventId, current) {
   const { error } = await golf()
     .from('event_details')

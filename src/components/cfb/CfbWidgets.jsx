@@ -1,5 +1,5 @@
 import { CFB_THEME } from '../../theme/cfb'
-import { formatSpread, formatKick } from '../../utils/cfbFormat'
+import { formatSpread } from '../../utils/cfbFormat'
 import { PrizePoolWidget } from '../leaderboard/Widgets'
 
 // CFB widget row (docs/CFB_UI_PLAN.md §6a) — the sport-specific analogue of golf's
@@ -7,10 +7,11 @@ import { PrizePoolWidget } from '../leaderboard/Widgets'
 // which is season-long and reused from golf as-is). Rendered inside the shared
 // WidgetGrid via `children`. The page shapes every input; these just render.
 //
+// The full game-by-game slate used to live here (SlateWidget) but got long enough to
+// dominate the pool-detail page — it's now its own page (CfbSlate.jsx, linked via a
+// small button) with the same search/filter/sort controls as the picks builder.
+//
 // Props:
-//   games          — selected week's cfb.games [{ home_team, away_team, home_spread,
-//                    kickoff_at, status, home_score, away_score, underdog_team,
-//                    underdog_spread }]
 //   weekPicks      — enriched picks for the week [{ user_id, name, pickType,
 //                    selectedTeam, lockedSpread, result, points }] (others hidden
 //                    pre-lock, so this may be just the current user's before lock)
@@ -32,73 +33,11 @@ function WidgetCard({ title, children }) {
   )
 }
 
-// favorite team + line from home-perspective spread
-function favorite(g) {
-  const s = Number(g.home_spread)
-  if (!Number.isFinite(s) || s === 0) return { team: g.home_team, line: 'PK' }
-  return s < 0
-    ? { team: g.home_team, line: formatSpread(s) }
-    : { team: g.away_team, line: formatSpread(-s) }
-}
-
 function Bar({ pct, color }) {
   return (
     <div className="flex-1 h-[6px] rounded-[3px] overflow-hidden" style={{ background: CFB_THEME.divider }}>
       <div className="h-full rounded-[3px]" style={{ width: `${pct}%`, background: color }} />
     </div>
-  )
-}
-
-// ── This Week's Slate ─────────────────────────────────────────────────────────
-function SlateWidget({ games, weekLabel }) {
-  if (!games?.length) {
-    return (
-      <WidgetCard title="This Week's Slate">
-        <p className="text-[12.5px]" style={{ color: CFB_THEME.muted }}>Lines for {weekLabel} post soon.</p>
-      </WidgetCard>
-    )
-  }
-  return (
-    <WidgetCard title="This Week's Slate">
-      <div className="space-y-[2px]">
-        {games.map((g, i) => {
-          const fav = favorite(g)
-          const live = g.status === 'in_progress'
-          const done = g.status === 'final'
-          const hasScore = g.away_score != null && g.home_score != null
-          return (
-            <div
-              key={g.id ?? i}
-              className="flex items-center gap-2 py-[6px] text-[12.5px]"
-              style={{ borderBottom: i < games.length - 1 ? `1px solid ${CFB_THEME.divider}` : 'none' }}
-            >
-              <span className="flex-1 min-w-0 truncate" style={{ color: CFB_THEME.ink }}>
-                {g.away_team} @ {g.home_team}
-              </span>
-              {live && (
-                <span className="font-display font-bold text-[8px] uppercase px-[4px] py-[1px] rounded flex-none" style={{ background: CFB_THEME.accent, color: CFB_THEME.cream }}>
-                  Live
-                </span>
-              )}
-              {hasScore && (live || done) ? (
-                <span className="font-display font-bold tabular-nums flex-none" style={{ color: CFB_THEME.ink }}>
-                  {g.away_score}–{g.home_score}
-                </span>
-              ) : (
-                <span className="flex-none text-[11.5px]" style={{ color: CFB_THEME.muted2 }}>
-                  {fav.team} {fav.line}
-                </span>
-              )}
-              {!live && !done && (
-                <span className="flex-none text-[10.5px] tabular-nums" style={{ color: CFB_THEME.muted }}>
-                  {formatKick(g.kickoff_at)}
-                </span>
-              )}
-            </div>
-          )
-        })}
-      </div>
-    </WidgetCard>
   )
 }
 
@@ -195,7 +134,7 @@ function UnderdogWidget({ weekPicks }) {
 }
 
 export default function CfbWidgets({
-  games, weekPicks, weeklyPoints, weekLabel, locked,
+  weekPicks, weeklyPoints, weekLabel, locked,
   stakeAmount, participantCount, payoutStructure,
 }) {
   const hasPrize = stakeAmount && payoutStructure?.length
@@ -206,9 +145,6 @@ export default function CfbWidgets({
           <PrizePoolWidget stakeAmount={stakeAmount} participantCount={participantCount} payoutStructure={payoutStructure} />
         </div>
       )}
-      <div className="col-span-2">
-        <SlateWidget games={games} weekLabel={weekLabel} />
-      </div>
       {/* The three pick-derived widgets only make sense once everyone's cards are
           visible — before the week locks, RLS hides other players' picks so they'd
           show just your own ("1/1"). Hold them behind a note until lock. */}

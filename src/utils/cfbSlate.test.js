@@ -31,6 +31,22 @@ describe('chooseLine', () => {
     expect(chooseLine({ lines: [] })).toEqual({ spread: null, formattedSpread: null })
     expect(chooseLine({ lines: [{ provider: 'A' }] })).toEqual({ spread: null, formattedSpread: null })
   })
+
+  // Real sportsbook spreads are always whole- or half-point. An even-provider median
+  // (averaging two middle values) can land on a quarter point, which nobody actually
+  // posted — chooseLine rounds it away. Math.round ties toward +Infinity: -8.5 → -8.
+  it('rounds an even-provider median off a quarter point to the nearest half-point', () => {
+    const entry = { lines: [
+      { provider: 'A', spread: -4, formattedSpread: 'Team -4' },
+      { provider: 'B', spread: -4.5, formattedSpread: 'Team -4.5' },
+    ] }
+    expect(chooseLine(entry).spread).toBe(-4) // median -4.25 → -8.5 → round → -8 → -4
+  })
+
+  it('rounds even a consensus-provider spread, as a hard guarantee against any quarter point', () => {
+    const entry = { lines: [{ provider: 'consensus', spread: -6.75, formattedSpread: 'Team -6.75' }] }
+    expect(chooseLine(entry).spread).toBe(-6.5) // -13.5 → round → -13 → -6.5
+  })
 })
 
 describe('favoriteFromFormattedSpread', () => {

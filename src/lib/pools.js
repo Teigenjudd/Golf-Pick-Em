@@ -28,3 +28,9 @@ export async function joinPool(poolId, userId) {
     .upsert({ pool_id: poolId, user_id: userId }, { onConflict: 'pool_id,user_id', ignoreDuplicates: true })
   if (error) throw error
 }
+
+// Sport-agnostic status write (open/locked/complete/draft) used by both admin panels.
+export async function setPoolStatus(poolId, status) {
+  const { error } = await supabase.from('pools').update({ status }).eq('id', poolId)
+  if (error) throw error
+}

@@ -385,6 +385,7 @@ export async function getMyCfbPools(userId) {
     return {
       poolId: p.id,
       name: p.name,
+      status: p.status,
       seasonYear: seasonByEvent[p.event_id] ?? null,
       currentWeek: w ? {
         id: w.id,

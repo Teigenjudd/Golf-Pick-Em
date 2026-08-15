@@ -374,6 +374,8 @@ export default function Dashboard() {
   const needsName = !!profile && !profile.display_name_set_at
   const openTournaments = myTournaments.filter(t => t.tournamentStatus !== 'complete')
   const closedTournaments = myTournaments.filter(t => t.tournamentStatus === 'complete')
+  const openCfbPools = cfbPools.filter(p => p.status !== 'complete')
+  const closedCfbPools = cfbPools.filter(p => p.status === 'complete')
 
   return (
     <div className="min-h-screen bg-sand pb-10 flex flex-col">
@@ -406,7 +408,7 @@ export default function Dashboard() {
               Active Pools
             </div>
             <span className="text-[11px] font-semibold text-warm-400 bg-warm-100 rounded-full w-5 h-5 flex items-center justify-center">
-              {openTournaments.length + cfbPools.length}
+              {openTournaments.length + openCfbPools.length}
             </span>
           </div>
         )}
@@ -419,7 +421,7 @@ export default function Dashboard() {
         ))}
 
         {/* CFB pool tiles — after golf tiles, per docs/CFB_UI_PLAN.md §4 */}
-        {cfbPools.map(tile => <CfbPoolTile key={tile.poolId} tile={tile} />)}
+        {openCfbPools.map(tile => <CfbPoolTile key={tile.poolId} tile={tile} />)}
 
         {/* Join card — admins get both join + create via the Add-a-pool chooser */}
         <button
@@ -434,13 +436,16 @@ export default function Dashboard() {
         {/* Closed pools — the toggle stays put; expanded cards render right
             below it, not interleaved above, so collapsing it never requires
             scrolling. */}
-        {closedTournaments.length > 0 && (
+        {(closedTournaments.length > 0 || closedCfbPools.length > 0) && (
           <div className="mb-5">
-            <CollapsibleRow label="Closed pools" count={closedTournaments.length} open={showClosed} onToggle={() => setShowClosed(s => !s)} />
+            <CollapsibleRow label="Closed pools" count={closedTournaments.length + closedCfbPools.length} open={showClosed} onToggle={() => setShowClosed(s => !s)} />
             {showClosed && (
               <div className="mt-[10px]">
                 {closedTournaments.map(t => (
                   <PoolCard key={t.id} t={t} standing={myStandings[t.id]} />
+                ))}
+                {closedCfbPools.map(tile => (
+                  <CfbPoolTile key={tile.poolId} tile={tile} />
                 ))}
               </div>
             )}

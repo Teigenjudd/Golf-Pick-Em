@@ -1,6 +1,6 @@
 import { CFB_THEME } from '../../theme/cfb'
-import { formatSpread, formatKick } from '../../utils/cfbFormat'
-import { doubleDownWinBy, underdogTier } from '../../utils/cfbScoring'
+import { formatSpread, formatKickWithDate, pickLine } from '../../utils/cfbFormat'
+import { effectiveDoubleDownLine, underdogTier } from '../../utils/cfbScoring'
 
 // One game in the weekly card builder (docs/CFB_UI_PLAN.md §7). Pure presentational —
 // no data access. The page owns all card state and hands this component just what it
@@ -18,24 +18,13 @@ import { doubleDownWinBy, underdogTier } from '../../utils/cfbScoring'
 //   onToggleDoubleDown(gameId)
 //   onPickUnderdog(gameId)
 
-// The double-down bonus condition, sign-general per agents/pm/DECISIONS.md 2026-08-12:
-// a favorite reads "win by N+"; an underdog ATS pick reads "cover — lose by ≤N or win".
-// Never render doubleDownWinBy's raw (possibly negative) number.
-function ddBonusCopy(teamSpread) {
-  const n = doubleDownWinBy(teamSpread)
-  if (n > 0) return `Win by ${n}+ for the bonus`
-  const cushion = -n
-  if (cushion <= 0) return 'Win outright for the bonus'
-  return `Cover — lose by ≤${cushion} or win — for the bonus`
-}
-
 function TeamChip({ team, line, selected, disabled, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex-1 text-left rounded-[10px] px-3 py-[10px] border cursor-pointer transition-colors"
+      className="flex-1 min-w-[104px] text-left rounded-[10px] px-3 py-[10px] border cursor-pointer transition-colors"
       style={
         selected
           ? { background: CFB_THEME.accent, borderColor: CFB_THEME.accent, color: CFB_THEME.cream }
@@ -50,6 +39,39 @@ function TeamChip({ team, line, selected, disabled, onClick }) {
         style={{ color: selected ? 'rgba(248,245,238,.85)' : CFB_THEME.muted2 }}
       >
         {line}
+      </div>
+    </button>
+  )
+}
+
+// The underdog-outright option, styled as a visibly different bet type: dashed
+// border, centered content, dog icon on top instead of a spread number. Same
+// flex-1/min-w footprint as the two TeamChips beside it so all three are always
+// the same size — a long team name truncates (single line, fixed height) rather
+// than growing the cell or wrapping to a second line.
+function UnderdogChip({ team, tier, selected, disabled, onClick }) {
+  const ink = selected ? CFB_THEME.positive : disabled ? CFB_THEME.muted : CFB_THEME.ink
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex-1 min-w-[104px] text-center rounded-[10px] px-2 py-[10px] border border-dashed cursor-pointer transition-colors"
+      style={
+        selected
+          ? { background: CFB_THEME.positiveSoft, borderColor: CFB_THEME.positive }
+          : disabled
+            ? { background: CFB_THEME.rankBg, borderColor: CFB_THEME.border, cursor: 'default' }
+            : { background: 'transparent', borderColor: CFB_THEME.border }
+      }
+    >
+      <div className="text-[13px] leading-none mb-[4px]">🐕</div>
+      <div className="font-semibold text-[12.5px] truncate" style={{ color: ink }}>{team}</div>
+      <div
+        className="font-display font-bold uppercase tracking-[.06em] text-[9px] mt-[2px]"
+        style={{ color: selected ? CFB_THEME.positive : CFB_THEME.muted }}
+      >
+        Underdog · +{tier}
       </div>
     </button>
   )
@@ -70,9 +92,21 @@ export default function CfbGameCard({
   const awayLine = formatSpread(-Number(game.home_spread))
 
   const atsChipsDisabled = isUnderdogPick || (atsFull && !atsSelectedTeam)
-  const dogActionDisabled = !!atsSelectedTeam || (dogFilled && !isUnderdogPick)
 
   const tier = underdogTier(game.underdog_spread)
+  // Pick'em games (spread 0) have no underdog side — underdog_team is null and
+  // tier is 0. No third chip at all in that case, rather than a dead "outright" option.
+  const dogEligible = !!game.underdog_team && tier > 0
+  const dogChipDisabled = !!atsSelectedTeam || (dogFilled && !isUnderdogPick)
+
+  // Shown on the double-down toggle whether or not it's flagged yet, so the effective
+  // line is visible up front rather than only after committing to the flag.
+  const ddPreviewLine = atsSelectedTeam
+    ? pickLine(
+        atsSelectedTeam,
+        effectiveDoubleDownLine(atsSelectedTeam === game.home_team ? Number(game.home_spread) : -Number(game.home_spread)),
+      )
+    : null
 
   return (
     <div
@@ -88,10 +122,12 @@ export default function CfbGameCard({
             ? `${game.away_conference} @ ${game.home_conference}`
             : `${game.away_team} @ ${game.home_team}`}
         </span>
-        <span className="tabular-nums">{formatKick(game.kickoff_at)}</span>
+        <span className="tabular-nums">{formatKickWithDate(game.kickoff_at)}</span>
       </div>
 
-      <div className="flex gap-[8px]">
+      {/* flex-wrap: on a narrow card, the third (underdog) chip drops to its own row
+          instead of squeezing all three into one. */}
+      <div className="flex flex-wrap gap-[8px]">
         <TeamChip
           team={game.away_team}
           line={awayLine}
@@ -106,6 +142,15 @@ export default function CfbGameCard({
           disabled={atsChipsDisabled}
           onClick={() => onPickAts(game.id, game.home_team)}
         />
+        {dogEligible && (
+          <UnderdogChip
+            team={game.underdog_team}
+            tier={tier}
+            selected={isUnderdogPick}
+            disabled={dogChipDisabled}
+            onClick={() => onPickUnderdog(game.id)}
+          />
+        )}
       </div>
 
       {atsSelectedTeam && (
@@ -123,42 +168,16 @@ export default function CfbGameCard({
             className="text-[12.5px] font-semibold"
             style={{ color: isDoubleDown ? CFB_THEME.accent : CFB_THEME.muted2 }}
           >
-            {isDoubleDown ? '★ Double-down flagged' : '☆ Flag as double-down'}
+            {isDoubleDown ? '★ Double-down' : '☆ Double-down'}
           </span>
-          {isDoubleDown && (
-            <span className="text-[11px]" style={{ color: CFB_THEME.accent }}>
-              {ddBonusCopy(atsSelectedTeam === game.home_team ? Number(game.home_spread) : -Number(game.home_spread))}
-            </span>
-          )}
+          <span
+            className="text-[11px] font-display font-bold tabular-nums"
+            style={{ color: isDoubleDown ? CFB_THEME.accent : CFB_THEME.muted2 }}
+          >
+            {ddPreviewLine}
+          </span>
         </button>
       )}
-
-      <button
-        type="button"
-        onClick={() => onPickUnderdog(game.id)}
-        disabled={dogActionDisabled}
-        className="w-full mt-[8px] flex items-center justify-between rounded-[10px] px-3 py-[8px] border cursor-pointer transition-colors"
-        style={
-          isUnderdogPick
-            ? { background: CFB_THEME.positiveSoft, borderColor: CFB_THEME.positive }
-            : dogActionDisabled
-              ? { background: CFB_THEME.rankBg, borderColor: CFB_THEME.border, cursor: 'default' }
-              : { background: 'transparent', borderColor: CFB_THEME.border }
-        }
-      >
-        <span
-          className="text-[12.5px] font-semibold"
-          style={{ color: isUnderdogPick ? CFB_THEME.positive : dogActionDisabled ? CFB_THEME.muted : CFB_THEME.muted2 }}
-        >
-          🐕 Take {game.underdog_team} outright
-        </span>
-        <span
-          className="text-[11px]"
-          style={{ color: isUnderdogPick ? CFB_THEME.positive : CFB_THEME.muted }}
-        >
-          +{tier} {tier === 1 ? 'pt' : 'pts'} if they win
-        </span>
-      </button>
     </div>
   )
 }
