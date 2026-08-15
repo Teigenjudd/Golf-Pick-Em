@@ -1,13 +1,13 @@
 # Poold — CEO Report
 
-*Updated 2026-08-15 · latest: Admin refresh — unified golf/CFB admin chrome, bottom nav retired for a header avatar*
+*Updated 2026-08-15 · latest: PR #58 (CFB admin close + picks UX pass)*
 
-**Status:** 🟢 Golf live in prod · 🟡 CFB in build — all ~10 build-plan PRs shipped in code; only the prod cutover is left · Sports live: **1**
+**Status:** 🟢 Golf live in prod · 🟢 CFB cut over to prod (all code + infra live) — no real season run through it yet · Sports live: **1** (CFB awaiting real users)
 
-**State of the app.** Golf pick'em is live in production (auth, pools, picks, live leaderboards, prize-pool math). CFB is fully built end to end in code — backend, admin, join/dashboard, live leaderboard, weekly picks — but not deployed or cron-armed, so it isn't running for real users yet.
+**State of the app.** Golf pick'em is live in production (auth, pools, picks, live leaderboards, prize-pool math). CFB is now fully cut over too: its edge functions are deployed and its three billable pollers (lines, live scores, grading) are armed, alongside a UX pass on the weekly picks page (search/filter, a redesigned underdog pick, a "Card progress" tracker, and a new read-only weekly slate page). Admin can now close a CFB pool for the season, same as golf.
 
-**Recent wins.** Admin cleanup: golf and CFB admin panels now share one nav/sport-switcher shell, role management moved to its own shared page, and the bottom tab bar was retired for a header avatar (with an admin dropdown). Also fixed three dashboard bugs around the closed-pools toggle.
+**Recent wins.** CFB prod cutover complete. Three real bugs fixed: a polling-toggle bug was silently killing the free auto-fill cron, spreads could round to a quarter-point that no sportsbook posts, and closed CFB pools weren't disappearing from the Dashboard.
 
-**Next up.** The CFB prod cutover: deploy the CFB edge functions and arm the three billable CFBD pollers (lines, live scores, grading) — the step that turns CFB on for real users. The auto-fill/lock cron is separate, free, and already running.
+**Next up.** Self-serve pool creation — still the top blocker for either sport, since pool creation remains founder-only.
 
-**Pitfalls to watch.** The admin cleanup dropped the only in-app way to remove a pool participant (rare need, but now requires a developer to fix by hand).
+**Pitfalls to watch.** None new this PR.

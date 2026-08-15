@@ -16,6 +16,57 @@
 
 ---
 
+## 2026-08-15 — CFB prod cutover (PR #58): quarter-point spread backfill stays a one-off; edit-picks resets the card instead of pre-filling it
+
+**Decision 1 — data backfill (`cfb-admin-close-and-picks-ux`, senior review finding #1):**
+`chooseLine()`'s new `roundToHalfPoint` fix (nearest-half-point rounding, closing a gap
+where an even-provider median could land on a quarter point no sportsbook ever posted)
+was applied going forward in code, but the ~38 existing `cfb.games` rows and 3 already-
+locked `cfb.picks` rows it retroactively affected were corrected with a one-time SQL
+statement run directly against prod — not captured as a migration. Founder-confirmed:
+leave it as a one-off, don't add a backfill migration.
+
+**Why:** Prod doubles as the CFB dev DB and there are no real users yet, so the cost of
+an unreproducible hand-patch is genuinely low today. Writing a migration for a
+data-correction that will never need to run again (the code fix prevents recurrence) is
+effort with no future payoff at this stage.
+
+**What we gave up:** If prod is ever rebuilt from the migration folder, or a fresh dev DB
+stood up from it, the corrected rows come back with their old (already-graded-if-locked)
+quarter-point values — nothing in version control reproduces the patch. Sharpest edge:
+a locked `cfb.picks.locked_spread` is frozen and only ever fixed by hand again.
+
+**What would make us revisit:** The first time prod has real users and a locked pick's
+frozen spread needs a hand-correction — at that point every retroactive DB fix needs a
+migration, not just this class of bug.
+
+---
+
+**Decision 2 — reset-on-edit, not pre-fill-on-edit (`src/pages/cfb/CfbPicks.jsx`):** the
+Dashboard's "Edit picks" button now confirms first, then opens the picks builder with
+`?reset=1`, which starts the card **empty** instead of pre-filling the player's saved
+picks for in-place editing. Kept as built (senior review flagged the banner copy/URL
+stickiness as nits, not the design itself — see `agents/senior-dev/reviews/
+cfb-admin-close-and-picks-ux.md`).
+
+**Why:** `cfb_submit_week_picks` re-freezes `locked_spread` from the *current* game row
+for **every** pick in a resubmitted payload, not just the ones that changed. Silently
+pre-filling old picks would let a player believe an unchanged pick keeps its original
+line, when resubmitting actually re-locks it to whatever the line has moved to since.
+Starting empty forces a deliberate rebuild against today's numbers — the saved card is
+untouched in the DB until a full valid card is submitted, so nothing is lost by backing
+out.
+
+**What we gave up:** A player who wants to tweak one pick out of five must reselect all
+five, not just the one they're changing — more taps for the common "I want to change one
+game" case.
+
+**What would make us revisit:** If this friction measurably suppresses edits once there
+are real users, the fix is server-side — e.g. have the RPC only re-freeze
+`locked_spread` for picks that actually changed — not reverting to silent pre-fill.
+
+---
+
 ## 2026-08-15 — Admin refresh: dropped the Participants tab (no UI replacement); bottom nav retired for a header avatar
 
 **Decision (`feat/admin-refresh`, senior review Q1/Q3):** `AdminDashboard`'s golf-only
