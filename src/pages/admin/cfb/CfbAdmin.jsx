@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { getAdminCfbPools, getCfbPollingStatus, startCfbPolling, stopCfbPolling } from '../../../lib/cfb'
-import AdminSportSwitcher from '../../../components/admin/AdminSportSwitcher'
+import AdminShell from '../../../components/admin/AdminShell'
 
 // Admin: index of CFB (college football) pools. Entry point to create a new season
 // pool and to open each pool's weekly ops. Kept separate from the golf-centric
@@ -95,6 +95,7 @@ export default function CfbAdmin() {
   const [pools, setPools] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [showClosed, setShowClosed] = useState(false)
 
   useEffect(() => {
     getAdminCfbPools()
@@ -103,67 +104,74 @@ export default function CfbAdmin() {
       .finally(() => setLoading(false))
   }, [])
 
+  const closedCount = pools.filter(p => p.status === 'complete').length
+  const visible = showClosed ? pools : pools.filter(p => p.status !== 'complete')
+
   return (
-    <div className="min-h-screen bg-sand pb-12">
-      <div className="bg-white border-b border-[#EAD8C4] px-[18px] h-14 flex items-center gap-[14px] sticky top-0 z-10">
-        <Link to="/dashboard" className="text-[13px] text-warm-400 no-underline">← Dashboard</Link>
-        <span className="text-[#EAD8C4] text-base select-none">|</span>
-        <span className="font-display font-extrabold text-[22px] text-brand tracking-[.06em]">POOLD</span>
-        <span className="font-display font-bold text-[16px] text-[#1C1610] tracking-[.04em]">Admin</span>
+    <AdminShell activeSport="cfb">
+      {error && (
+        <div className="mb-5 p-4 bg-birdie/5 border border-birdie/20 rounded-[11px] text-[13px] text-birdie">
+          {error}
+        </div>
+      )}
+
+      <CfbPollingControl />
+
+      <div className="flex items-center justify-between mb-5">
+        <div className="font-display font-extrabold text-[28px] text-[#1C1610] leading-none">Pools</div>
+        <Link
+          to="/admin/cfb/create-pool"
+          className="text-[13px] text-brand font-semibold no-underline hover:text-brand/80 transition-colors"
+        >
+          + New Pool
+        </Link>
       </div>
 
-      <div className="max-w-3xl mx-auto px-[18px] py-6">
-        {/* Sport switcher */}
-        <div className="mb-[18px]">
-          <AdminSportSwitcher active="cfb" size="lg" />
+      {!loading && pools.length > 0 && (
+        <div className="flex items-center justify-between mb-[14px]">
+          <p className="text-[13px] text-warm-400">
+            {visible.length} pool{visible.length !== 1 ? 's' : ''}
+          </p>
+          {closedCount > 0 && (
+            <button
+              onClick={() => setShowClosed(s => !s)}
+              className="text-[13px] text-warm-400 hover:text-charcoal transition-colors bg-transparent border-none cursor-pointer"
+            >
+              {showClosed ? 'Hide closed' : `Show closed (${closedCount})`}
+            </button>
+          )}
         </div>
+      )}
 
-        {error && (
-          <div className="mb-5 p-4 bg-birdie/5 border border-birdie/20 rounded-[11px] text-[13px] text-birdie">
-            {error}
-          </div>
-        )}
-
-        <CfbPollingControl />
-
-        <div className="flex items-center justify-between mb-5">
-          <div className="font-display font-extrabold text-[28px] text-[#1C1610] leading-none">CFB Pools</div>
-          <Link
-            to="/admin/cfb/create-pool"
-            className="text-[13px] text-brand font-semibold no-underline hover:text-brand/80 transition-colors"
-          >
-            + New CFB Pool
-          </Link>
-        </div>
-
-        {loading ? (
-          <p className="text-sm text-warm-400 py-4">Loading…</p>
-        ) : pools.length === 0 ? (
-          <p className="text-sm text-warm-400 py-4">No CFB pools yet. Create one to seed a season of weekly slates.</p>
-        ) : (
-          <div className="space-y-[10px]">
-            {pools.map(p => (
-              <Link
-                key={p.id}
-                to={`/admin/cfb/pool/${p.id}`}
-                className="block bg-white border border-[#EAD8C4] rounded-[14px] p-4 no-underline hover:border-brand/40 transition-colors"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <span className="text-[14.5px] font-semibold text-[#1C1610]">{p.name}</span>
-                    <p className="text-[11.5px] text-warm-400 mt-[2px]">
-                      {p.season_year} season · join code {p.join_code}
-                    </p>
-                  </div>
-                  <span className={`text-[10px] font-display font-bold uppercase tracking-[.12em] px-2 py-[3px] rounded-full ${STATUS_STYLES[p.status] ?? STATUS_STYLES.draft}`}>
-                    {p.status}
-                  </span>
+      {loading ? (
+        <p className="text-sm text-warm-400 py-4">Loading…</p>
+      ) : visible.length === 0 ? (
+        <p className="text-sm text-warm-400 py-4">
+          {pools.length === 0 ? 'No CFB pools yet. Create one to seed a season of weekly slates.' : 'All pools are closed.'}
+        </p>
+      ) : (
+        <div className="space-y-[10px]">
+          {visible.map(p => (
+            <Link
+              key={p.id}
+              to={`/admin/cfb/pool/${p.id}`}
+              className="block bg-white border border-[#EAD8C4] rounded-[14px] p-4 no-underline hover:border-brand/40 transition-colors"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-[14.5px] font-semibold text-[#1C1610]">{p.name}</span>
+                  <p className="text-[11.5px] text-warm-400 mt-[2px]">
+                    {p.season_year} season · join code {p.join_code}
+                  </p>
                 </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+                <span className={`text-[10px] font-display font-bold uppercase tracking-[.12em] px-2 py-[3px] rounded-full ${STATUS_STYLES[p.status] ?? STATUS_STYLES.draft}`}>
+                  {p.status}
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+    </AdminShell>
   )
 }

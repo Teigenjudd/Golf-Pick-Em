@@ -25,7 +25,7 @@ export default function Picks() {
     async function load() {
       const pool = await getPoolView(id)
       if (!pool) {
-        setError('Tournament not found.')
+        setError('Pool not found.')
         setLoading(false)
         return
       }
@@ -99,7 +99,7 @@ export default function Picks() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F4EFE4]">
         <div className="text-center">
-          <p className="text-charcoal font-medium mb-2">Tournament not found</p>
+          <p className="text-charcoal font-medium mb-2">Pool not found</p>
           <Link to="/dashboard" className="text-sm text-fairway font-medium no-underline">
             Go to dashboard
           </Link>
@@ -163,7 +163,7 @@ export default function Picks() {
 
         {isLocked && (
           <div className="mb-4 px-4 py-3 bg-[#FFFDF8] border border-[#E4DDD0] rounded-[12px] text-[13px] text-warm-500">
-            Picks are locked for this tournament.
+            Picks are locked for this pool.
           </div>
         )}
 

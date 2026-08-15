@@ -13,7 +13,7 @@ const SPORTS = [
   {
     key: 'golf',
     badge: GOLF_BADGE,
-    title: 'Golf tournament',
+    title: 'Golf pool',
     blurb: 'PGA field with tiered picks, best-N scoring, and a live weekend leaderboard.',
     to: '/admin/create-tournament',
   },

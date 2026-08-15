@@ -163,7 +163,7 @@ export default function Join() {
   if (tournamentLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-sand">
-        <p className="text-warm-400 text-sm">Looking up tournament…</p>
+        <p className="text-warm-400 text-sm">Looking up pool…</p>
       </div>
     )
   }
@@ -178,7 +178,7 @@ export default function Join() {
           <div className="bg-white border border-[#EAD8C4] rounded-2xl px-6 py-7 text-center shadow-[0_4px_24px_rgba(28,22,16,.07)]">
             <div className="font-display font-extrabold text-[22px] text-[#1C1610] mb-2">Invalid code</div>
             <p className="text-[13px] text-warm-400 leading-[1.5] mb-6">
-              The code <span className="font-semibold text-[#1C1610]">{code}</span> doesn&apos;t match any active tournament.
+              The code <span className="font-semibold text-[#1C1610]">{code}</span> doesn&apos;t match any active pool.
             </p>
             <Link to="/dashboard" className="text-[12.5px] text-warm-400 no-underline">
               <span className="text-brand font-semibold">Go to dashboard →</span>
@@ -305,7 +305,7 @@ export default function Join() {
 
           {isLocked ? (
             <div className="rounded-[12px] bg-warm-100 border border-warm-200 px-4 py-3 text-[13px] text-warm-500 mb-3">
-              Picks are locked for this tournament.
+              Picks are locked for this pool.
             </div>
           ) : (
             <button

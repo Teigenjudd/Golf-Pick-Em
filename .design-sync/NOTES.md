@@ -23,8 +23,11 @@ isolation. Read this before re-syncing.
 ## Shims (via cfg.tsconfig = .design-sync/tsconfig.ds.json paths)
 - `../lib/supabase` -> `.design-sync/supabase-stub.js`. The real client does
   `createClient(undefined, undefined)` at import (no env in the bundle), which
-  throws and would poison the whole bundle. BottomNav pulls it in via
-  AuthContext. Stub returns a permanently signed-out session.
+  throws and would poison the whole bundle. Nothing currently synced pulls this
+  in (BottomNav did, via AuthContext, until it was deleted from the app
+  2026-08-15), but the shim + the `AuthProvider` provider wrap stay in place for
+  the next component that reads auth context. Stub returns a permanently
+  signed-out session.
 - `../../utils/scoring` -> `.design-sync/scoring-preview.js`. The real module
   writes regexes with LITERAL non-ASCII chars; esbuild ships them verbatim and
   the bundle throws "Range out of order" whenever loaded as non-UTF-8 (the
@@ -39,13 +42,46 @@ isolation. Read this before re-syncing.
   `.ds-sync/`) from `src/demo/demoData.js` (static, pre-computed
   standings/tiers/picks/leaderboard). Regenerate if the demo fixture changes:
   `node .design-sync/gen-preview-data.mjs`.
-- `.design-sync/previews/*.tsx` — authored preview cards (15). All graded good.
+- `.design-sync/previews/*.tsx` — authored preview cards (24). All graded good.
 
 ## Known render warns (legitimate — not new issues)
 - `Footer` and `WidgetHeader` render "thin" — they ARE minimal (legal-links
   footer; a section-header label). Expected.
-- `BottomNav` / `PicksSubmitBar` are `position:fixed`; their previews wrap them
-  in a `transform: translateZ(0)` container so `fixed` anchors inside the card.
+- `PicksSubmitBar` / `CfbCardTracker` are `position:fixed`; their previews wrap
+  them in a `transform: translateZ(0)` container so `fixed` anchors inside the card.
+
+## CFB + admin components (added after the initial golf import)
+- **24 components now sync**: the golf ones plus 8 CFB (`src/components/cfb/*`) and
+  2 admin-chrome (`AdminSportSwitcher`, `CreatePoolChooser`). BottomNav was deleted from
+  the app 2026-08-15 (bottom nav removed app-wide) and dropped from the sync — golf is
+  now 14. Each remaining component is in `cfg.componentSrcMap`
+  + `ds-entry.js`. Full stateful admin PAGES (AdminDashboard, CreateTournament, CfbPoolOps,
+  CreateCfbPool, CfbAdmin) are deliberately NOT synced — they fetch live Supabase data and
+  don't render in isolation; iterate on those by editing the app + running it live.
+- **CFB fixtures are hand-authored** in `.design-sync/preview-data-cfb.js` (NOT generated —
+  the app's demo fixture is golf-only). The CFB preview cards import from it. Extend by hand
+  if a CFB component's prop shape changes. Shapes mirror what the CFB pages pass (see each
+  component's header doc + `src/utils/cfbCard.js` shapeCard output).
+- **`cfg.overrides`**: `CfbCardReadonly` + `CfbCardTracker` use `{ "cardMode": "column" }` so
+  their 3 tall variants render one-per-row (grid mode squeezes them side-by-side and the
+  card's `overflow-hidden` clips the right-edge points column). Add `cardMode:"column"` for any
+  future multi-variant card that renders wider than a grid cell.
+- **CFB deps are clean to bundle**: `cfbScoring.js`/`cfbFormat.js`/`theme/cfb.js` are pure (no
+  toxic-regex like `scoring.js`), so no shims needed beyond the existing two.
+
+## Windows vite-lock on re-sync (EPERM on `rm ds-bundle`)
+If `npm run dev` is running, vite watches the repo root and grabs handles on `ds-bundle/`
+after the first build, so the next build's cleanup `rmSync` fails with EPERM. Either stop the
+dev server, or build to a FRESH `--out` dir (e.g. `./ds-bundle-push`) for that run and delete
+it after uploading. `ds-bundle/` (bare) is gitignored; alternate names are NOT — clean them up.
+
+## The `/design-sync` skill isn't installed in this env
+Only `pm-sync` + `senior-review` are under `.claude/skills/`. `resync.mjs` does
+build→diff→validate→capture; the upload is hand-driven with the **DesignSync tool**
+(`get_project` → `list_files` → `finalize_plan {writes globs, deletes:[], localDir}` →
+`write_files [{path,localPath}]`). Upload set = every bundle file EXCEPT dotfiles,
+`node_modules/`, `_screenshots/`, `_ds_needs_recompile`, and `_ds_sync.json`.
+`_ds_manifest.json` + `_adherence.oxlintrc.json` are server-generated on upload — don't send them.
 
 ## Re-sync risks (what can silently go stale)
 - `app.css` is a point-in-time copy of the compiled Tailwind — stale if the app
