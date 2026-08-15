@@ -1,21 +1,37 @@
 ## Poold design system
 
-Poold is a golf pick'em app (React + Tailwind CSS v4, "clubhouse not sportsbook"
-voice). These are the real shipped components — brand-themed and data-driven.
-Compose them as-is; write your own layout glue with the Tailwind token classes
-below. Do not invent lookalike components or off-brand colors.
+Poold is a multi-sport social pick'em app for friend groups (React + Tailwind
+CSS v4, "clubhouse not sportsbook" voice). Two sports are live today — PGA golf
+and college football (CFB) — each with its own sport-specific theme; more sports
+follow the same pattern. These are the real shipped components — brand-themed
+and data-driven. Compose them as-is; write your own layout glue with the
+Tailwind token classes below. Do not invent lookalike components or off-brand
+colors.
+
+### Sports & registers
+- **General** (brand-level, sport-agnostic): auth, dashboard, admin —
+  `AdminSportSwitcher`, `CreatePoolChooser`, `BottomNav`, `Footer`, `SportBadge`.
+- **Golf** (fairway green `#1B4332` + gold `#C9A368`): `PoolHeader`,
+  `PicksHeader`, `Standings`, `TierPicker`, `StandingsCard`, `WidgetGrid`, the
+  `*Widget`s.
+- **CFB — "Varsity Navy"** (navy `#101C3D`→`#0A1229` header gradient, brick
+  `#D6291B` accent, green `#2E8F4F` cover/win; constants in `src/theme/cfb.js`):
+  `CfbStandings`, `CfbCardRows`, `CfbCardReadonly`, `CfbCardTracker`,
+  `CfbGameCard`, `CfbPoolTile`, `CfbWeekSelector`, `CfbWidgets`. Renders inside
+  the shared `PoolHeader`/`WidgetGrid` shells (via `children`), same as golf —
+  only the theme swaps.
 
 ### Wrapping & setup
 - Styles load from `styles.css` (Tailwind v4 tokens + utilities) — already wired.
-- **Router:** `PoolHeader`, `PicksHeader`, `Footer`, and `BottomNav` render
-  react-router `<Link>`s, so they must sit inside a router. Wrap them in the
-  exported `MemoryRouter` (`window.Poold.MemoryRouter`).
+- **Router:** `PoolHeader`, `PicksHeader`, `Footer`, `BottomNav`, and `CfbPoolTile`
+  render react-router `<Link>`s, so they must sit inside a router. Wrap them in
+  the exported `MemoryRouter` (`window.Poold.MemoryRouter`).
 - **BottomNav** also reads auth context — wrap it in the exported `AuthProvider`
   (nested inside `MemoryRouter`). It renders signed-out (a "?" avatar) with no
   backend, which is exactly what you want in a mockup.
 - Everything else (`SportBadge`, `Standings`, `TierPicker`, the `*Widget`s,
-  `WidgetGrid`, `StandingsCard`, `PicksSubmitBar`) is presentational — pass data
-  props, no wrapper needed.
+  `WidgetGrid`, `StandingsCard`, `PicksSubmitBar`, and all `Cfb*` components
+  except `CfbPoolTile`) is presentational — pass data props, no wrapper needed.
 
 ### Styling idiom — Tailwind v4 utility classes (no CSS-in-JS, no class maps)
 Style your layout with Tailwind utilities keyed to Poold's tokens:
@@ -42,6 +58,23 @@ Style your layout with Tailwind utilities keyed to Poold's tokens:
   `PrizePoolWidget` takes `stakeAmount`, `participantCount`, `payoutStructure`
   (percent array e.g. [60,30,10]).
 - `SportBadge` — `config` {line1, line2, bg, border}, `size` "sm"|"md"|"pick"|"lg".
+- `CfbStandings` — `entries` (array of {user_id, display_name, rank, total,
+  week: {state: 'card'|'nocard'|'hidden', total, picks}}), `currentUserId`,
+  `weekLabel`.
+- `CfbCardRows` / `CfbCardReadonly` — a graded/live/auto-filled weekly card:
+  `picks` (6 rows, 5 ATS + 1 underdog: {slot, pickType, isDoubleDown,
+  autoFilled, line, matchup, awayTeam, homeTeam, awayScore, homeScore, status,
+  live, kickoffAt, result, points}), `total`, `weekLabel`.
+- `CfbGameCard` — one game in the pick builder: `game` {home_team, away_team,
+  home_spread, kickoff_at, underdog_team, underdog_spread}, plus selection
+  state (`atsSelectedTeam`, `isDoubleDown`, `isUnderdogPick`) and callbacks.
+- `CfbPoolTile` — `tile` {poolId, name, seasonYear, playerCount, rank, total,
+  cardStatus, currentWeek}.
+- `CfbWeekSelector` — `weeks` (array of {id, week_number, label, status}),
+  `selectedNumber`. Styled for the dark navy header band it renders inside.
+- `CfbWidgets` — `games`, `weekPicks`, `weeklyPoints`, `weekLabel`, `locked`
+  (bool — gates the pick-derived widgets pre-lock); renders inside `WidgetGrid`
+  via `children`, same pattern as golf.
 
 ### Build snippet
 ```jsx

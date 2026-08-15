@@ -25,6 +25,20 @@
     "PicksSubmitBar": "src/components/pool/PicksSubmitBar.jsx",
     "PoolHeader": "src/components/pool/PoolHeader.jsx",
     "StandingsCard": "src/components/pool/StandingsCard.jsx",
-    "WidgetGrid": "src/components/pool/WidgetGrid.jsx"
+    "WidgetGrid": "src/components/pool/WidgetGrid.jsx",
+    "CfbStandings": "src/components/cfb/CfbStandings.jsx",
+    "CfbCardRows": "src/components/cfb/CfbCardRows.jsx",
+    "CfbCardReadonly": "src/components/cfb/CfbCardReadonly.jsx",
+    "CfbCardTracker": "src/components/cfb/CfbCardTracker.jsx",
+    "CfbGameCard": "src/components/cfb/CfbGameCard.jsx",
+    "CfbPoolTile": "src/components/cfb/CfbPoolTile.jsx",
+    "CfbWeekSelector": "src/components/cfb/CfbWeekSelector.jsx",
+    "CfbWidgets": "src/components/cfb/CfbWidgets.jsx",
+    "AdminSportSwitcher": "src/components/admin/AdminSportSwitcher.jsx",
+    "CreatePoolChooser": "src/pages/admin/CreatePoolChooser.jsx"
+  },
+  "overrides": {
+    "CfbCardReadonly": { "cardMode": "column" },
+    "CfbCardTracker": { "cardMode": "column" }
   }
 }
