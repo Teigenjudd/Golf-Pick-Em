@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import AdminShell from '../../components/admin/AdminShell'
 import {
-  getAdminPools, getAllPools, setPoolStatus, bumpRefreshCount,
-  getPoolPicks, removePoolParticipant,
+  getAdminPools, setPoolStatus, bumpRefreshCount,
   getPollingStatus, startPolling, stopPolling,
 } from '../../lib/golf'
 
@@ -23,7 +22,7 @@ function StatusBadge({ status }) {
   )
 }
 
-// ── Tournaments ───────────────────────────────────────────────────────────────
+// ── Pools ─────────────────────────────────────────────────────────────────────
 
 const MANUAL_REFRESH_LIMIT = 3
 
@@ -156,7 +155,7 @@ function TournamentsTab() {
 
       <div className="flex items-center justify-between mb-[14px]">
         <p className="text-[13px] text-warm-400">
-          {visible.length} tournament{visible.length !== 1 ? 's' : ''}
+          {visible.length} pool{visible.length !== 1 ? 's' : ''}
         </p>
         <div className="flex items-center gap-4">
           {closedCount > 0 && (
@@ -177,7 +176,7 @@ function TournamentsTab() {
       </div>
 
       {visible.length === 0 ? (
-        <p className="text-sm text-warm-400 py-4">No tournaments on the board yet.</p>
+        <p className="text-sm text-warm-400 py-4">No pools on the board yet.</p>
       ) : (
         <div className="space-y-[10px]">
           {visible.map(t => {
@@ -267,7 +266,7 @@ function TournamentsTab() {
                       disabled={updating === t.id}
                       className="text-[12px] px-[14px] py-[6px] rounded-[8px] border border-[#EAD8C4] text-warm-400 hover:bg-warm-100 disabled:opacity-50 transition-colors cursor-pointer"
                     >
-                      Close Tournament
+                      Close Pool
                     </button>
                   </div>
                 )}
@@ -280,166 +279,12 @@ function TournamentsTab() {
   )
 }
 
-// ── Participants ──────────────────────────────────────────────────────────────
-
-function ParticipantsTab() {
-  const [tournaments, setTournaments] = useState([])
-  const [selectedId, setSelectedId] = useState('')
-  const [participants, setParticipants] = useState([])
-  const [loadingTournaments, setLoadingTournaments] = useState(true)
-  const [loadingParticipants, setLoadingParticipants] = useState(false)
-  const [removing, setRemoving] = useState(null)
-
-  useEffect(() => {
-    getAllPools().then(data => {
-      setTournaments(data)
-      setLoadingTournaments(false)
-    })
-  }, [])
-
-  async function loadParticipants(poolId) {
-    setLoadingParticipants(true)
-    // Email is column-restricted on profiles, so pull it from the admin RPC and
-    // merge it in by user_id rather than embedding it on the picks query.
-    const [data, { data: users }] = await Promise.all([
-      getPoolPicks(poolId, { confirmedOnly: false }),
-      supabase.rpc('admin_list_users'),
-    ])
-
-    const emailById = {}
-    ;(users ?? []).forEach(u => { emailById[u.id] = u.email })
-
-    const map = {}
-    ;(data ?? []).forEach(pick => {
-      const uid = pick.user_id
-      if (!map[uid]) {
-        map[uid] = {
-          user_id: uid,
-          display_name: pick.profiles?.display_name ?? 'Participant',
-          email: emailById[uid] ?? '',
-          picks: [],
-        }
-      }
-      map[uid].picks.push({
-        player_name: pick.player_name,
-        tier_number: pick.tiers?.tier_number ?? 0,
-        label: pick.tiers?.label ?? '',
-      })
-    })
-
-    setParticipants(
-      Object.values(map).map(u => ({
-        ...u,
-        picks: u.picks.sort((a, b) => a.tier_number - b.tier_number),
-      }))
-    )
-    setLoadingParticipants(false)
-  }
-
-  function handleSelectTournament(id) {
-    setSelectedId(id)
-    setParticipants([])
-    if (id) loadParticipants(id)
-  }
-
-  async function removeParticipant(userId, displayName) {
-    if (!window.confirm(`Remove ${displayName}'s picks from this tournament? This cannot be undone.`)) return
-    setRemoving(userId)
-    await removePoolParticipant(selectedId, userId)
-    setParticipants(prev => prev.filter(p => p.user_id !== userId))
-    setRemoving(null)
-  }
-
-  return (
-    <div>
-      <div className="mb-4">
-        <select
-          value={selectedId}
-          onChange={e => handleSelectTournament(e.target.value)}
-          disabled={loadingTournaments}
-          className="w-full px-[14px] py-[11px] border-[1.5px] border-[#EAD8C4] rounded-[11px] text-[14px] text-[#1C1610] bg-white outline-none appearance-none disabled:opacity-50"
-        >
-          <option value="">{loadingTournaments ? 'Loading…' : 'Select a tournament'}</option>
-          {tournaments.map(t => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
-      </div>
-
-      {!selectedId && (
-        <p className="text-sm text-warm-400 py-4">Select a tournament to view participants.</p>
-      )}
-      {selectedId && loadingParticipants && (
-        <p className="text-sm text-warm-400 py-4">Loading…</p>
-      )}
-      {selectedId && !loadingParticipants && participants.length === 0 && (
-        <p className="text-sm text-warm-400 py-4">No cards in yet.</p>
-      )}
-
-      {participants.length > 0 && (
-        <div className="space-y-[9px]">
-          <p className="text-[13px] text-warm-400 mb-3">
-            {participants.length} participant{participants.length !== 1 ? 's' : ''}
-          </p>
-          {participants.map(p => (
-            <div key={p.user_id} className="bg-white border border-[#EAD8C4] rounded-[13px] px-4 py-[14px]">
-              <div className="flex items-start justify-between gap-3 mb-[11px]">
-                <div>
-                  <p className="text-[14px] font-semibold text-[#1C1610]">{p.display_name}</p>
-                  <p className="text-[12px] text-warm-400 mt-[1px]">{p.email}</p>
-                </div>
-                <button
-                  onClick={() => removeParticipant(p.user_id, p.display_name)}
-                  disabled={removing === p.user_id}
-                  className="text-[11.5px] px-[11px] py-[5px] rounded-[7px] border border-birdie/30 text-birdie hover:bg-birdie/5 disabled:opacity-50 transition-colors shrink-0 cursor-pointer"
-                >
-                  {removing === p.user_id ? 'Removing…' : 'Remove'}
-                </button>
-              </div>
-              <div className="flex flex-col gap-[5px]">
-                {p.picks.map((pick, i) => (
-                  <div key={i} className="flex items-center gap-[10px]">
-                    <span className="text-[11px] text-warm-400 w-[50px] shrink-0">{pick.label}</span>
-                    <span className="text-[13px] text-[#1C1610]">{pick.player_name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-const TABS = ['Pools', 'Participants']
-
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('Pools')
-
   return (
     <AdminShell activeSport="golf">
-      {/* Tabs */}
-      <div className="flex gap-[2px] bg-[#EAD8C4] rounded-[10px] p-[3px] mb-[22px]">
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 text-[13.5px] font-medium py-2 rounded-[8px] border-none cursor-pointer transition-colors ${
-              activeTab === tab
-                ? 'bg-white text-[#1C1610]'
-                : 'bg-transparent text-[#7A6858]'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === 'Pools'        && <TournamentsTab />}
-      {activeTab === 'Participants' && <ParticipantsTab />}
+      <TournamentsTab />
     </AdminShell>
   )
 }

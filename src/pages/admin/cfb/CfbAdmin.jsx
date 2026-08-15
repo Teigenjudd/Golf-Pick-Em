@@ -95,6 +95,7 @@ export default function CfbAdmin() {
   const [pools, setPools] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [showClosed, setShowClosed] = useState(false)
 
   useEffect(() => {
     getAdminCfbPools()
@@ -102,6 +103,9 @@ export default function CfbAdmin() {
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }, [])
+
+  const closedCount = pools.filter(p => p.status === 'complete').length
+  const visible = showClosed ? pools : pools.filter(p => p.status !== 'complete')
 
   return (
     <AdminShell activeSport="cfb">
@@ -123,13 +127,29 @@ export default function CfbAdmin() {
         </Link>
       </div>
 
+      {!loading && pools.length > 0 && (
+        <div className="flex items-center justify-between mb-[14px]">
+          <p className="text-[13px] text-warm-400">
+            {visible.length} pool{visible.length !== 1 ? 's' : ''}
+          </p>
+          {closedCount > 0 && (
+            <button
+              onClick={() => setShowClosed(s => !s)}
+              className="text-[13px] text-warm-400 hover:text-charcoal transition-colors bg-transparent border-none cursor-pointer"
+            >
+              {showClosed ? 'Hide closed' : `Show closed (${closedCount})`}
+            </button>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <p className="text-sm text-warm-400 py-4">Loading…</p>
-      ) : pools.length === 0 ? (
+      ) : visible.length === 0 ? (
         <p className="text-sm text-warm-400 py-4">No CFB pools yet. Create one to seed a season of weekly slates.</p>
       ) : (
         <div className="space-y-[10px]">
-          {pools.map(p => (
+          {visible.map(p => (
             <Link
               key={p.id}
               to={`/admin/cfb/pool/${p.id}`}

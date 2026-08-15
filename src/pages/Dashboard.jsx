@@ -69,31 +69,92 @@ function JoinPoolSheetContent({ onClose }) {
   )
 }
 
-// Sheet content for the header "+" button — a chooser between joining with a
-// code and (admin-only) creating a new pool.
-function AddPoolSheetContent({ isAdmin, onJoinWithCode }) {
+// Sheet content for admins only — non-admins have just one option (join), so
+// they skip straight to JoinPoolSheetContent instead of a chooser (see
+// header "+" and the dashed card, both branch on role before picking a
+// sheet). Side-by-side buttons so the two don't read as one field+submit pair.
+function AddPoolSheetContent({ onJoinWithCode }) {
   return (
-    <div className="flex flex-col gap-[10px] mt-[10px]">
+    <div className="flex gap-[10px] mt-[10px]">
       <button
         onClick={onJoinWithCode}
-        className="w-full text-left border border-warm-300 rounded-[12px] px-[15px] py-[14px] text-[15px] font-semibold text-charcoal bg-white cursor-pointer"
+        className="flex-1 bg-brand text-white font-bold text-[14.5px] py-[14px] rounded-[12px] border-none cursor-pointer text-center"
       >
-        Join a pool with a code
+        Join with code
       </button>
-      {isAdmin && (
-        <Link
-          to="/admin/create"
-          className="w-full text-center bg-brand text-white font-bold text-[15px] py-[14px] rounded-[12px] no-underline"
-        >
-          Create a new pool
-        </Link>
+      <Link
+        to="/admin/create"
+        className="flex-1 text-center bg-brand text-white font-bold text-[14.5px] py-[14px] rounded-[12px] no-underline"
+      >
+        Create pool
+      </Link>
+    </div>
+  )
+}
+
+// Header avatar. Non-admins go straight to /profile as before. Admins get a
+// small dropdown (Profile / Admin) anchored under the avatar instead of a
+// separate always-visible "Admin Panel" row taking up space on the dashboard.
+function ProfileMenu({ initials, needsName, isAdmin }) {
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    function onKeyDown(e) { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open])
+
+  const badge = needsName && (
+    <span className="absolute -top-[1px] -right-[1px] w-[10px] h-[10px] rounded-full bg-gold border-2 border-white" />
+  )
+
+  if (!isAdmin) {
+    return (
+      <Link to="/profile" className="relative w-[34px] h-[34px] rounded-full bg-brand flex items-center justify-center no-underline">
+        <span className="font-display font-bold text-[13px] text-white">{initials}</span>
+        {badge}
+      </Link>
+    )
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="relative w-[34px] h-[34px] rounded-full bg-brand flex items-center justify-center border-none cursor-pointer"
+      >
+        <span className="font-display font-bold text-[13px] text-white">{initials}</span>
+        {badge}
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute top-[42px] right-0 z-50 w-[168px] bg-white border border-[#EAD8C4] rounded-[12px] shadow-[0_8px_24px_rgba(28,22,16,.12)] overflow-hidden">
+            <Link
+              to="/profile"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-[11px] text-[13.5px] font-medium text-[#1C1610] no-underline hover:bg-warm-100 transition-colors border-b border-[#EAD8C4]"
+            >
+              Profile
+            </Link>
+            <Link
+              to="/admin"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-[11px] text-[13.5px] font-medium text-[#1C1610] no-underline hover:bg-warm-100 transition-colors"
+            >
+              Admin
+            </Link>
+          </div>
+        </>
       )}
     </div>
   )
 }
 
 // A labeled row with a count pill + chevron that toggles a section below it
-// (Closed pools, Admin). Matches the design-tool proposal's declutter pattern.
+// (Closed pools). Matches the design-tool proposal's declutter pattern.
 function CollapsibleRow({ label, count, open, onToggle }) {
   return (
     <button
@@ -204,18 +265,13 @@ export default function Dashboard() {
         <span className="font-display font-extrabold text-[26px] text-brand tracking-[.07em]">POOLD</span>
         <div className="flex items-center gap-[13px]">
           <button
-            onClick={() => setSheet('add')}
+            onClick={() => setSheet(profile?.role === 'admin' ? 'add' : 'join')}
             title="Add a pool"
             className="w-[34px] h-[34px] rounded-full bg-white border border-[#EAD8C4] flex items-center justify-center hover:bg-warm-100 transition-colors cursor-pointer"
           >
             <span className="font-display font-bold text-[17px] text-brand leading-none">+</span>
           </button>
-          <Link to="/profile" className="relative w-[34px] h-[34px] rounded-full bg-brand flex items-center justify-center no-underline">
-            <span className="font-display font-bold text-[13px] text-white">{initials}</span>
-            {needsName && (
-              <span className="absolute -top-[1px] -right-[1px] w-[10px] h-[10px] rounded-full bg-gold border-2 border-white" />
-            )}
-          </Link>
+          <ProfileMenu initials={initials} needsName={needsName} isAdmin={profile?.role === 'admin'} />
         </div>
       </div>
 
@@ -339,9 +395,9 @@ export default function Dashboard() {
                 <div className="px-[15px] pb-[13px] flex gap-[9px]">
                   <Link
                     to={`/tournament/${t.id}`}
-                    className="flex-1 bg-brand rounded-[10px] py-3 text-center font-bold text-[13.5px] text-white no-underline"
+                    className="flex-1 bg-brand rounded-[10px] py-3 px-[14px] text-center font-bold text-[13.5px] text-white no-underline"
                   >
-                    View leaderboard →
+                    Leaderboard →
                   </Link>
                   <Link
                     to={`/tournament/${t.id}/picks`}
@@ -358,6 +414,16 @@ export default function Dashboard() {
         {/* CFB pool tiles — after golf tiles, per docs/CFB_UI_PLAN.md §4 */}
         {cfbPools.map(tile => <CfbPoolTile key={tile.poolId} tile={tile} />)}
 
+        {/* Join card — admins get both join + create via the Add-a-pool chooser */}
+        <button
+          onClick={() => setSheet(profile?.role === 'admin' ? 'add' : 'join')}
+          className="w-full border-[1.5px] border-dashed border-[#D0BCA8] rounded-[13px] py-[14px] text-center mb-5 bg-transparent cursor-pointer"
+        >
+          <span className="font-display font-bold text-[14px] text-warm-400">
+            {profile?.role === 'admin' ? '+ Join or Create Pool' : '+ Join another pool'}
+          </span>
+        </button>
+
         {/* Show/hide closed */}
         {closedTournaments.length > 0 && (
           <CollapsibleRow label="Closed pools" count={closedTournaments.length} open={showClosed} onToggle={() => setShowClosed(s => !s)} />
@@ -369,25 +435,6 @@ export default function Dashboard() {
             <p className="text-[13px] text-warm-400">You haven&apos;t joined any pools yet.</p>
             <p className="text-[12px] text-warm-300 mt-1">Use a join link from your pool organizer to get started.</p>
           </div>
-        )}
-
-        {/* Join card */}
-        <button
-          onClick={() => setSheet('join')}
-          className="w-full border-[1.5px] border-dashed border-[#D0BCA8] rounded-[13px] py-[14px] text-center mb-5 bg-transparent cursor-pointer"
-        >
-          <span className="font-display font-bold text-[14px] text-warm-400">+ Join another pool</span>
-        </button>
-
-        {/* Admin — straight to the panel, no inline pool list */}
-        {profile?.role === 'admin' && (
-          <Link
-            to="/admin"
-            className="flex items-center justify-between bg-white border border-[#EAD8C4] rounded-2xl px-4 py-3.5 mb-5 no-underline"
-          >
-            <span className="font-display font-bold text-[10px] uppercase tracking-[.22em] text-warm-400">Admin</span>
-            <span className="text-[13px] text-brand font-semibold">Admin Panel →</span>
-          </Link>
         )}
 
         {/* Sign out */}
@@ -409,7 +456,7 @@ export default function Dashboard() {
       </BottomSheet>
 
       <BottomSheet open={sheet === 'add'} onClose={() => setSheet(null)} title="Add a pool">
-        <AddPoolSheetContent isAdmin={profile?.role === 'admin'} onJoinWithCode={() => setSheet('join')} />
+        <AddPoolSheetContent onJoinWithCode={() => setSheet('join')} />
       </BottomSheet>
 
     </div>
