@@ -10,7 +10,7 @@ colors.
 
 ### Sports & registers
 - **General** (brand-level, sport-agnostic): auth, dashboard, admin —
-  `AdminSportSwitcher`, `CreatePoolChooser`, `BottomNav`, `Footer`, `SportBadge`.
+  `AdminSportSwitcher`, `CreatePoolChooser`, `Footer`, `SportBadge`.
 - **Golf** (fairway green `#1B4332` + gold `#C9A368`): `PoolHeader`,
   `PicksHeader`, `Standings`, `TierPicker`, `StandingsCard`, `WidgetGrid`, the
   `*Widget`s.
@@ -23,12 +23,12 @@ colors.
 
 ### Wrapping & setup
 - Styles load from `styles.css` (Tailwind v4 tokens + utilities) — already wired.
-- **Router:** `PoolHeader`, `PicksHeader`, `Footer`, `BottomNav`, and `CfbPoolTile`
-  render react-router `<Link>`s, so they must sit inside a router. Wrap them in
-  the exported `MemoryRouter` (`window.Poold.MemoryRouter`).
-- **BottomNav** also reads auth context — wrap it in the exported `AuthProvider`
-  (nested inside `MemoryRouter`). It renders signed-out (a "?" avatar) with no
-  backend, which is exactly what you want in a mockup.
+- **Router:** `PoolHeader`, `PicksHeader`, `Footer`, and `CfbPoolTile` render
+  react-router `<Link>`s, so they must sit inside a router. Wrap them in the
+  exported `MemoryRouter` (`window.Poold.MemoryRouter`).
+- The exported `AuthProvider` (nested inside `MemoryRouter`) is also available
+  for any component that reads auth context — none of the currently-synced
+  components need it, but it's wired for when one does.
 - Everything else (`SportBadge`, `Standings`, `TierPicker`, the `*Widget`s,
   `WidgetGrid`, `StandingsCard`, `PicksSubmitBar`, and all `Cfb*` components
   except `CfbPoolTile`) is presentational — pass data props, no wrapper needed.

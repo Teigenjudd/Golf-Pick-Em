@@ -23,8 +23,11 @@ isolation. Read this before re-syncing.
 ## Shims (via cfg.tsconfig = .design-sync/tsconfig.ds.json paths)
 - `../lib/supabase` -> `.design-sync/supabase-stub.js`. The real client does
   `createClient(undefined, undefined)` at import (no env in the bundle), which
-  throws and would poison the whole bundle. BottomNav pulls it in via
-  AuthContext. Stub returns a permanently signed-out session.
+  throws and would poison the whole bundle. Nothing currently synced pulls this
+  in (BottomNav did, via AuthContext, until it was deleted from the app
+  2026-08-15), but the shim + the `AuthProvider` provider wrap stay in place for
+  the next component that reads auth context. Stub returns a permanently
+  signed-out session.
 - `../../utils/scoring` -> `.design-sync/scoring-preview.js`. The real module
   writes regexes with LITERAL non-ASCII chars; esbuild ships them verbatim and
   the bundle throws "Range out of order" whenever loaded as non-UTF-8 (the
@@ -39,17 +42,19 @@ isolation. Read this before re-syncing.
   `.ds-sync/`) from `src/demo/demoData.js` (static, pre-computed
   standings/tiers/picks/leaderboard). Regenerate if the demo fixture changes:
   `node .design-sync/gen-preview-data.mjs`.
-- `.design-sync/previews/*.tsx` — authored preview cards (15). All graded good.
+- `.design-sync/previews/*.tsx` — authored preview cards (24). All graded good.
 
 ## Known render warns (legitimate — not new issues)
 - `Footer` and `WidgetHeader` render "thin" — they ARE minimal (legal-links
   footer; a section-header label). Expected.
-- `BottomNav` / `PicksSubmitBar` are `position:fixed`; their previews wrap them
-  in a `transform: translateZ(0)` container so `fixed` anchors inside the card.
+- `PicksSubmitBar` / `CfbCardTracker` are `position:fixed`; their previews wrap
+  them in a `transform: translateZ(0)` container so `fixed` anchors inside the card.
 
 ## CFB + admin components (added after the initial golf import)
-- **25 components now sync**: the 15 golf ones plus 8 CFB (`src/components/cfb/*`) and
-  2 admin-chrome (`AdminSportSwitcher`, `CreatePoolChooser`). Each is in `cfg.componentSrcMap`
+- **24 components now sync**: the golf ones plus 8 CFB (`src/components/cfb/*`) and
+  2 admin-chrome (`AdminSportSwitcher`, `CreatePoolChooser`). BottomNav was deleted from
+  the app 2026-08-15 (bottom nav removed app-wide) and dropped from the sync — golf is
+  now 14. Each remaining component is in `cfg.componentSrcMap`
   + `ds-entry.js`. Full stateful admin PAGES (AdminDashboard, CreateTournament, CfbPoolOps,
   CreateCfbPool, CfbAdmin) are deliberately NOT synced — they fetch live Supabase data and
   don't render in isolation; iterate on those by editing the app + running it live.

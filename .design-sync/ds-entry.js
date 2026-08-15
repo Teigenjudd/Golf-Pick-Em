@@ -3,7 +3,6 @@
 // `export *` synth entry would drop every default, so we re-export each one
 // as a NAMED export here. This is the module esbuild bundles into
 // window.Poold. Keep in sync with src/components/ when components are added.
-export { default as BottomNav } from '../src/components/BottomNav.jsx';
 export { default as Footer } from '../src/components/Footer.jsx';
 export { default as SportBadge } from '../src/components/SportBadge.jsx';
 export { default as Standings } from '../src/components/leaderboard/Standings.jsx';

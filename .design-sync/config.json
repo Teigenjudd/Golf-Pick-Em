@@ -11,7 +11,6 @@
   "readmeHeader": ".design-sync/conventions.md",
   "guidelinesGlob": ["DESIGN_SPEC.md", "docs/PAGES.md"],
   "componentSrcMap": {
-    "BottomNav": "src/components/BottomNav.jsx",
     "Footer": "src/components/Footer.jsx",
     "SportBadge": "src/components/SportBadge.jsx",
     "Standings": "src/components/leaderboard/Standings.jsx",

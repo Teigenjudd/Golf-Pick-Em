@@ -3,7 +3,6 @@ import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { saveDisplayName, validateDisplayName, randomNamePlaceholder, NAME_MAX } from '../lib/profile'
 import { getInitials } from '../utils/format'
-import BottomNav from '../components/BottomNav'
 import Footer from '../components/Footer'
 
 export default function Profile() {
@@ -44,7 +43,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-h-screen bg-sand pb-20 flex flex-col">
+    <div className="min-h-screen bg-sand pb-10 flex flex-col">
 
       <div className="bg-white border-b border-[#EAD8C4] px-[18px] h-14 flex items-center justify-between sticky top-0 z-10">
         <Link to="/dashboard" className="font-display font-extrabold text-[26px] text-brand tracking-[.07em] no-underline">POOLD</Link>
@@ -119,8 +118,6 @@ export default function Profile() {
       <div className="mt-auto">
         <Footer />
       </div>
-
-      <BottomNav active="you" />
     </div>
   )
 }

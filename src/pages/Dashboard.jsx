@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { Navigate, Link, useNavigate } from 'react-router-dom'
-import { getMyPickRows, getPoolViewsByIds, getPoolPicks, getLatestLeaderboard, getAllPools } from '../lib/golf'
+import { getMyPickRows, getPoolViewsByIds, getPoolPicks, getLatestLeaderboard } from '../lib/golf'
 import { getMyCfbPools } from '../lib/cfb'
 import { computeScores, assignRanks, formatScore } from '../utils/scoring'
 import { getInitials } from '../utils/format'
 import SportBadge from '../components/SportBadge'
-import BottomNav from '../components/BottomNav'
 import Footer from '../components/Footer'
 import CfbPoolTile from '../components/cfb/CfbPoolTile'
+import BottomSheet from '../components/BottomSheet'
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -28,12 +28,12 @@ function ordinal(n) {
   return `${n}th`
 }
 
-// Dashed "join another pool" card. Collapsed by default; opening it reveals a
-// join-code input that hands off to the real join flow at /join/:code (which
-// already handles invalid/expired codes) rather than duplicating that logic here.
-function JoinPoolCard() {
+// Sheet content: join-code entry, submitted to the real join flow at
+// /join/:code (which already handles invalid/expired codes) rather than
+// duplicating that logic here. Shared by the "Join another pool" dashed card
+// and the "+" header button's Add-a-pool sheet.
+function JoinPoolSheetContent({ onClose }) {
   const navigate = useNavigate()
-  const [open, setOpen] = useState(false)
   const [code, setCode] = useState('')
 
   function submit(e) {
@@ -41,48 +41,54 @@ function JoinPoolCard() {
     const trimmed = code.trim()
     if (!trimmed) return
     navigate(`/join/${trimmed.toUpperCase()}`)
-  }
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="w-full border-[1.5px] border-dashed border-[#D0BCA8] rounded-[13px] py-[14px] text-center mb-5 bg-transparent cursor-pointer"
-      >
-        <span className="font-display font-bold text-[14px] text-warm-400">+ Join another pool</span>
-      </button>
-    )
+    onClose()
   }
 
   return (
-    <form onSubmit={submit} className="border-[1.5px] border-dashed border-[#D0BCA8] rounded-[13px] p-[14px] mb-5">
-      <label className="block font-display font-bold text-[10px] uppercase tracking-[.22em] text-warm-400 mb-[9px]">
-        Enter join code
-      </label>
-      <div className="flex gap-[8px]">
+    <>
+      <p className="text-[13.5px] text-warm-400 leading-snug mb-[16px]">
+        Enter the invite code your commissioner sent you.
+      </p>
+      <form onSubmit={submit}>
         <input
           autoFocus
           value={code}
           onChange={e => setCode(e.target.value)}
           placeholder="e.g. AB12CD"
-          className="flex-1 min-w-0 border border-warm-300 rounded-[10px] px-3 py-[9px] text-[14px] text-charcoal bg-white placeholder:text-warm-300 outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway transition-colors"
+          className="w-full border border-warm-300 rounded-[12px] px-[15px] py-[13px] text-[15px] text-charcoal bg-white placeholder:text-warm-300 outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway transition-colors mb-[14px]"
         />
         <button
           type="submit"
           disabled={!code.trim()}
-          className="bg-brand text-white font-semibold text-[13px] px-4 rounded-[10px] disabled:opacity-40 transition-colors shrink-0"
+          className="w-full bg-brand text-white font-bold text-[15px] py-[14px] rounded-[12px] border-none cursor-pointer disabled:opacity-40 transition-colors"
         >
-          Go
+          Join pool
         </button>
-        <button
-          type="button"
-          onClick={() => { setOpen(false); setCode('') }}
-          className="text-[13px] text-warm-400 px-1 bg-transparent border-none cursor-pointer shrink-0"
+      </form>
+    </>
+  )
+}
+
+// Sheet content for the header "+" button — a chooser between joining with a
+// code and (admin-only) creating a new pool.
+function AddPoolSheetContent({ isAdmin, onJoinWithCode }) {
+  return (
+    <div className="flex flex-col gap-[10px] mt-[10px]">
+      <button
+        onClick={onJoinWithCode}
+        className="w-full text-left border border-warm-300 rounded-[12px] px-[15px] py-[14px] text-[15px] font-semibold text-charcoal bg-white cursor-pointer"
+      >
+        Join a pool with a code
+      </button>
+      {isAdmin && (
+        <Link
+          to="/admin/create"
+          className="w-full text-center bg-brand text-white font-bold text-[15px] py-[14px] rounded-[12px] no-underline"
         >
-          Cancel
-        </button>
-      </div>
-    </form>
+          Create a new pool
+        </Link>
+      )}
+    </div>
   )
 }
 
@@ -114,11 +120,9 @@ function CollapsibleRow({ label, count, open, onToggle }) {
 export default function Dashboard() {
   const { user, profile, loading, signOut } = useAuth()
   const [myTournaments, setMyTournaments] = useState([])
-  const [adminTournaments, setAdminTournaments] = useState([])
   const [showClosed, setShowClosed] = useState(false)
-  const [showClosedAdmin, setShowClosedAdmin] = useState(false)
-  const [adminOpen, setAdminOpen] = useState(false)
   const [myStandings, setMyStandings] = useState({})
+  const [sheet, setSheet] = useState(null) // null | 'join' | 'add'
   const [cfbPools, setCfbPools] = useState([])
 
   useEffect(() => {
@@ -180,11 +184,6 @@ export default function Dashboard() {
   }, [myTournaments, user])
 
   useEffect(() => {
-    if (!user || profile?.role !== 'admin') return
-    getAllPools().then(setAdminTournaments)
-  }, [user, profile])
-
-  useEffect(() => {
     if (!user) return
     getMyCfbPools(user.id).then(setCfbPools)
   }, [user])
@@ -193,27 +192,29 @@ export default function Dashboard() {
   if (!user) return <Navigate to="/" replace />
 
   const initials = getInitials(profile?.display_name)
+  const needsName = !!profile && !profile.display_name_set_at
   const closedTournaments = myTournaments.filter(t => t.tournamentStatus === 'complete')
   const visibleTournaments = showClosed ? myTournaments : myTournaments.filter(t => t.tournamentStatus !== 'complete')
 
   return (
-    <div className="min-h-screen bg-sand pb-20 flex flex-col">
+    <div className="min-h-screen bg-sand pb-10 flex flex-col">
 
       {/* Sticky top nav */}
       <div className="bg-white border-b border-[#EAD8C4] px-[18px] h-14 flex items-center justify-between sticky top-0 z-10">
         <span className="font-display font-extrabold text-[26px] text-brand tracking-[.07em]">POOLD</span>
         <div className="flex items-center gap-[13px]">
-          {profile?.role === 'admin' && (
-            <Link
-              to="/admin/create"
-              title="New pool"
-              className="w-[34px] h-[34px] rounded-full bg-white border border-[#EAD8C4] flex items-center justify-center no-underline hover:bg-warm-100 transition-colors"
-            >
-              <span className="font-display font-bold text-[17px] text-brand leading-none">+</span>
-            </Link>
-          )}
-          <Link to="/profile" className="w-[34px] h-[34px] rounded-full bg-brand flex items-center justify-center no-underline">
+          <button
+            onClick={() => setSheet('add')}
+            title="Add a pool"
+            className="w-[34px] h-[34px] rounded-full bg-white border border-[#EAD8C4] flex items-center justify-center hover:bg-warm-100 transition-colors cursor-pointer"
+          >
+            <span className="font-display font-bold text-[17px] text-brand leading-none">+</span>
+          </button>
+          <Link to="/profile" className="relative w-[34px] h-[34px] rounded-full bg-brand flex items-center justify-center no-underline">
             <span className="font-display font-bold text-[13px] text-white">{initials}</span>
+            {needsName && (
+              <span className="absolute -top-[1px] -right-[1px] w-[10px] h-[10px] rounded-full bg-gold border-2 border-white" />
+            )}
           </Link>
         </div>
       </div>
@@ -371,44 +372,23 @@ export default function Dashboard() {
         )}
 
         {/* Join card */}
-        <JoinPoolCard />
+        <button
+          onClick={() => setSheet('join')}
+          className="w-full border-[1.5px] border-dashed border-[#D0BCA8] rounded-[13px] py-[14px] text-center mb-5 bg-transparent cursor-pointer"
+        >
+          <span className="font-display font-bold text-[14px] text-warm-400">+ Join another pool</span>
+        </button>
 
-        {/* Admin section */}
-        {profile?.role === 'admin' && (() => {
-          const adminClosedCount = adminTournaments.filter(t => t.status === 'complete').length
-          const visibleAdmin = showClosedAdmin ? adminTournaments : adminTournaments.filter(t => t.status !== 'complete')
-          return (
-            <div className="mt-2 mb-5">
-              <CollapsibleRow label="Admin" count={adminTournaments.length} open={adminOpen} onToggle={() => setAdminOpen(o => !o)} />
-              {adminOpen && (
-              <div className="mt-[10px]">
-              {adminClosedCount > 0 && (
-                <div className="flex justify-end mb-[8px]">
-                  <button onClick={() => setShowClosedAdmin(s => !s)} className="text-[11px] text-warm-400 bg-transparent border-none cursor-pointer underline">
-                    {showClosedAdmin ? 'Hide closed' : `Show closed (${adminClosedCount})`}
-                  </button>
-                </div>
-              )}
-              <div className="bg-white border border-[#EAD8C4] rounded-2xl overflow-hidden">
-                {visibleAdmin.map(t => (
-                  <div key={t.id} className={`flex items-center gap-3 px-4 py-3.5 border-b border-[#EAD8C4] ${t.status === 'complete' ? 'opacity-50' : ''}`}>
-                    <Link to={`/tournament/${t.id}`} className="flex-1 text-[13.5px] font-semibold text-[#1C1610] no-underline">{t.name}</Link>
-                    <span className={`text-[11px] font-semibold px-[9px] py-[3px] rounded-full ${
-                      t.status === 'open'   ? 'bg-fairway/10 text-fairway' :
-                      t.status === 'locked' ? 'bg-gold/20 text-gold' :
-                                              'bg-warm-200 text-warm-400'
-                    }`}>{t.status}</span>
-                  </div>
-                ))}
-                <div className="flex items-center gap-5 px-4 py-3.5">
-                  <Link to="/admin" className="text-[13px] text-brand font-semibold no-underline">Admin Panel →</Link>
-                </div>
-              </div>
-              </div>
-              )}
-            </div>
-          )
-        })()}
+        {/* Admin — straight to the panel, no inline pool list */}
+        {profile?.role === 'admin' && (
+          <Link
+            to="/admin"
+            className="flex items-center justify-between bg-white border border-[#EAD8C4] rounded-2xl px-4 py-3.5 mb-5 no-underline"
+          >
+            <span className="font-display font-bold text-[10px] uppercase tracking-[.22em] text-warm-400">Admin</span>
+            <span className="text-[13px] text-brand font-semibold">Admin Panel →</span>
+          </Link>
+        )}
 
         {/* Sign out */}
         <div className="text-right">
@@ -424,7 +404,13 @@ export default function Dashboard() {
         <Footer />
       </div>
 
-      <BottomNav active="pools" />
+      <BottomSheet open={sheet === 'join'} onClose={() => setSheet(null)} title="Join a pool">
+        <JoinPoolSheetContent onClose={() => setSheet(null)} />
+      </BottomSheet>
+
+      <BottomSheet open={sheet === 'add'} onClose={() => setSheet(null)} title="Add a pool">
+        <AddPoolSheetContent isAdmin={profile?.role === 'admin'} onJoinWithCode={() => setSheet('join')} />
+      </BottomSheet>
 
     </div>
   )
