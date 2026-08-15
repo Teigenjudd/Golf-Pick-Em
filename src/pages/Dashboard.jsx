@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Navigate, Link } from 'react-router-dom'
+import { Navigate, Link, useNavigate } from 'react-router-dom'
 import { getMyPickRows, getPoolViewsByIds, getPoolPicks, getLatestLeaderboard, getAllPools } from '../lib/golf'
 import { getMyCfbPools } from '../lib/cfb'
 import { computeScores, assignRanks, formatScore } from '../utils/scoring'
@@ -28,12 +28,96 @@ function ordinal(n) {
   return `${n}th`
 }
 
+// Dashed "join another pool" card. Collapsed by default; opening it reveals a
+// join-code input that hands off to the real join flow at /join/:code (which
+// already handles invalid/expired codes) rather than duplicating that logic here.
+function JoinPoolCard() {
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const [code, setCode] = useState('')
+
+  function submit(e) {
+    e.preventDefault()
+    const trimmed = code.trim()
+    if (!trimmed) return
+    navigate(`/join/${trimmed.toUpperCase()}`)
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full border-[1.5px] border-dashed border-[#D0BCA8] rounded-[13px] py-[14px] text-center mb-5 bg-transparent cursor-pointer"
+      >
+        <span className="font-display font-bold text-[14px] text-warm-400">+ Join another pool</span>
+      </button>
+    )
+  }
+
+  return (
+    <form onSubmit={submit} className="border-[1.5px] border-dashed border-[#D0BCA8] rounded-[13px] p-[14px] mb-5">
+      <label className="block font-display font-bold text-[10px] uppercase tracking-[.22em] text-warm-400 mb-[9px]">
+        Enter join code
+      </label>
+      <div className="flex gap-[8px]">
+        <input
+          autoFocus
+          value={code}
+          onChange={e => setCode(e.target.value)}
+          placeholder="e.g. AB12CD"
+          className="flex-1 min-w-0 border border-warm-300 rounded-[10px] px-3 py-[9px] text-[14px] text-charcoal bg-white placeholder:text-warm-300 outline-none focus:ring-2 focus:ring-fairway/20 focus:border-fairway transition-colors"
+        />
+        <button
+          type="submit"
+          disabled={!code.trim()}
+          className="bg-brand text-white font-semibold text-[13px] px-4 rounded-[10px] disabled:opacity-40 transition-colors shrink-0"
+        >
+          Go
+        </button>
+        <button
+          type="button"
+          onClick={() => { setOpen(false); setCode('') }}
+          className="text-[13px] text-warm-400 px-1 bg-transparent border-none cursor-pointer shrink-0"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// A labeled row with a count pill + chevron that toggles a section below it
+// (Closed pools, Admin). Matches the design-tool proposal's declutter pattern.
+function CollapsibleRow({ label, count, open, onToggle }) {
+  return (
+    <button
+      onClick={onToggle}
+      className="w-full flex items-center justify-between py-[9px] bg-transparent border-none cursor-pointer"
+    >
+      <span className="font-display font-bold text-[10px] uppercase tracking-[.22em] text-warm-400">{label}</span>
+      <span className="flex items-center gap-[6px]">
+        <span className="text-[11px] font-semibold text-warm-400 bg-warm-100 rounded-full w-5 h-5 flex items-center justify-center">
+          {count}
+        </span>
+        <svg
+          width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9E9488" strokeWidth="2.5"
+          strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform .18s ease-out' }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </span>
+    </button>
+  )
+}
+
 export default function Dashboard() {
   const { user, profile, loading, signOut } = useAuth()
   const [myTournaments, setMyTournaments] = useState([])
   const [adminTournaments, setAdminTournaments] = useState([])
   const [showClosed, setShowClosed] = useState(false)
   const [showClosedAdmin, setShowClosedAdmin] = useState(false)
+  const [adminOpen, setAdminOpen] = useState(false)
   const [myStandings, setMyStandings] = useState({})
   const [cfbPools, setCfbPools] = useState([])
 
@@ -120,7 +204,13 @@ export default function Dashboard() {
         <span className="font-display font-extrabold text-[26px] text-brand tracking-[.07em]">POOLD</span>
         <div className="flex items-center gap-[13px]">
           {profile?.role === 'admin' && (
-            <Link to="/admin/create" className="text-[12px] font-medium text-warm-400 no-underline">+ New</Link>
+            <Link
+              to="/admin/create"
+              title="New pool"
+              className="w-[34px] h-[34px] rounded-full bg-white border border-[#EAD8C4] flex items-center justify-center no-underline hover:bg-warm-100 transition-colors"
+            >
+              <span className="font-display font-bold text-[17px] text-brand leading-none">+</span>
+            </Link>
           )}
           <Link to="/profile" className="w-[34px] h-[34px] rounded-full bg-brand flex items-center justify-center no-underline">
             <span className="font-display font-bold text-[13px] text-white">{initials}</span>
@@ -136,8 +226,13 @@ export default function Dashboard() {
 
         {/* Section label */}
         {(myTournaments.length > 0 || cfbPools.length > 0) && (
-          <div className="font-display font-bold text-[10px] uppercase tracking-[.22em] text-warm-400 mb-[10px]">
-            Your Active Pools
+          <div className="flex items-center justify-between mb-[10px]">
+            <div className="font-display font-bold text-[10px] uppercase tracking-[.22em] text-warm-400">
+              Active Pools
+            </div>
+            <span className="text-[11px] font-semibold text-warm-400 bg-warm-100 rounded-full w-5 h-5 flex items-center justify-center">
+              {visibleTournaments.length + cfbPools.length}
+            </span>
           </div>
         )}
 
@@ -264,12 +359,7 @@ export default function Dashboard() {
 
         {/* Show/hide closed */}
         {closedTournaments.length > 0 && (
-          <button
-            onClick={() => setShowClosed(s => !s)}
-            className="text-[12px] text-warm-400 bg-transparent border-none cursor-pointer mb-[10px] underline"
-          >
-            {showClosed ? 'Hide closed pools' : `Show ${closedTournaments.length} closed pool${closedTournaments.length !== 1 ? 's' : ''}`}
-          </button>
+          <CollapsibleRow label="Closed pools" count={closedTournaments.length} open={showClosed} onToggle={() => setShowClosed(s => !s)} />
         )}
 
         {/* Empty state */}
@@ -280,10 +370,8 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Dashed join card */}
-        <div className="border-[1.5px] border-dashed border-[#D0BCA8] rounded-[13px] py-[14px] text-center mb-5">
-          <span className="font-display font-bold text-[14px] text-warm-400">+ Join another pool</span>
-        </div>
+        {/* Join card */}
+        <JoinPoolCard />
 
         {/* Admin section */}
         {profile?.role === 'admin' && (() => {
@@ -291,14 +379,16 @@ export default function Dashboard() {
           const visibleAdmin = showClosedAdmin ? adminTournaments : adminTournaments.filter(t => t.status !== 'complete')
           return (
             <div className="mt-2 mb-5">
-              <div className="flex items-center justify-between mb-[10px]">
-                <div className="font-display font-bold text-[10px] uppercase tracking-[.22em] text-warm-400">Admin</div>
-                {adminClosedCount > 0 && (
+              <CollapsibleRow label="Admin" count={adminTournaments.length} open={adminOpen} onToggle={() => setAdminOpen(o => !o)} />
+              {adminOpen && (
+              <div className="mt-[10px]">
+              {adminClosedCount > 0 && (
+                <div className="flex justify-end mb-[8px]">
                   <button onClick={() => setShowClosedAdmin(s => !s)} className="text-[11px] text-warm-400 bg-transparent border-none cursor-pointer underline">
                     {showClosedAdmin ? 'Hide closed' : `Show closed (${adminClosedCount})`}
                   </button>
-                )}
-              </div>
+                </div>
+              )}
               <div className="bg-white border border-[#EAD8C4] rounded-2xl overflow-hidden">
                 {visibleAdmin.map(t => (
                   <div key={t.id} className={`flex items-center gap-3 px-4 py-3.5 border-b border-[#EAD8C4] ${t.status === 'complete' ? 'opacity-50' : ''}`}>
@@ -312,9 +402,10 @@ export default function Dashboard() {
                 ))}
                 <div className="flex items-center gap-5 px-4 py-3.5">
                   <Link to="/admin" className="text-[13px] text-brand font-semibold no-underline">Admin Panel →</Link>
-                  <Link to="/admin/create" className="text-[13px] text-warm-400 no-underline">+ New Pool</Link>
                 </div>
               </div>
+              </div>
+              )}
             </div>
           )
         })()}

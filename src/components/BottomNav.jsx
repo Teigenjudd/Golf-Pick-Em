@@ -63,6 +63,22 @@ export default function BottomNav({ active }) {
         <span className="text-[10px] text-[#B8A890]">Board</span>
       </div>
 
+      {profile?.role === 'admin' && (
+        <Link to="/admin" className="flex flex-col items-center gap-[3px] no-underline">
+          <div
+            className="w-[26px] h-[26px] rounded-[8px] flex items-center justify-center"
+            style={
+              active === 'admin'
+                ? { background: 'rgba(193,74,24,.12)', border: '1px solid rgba(193,74,24,.28)' }
+                : { border: '1px solid #C8B8A4' }
+            }
+          >
+            <span className={`font-display font-extrabold text-[13px] ${active === 'admin' ? 'text-brand' : 'text-[#B8A890]'}`}>A</span>
+          </div>
+          <span className={`text-[10px] ${active === 'admin' ? 'font-semibold text-brand' : 'text-[#B8A890]'}`}>Admin</span>
+        </Link>
+      )}
+
       <div className="relative flex flex-col items-center">
         {nudge && (
           <div
