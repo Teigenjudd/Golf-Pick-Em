@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import PoolHeader from '../../components/pool/PoolHeader'
 import StandingsCard from '../../components/pool/StandingsCard'
@@ -245,9 +245,23 @@ export default function CfbPoolDetail() {
           )}
         </StandingsCard>
 
+        {selectedWeek && (
+          <Link
+            to={`/cfb/pool/${poolId}/slate?week=${selectedWeek.week_number}`}
+            className="flex items-center justify-between no-underline rounded-[12px] px-4 py-[13px] mb-[14px]"
+            style={{ background: CFB_THEME.cardWhite, border: `1px solid ${CFB_THEME.border}` }}
+          >
+            <span className="font-display font-bold text-[13px]" style={{ color: CFB_THEME.ink }}>
+              This week&apos;s slate
+            </span>
+            <span className="text-[12.5px] font-semibold" style={{ color: CFB_THEME.accent }}>
+              See all games →
+            </span>
+          </Link>
+        )}
+
         <WidgetGrid>
           <CfbWidgets
-            games={weekGames}
             weekPicks={derived?.flatPicks ?? []}
             weeklyPoints={derived?.weeklyPoints ?? []}
             weekLabel={weekLabel}

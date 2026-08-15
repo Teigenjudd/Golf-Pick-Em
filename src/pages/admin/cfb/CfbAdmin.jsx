@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { getAdminCfbPools, getCfbPollingStatus, startCfbPolling, stopCfbPolling } from '../../../lib/cfb'
+import { setPoolStatus } from '../../../lib/pools'
 import AdminShell from '../../../components/admin/AdminShell'
 
 // Admin: index of CFB (college football) pools. Entry point to create a new season
@@ -96,13 +97,34 @@ export default function CfbAdmin() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showClosed, setShowClosed] = useState(false)
+  const [closing, setClosing] = useState(null)
 
-  useEffect(() => {
-    getAdminCfbPools()
-      .then(setPools)
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false))
+  const load = useCallback(async () => {
+    try {
+      setPools(await getAdminCfbPools())
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }, [])
+
+  useEffect(() => { load() }, [load])
+
+  // Close is a one-way status flip to 'complete' (mirrors golf's admin panel — no
+  // "re-open" once closed there either). CFB weeks lock/grade on their own schedule,
+  // so unlike golf there's no manual "Lock" override here — just the season close.
+  async function handleClose(id) {
+    setClosing(id)
+    try {
+      await setPoolStatus(id, 'complete')
+      await load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setClosing(null)
+    }
+  }
 
   const closedCount = pools.filter(p => p.status === 'complete').length
   const visible = showClosed ? pools : pools.filter(p => p.status !== 'complete')
@@ -152,14 +174,13 @@ export default function CfbAdmin() {
       ) : (
         <div className="space-y-[10px]">
           {visible.map(p => (
-            <Link
-              key={p.id}
-              to={`/admin/cfb/pool/${p.id}`}
-              className="block bg-white border border-[#EAD8C4] rounded-[14px] p-4 no-underline hover:border-brand/40 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-3">
+            <div key={p.id} className="bg-white border border-[#EAD8C4] rounded-[14px] p-4">
+              <Link
+                to={`/admin/cfb/pool/${p.id}`}
+                className="flex items-center justify-between gap-3 no-underline mb-[11px]"
+              >
                 <div>
-                  <span className="text-[14.5px] font-semibold text-[#1C1610]">{p.name}</span>
+                  <span className="text-[14.5px] font-semibold text-[#1C1610] hover:text-brand transition-colors">{p.name}</span>
                   <p className="text-[11.5px] text-warm-400 mt-[2px]">
                     {p.season_year} season · join code {p.join_code}
                   </p>
@@ -167,8 +188,18 @@ export default function CfbAdmin() {
                 <span className={`text-[10px] font-display font-bold uppercase tracking-[.12em] px-2 py-[3px] rounded-full ${STATUS_STYLES[p.status] ?? STATUS_STYLES.draft}`}>
                   {p.status}
                 </span>
-              </div>
-            </Link>
+              </Link>
+
+              {p.status !== 'complete' && (
+                <button
+                  onClick={() => handleClose(p.id)}
+                  disabled={closing === p.id}
+                  className="text-[12px] px-[14px] py-[6px] rounded-[8px] border border-[#EAD8C4] text-warm-400 hover:bg-warm-100 disabled:opacity-50 transition-colors cursor-pointer bg-transparent"
+                >
+                  {closing === p.id ? 'Closing…' : 'Close Pool'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}

@@ -3,6 +3,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import PicksHeader from '../../components/pool/PicksHeader'
 import CfbGameCard from '../../components/cfb/CfbGameCard'
+import CfbGameFilterBar from '../../components/cfb/CfbGameFilterBar'
 import CfbCardTracker from '../../components/cfb/CfbCardTracker'
 import CfbCardReadonly from '../../components/cfb/CfbCardReadonly'
 import {
@@ -10,6 +11,7 @@ import {
   weekIsLocked,
 } from '../../lib/cfb'
 import { cfbCardValidity, buildPicksPayload, shapeCard } from '../../utils/cfbCard'
+import { conferencesInPlay, filterAndSortGames } from '../../utils/cfbGameFilters'
 import { formatLockLabel } from '../../utils/cfbFormat'
 import { CFB_THEME } from '../../theme/cfb'
 
@@ -78,6 +80,12 @@ export default function CfbPicks() {
   const [submitError, setSubmitError] = useState(null)
   const [submitted, setSubmitted] = useState(false)
 
+  // View-only controls for the game list — never affect pick state, slot counts, or
+  // the submit payload, all of which stay keyed off the full `games` array below.
+  const [search, setSearch] = useState('')
+  const [selectedConferences, setSelectedConferences] = useState(new Set())
+  const [sortBy, setSortBy] = useState('kickoff')
+
   // ── base load: pool + weeks ──────────────────────────────────────────────────
   useEffect(() => {
     let active = true
@@ -113,11 +121,19 @@ export default function CfbPicks() {
     return locked[0] ?? null
   }, [weeks, searchParams])
 
+  // ?reset=1 — the Dashboard tile's "Edit picks" confirms up front that editing
+  // resets the card (resubmitting re-locks every line to today's numbers, not what
+  // was originally picked — cfb_submit_week_picks reads the current game row), then
+  // lands here with this flag so the builder starts empty instead of pre-filled.
+  const resetRequested = searchParams.get('reset') === '1'
+
   // ── target-week slate + this user's existing card ───────────────────────────
   useEffect(() => {
     if (!targetWeek || !user?.id) return
     let active = true
     setGamesLoaded(false)
+    setSearch('')
+    setSelectedConferences(new Set())
     ;(async () => {
       const [g, picks] = await Promise.all([
         getCfbWeekGames(targetWeek.id),
@@ -128,25 +144,32 @@ export default function CfbPicks() {
 
       const mine = picks.filter(pk => pk.user_id === user.id)
       setMyPicks(mine)
-      const ats = {}
-      let dd = null
-      let dog = null
-      mine.forEach(pk => {
-        if (pk.pick_type === 'ats') {
-          ats[pk.game_id] = pk.selected_team
-          if (pk.is_double_down) dd = pk.game_id
-        } else if (pk.pick_type === 'underdog') {
-          dog = pk.game_id
-        }
-      })
-      setAtsPicks(ats)
-      setDoubleDownGameId(dd)
-      setUnderdogGameId(dog)
       setHasExistingCard(mine.length > 0)
+
+      if (resetRequested) {
+        setAtsPicks({})
+        setDoubleDownGameId(null)
+        setUnderdogGameId(null)
+      } else {
+        const ats = {}
+        let dd = null
+        let dog = null
+        mine.forEach(pk => {
+          if (pk.pick_type === 'ats') {
+            ats[pk.game_id] = pk.selected_team
+            if (pk.is_double_down) dd = pk.game_id
+          } else if (pk.pick_type === 'underdog') {
+            dog = pk.game_id
+          }
+        })
+        setAtsPicks(ats)
+        setDoubleDownGameId(dd)
+        setUnderdogGameId(dog)
+      }
       setGamesLoaded(true)
     })().catch(err => { if (active) { setError(err.message); setGamesLoaded(true) } })
     return () => { active = false }
-  }, [targetWeek, poolId, user?.id])
+  }, [targetWeek, poolId, user?.id, resetRequested])
 
   // A double-down flagged on a game that's no longer an ATS pick (deselected, or its
   // team changed) is cleared automatically — keeps state consistent without every
@@ -184,6 +207,27 @@ export default function CfbPicks() {
   const validity = useMemo(
     () => cfbCardValidity({ atsPicks, doubleDownGameId, underdogGameId }),
     [atsPicks, doubleDownGameId, underdogGameId],
+  )
+
+  // Conferences in play this week, for the filter chips.
+  const conferences = useMemo(() => conferencesInPlay(games), [games])
+
+  function handleToggleConference(conf) {
+    setSelectedConferences(prev => {
+      if (conf === null) return new Set()
+      const next = new Set(prev)
+      if (next.has(conf)) next.delete(conf)
+      else next.add(conf)
+      return next
+    })
+  }
+
+  // Search + conference filter + sort — view-only, applied on top of the full `games`
+  // list. Shared with CfbSlate.jsx (src/utils/cfbGameFilters.js) so the two lists can't
+  // drift out of sync.
+  const visibleGames = useMemo(
+    () => filterAndSortGames(games, { search, selectedConferences, sortBy }),
+    [games, search, selectedConferences, sortBy],
   )
 
   // Once the target week is locked/graded the card is frozen — grade it with the shared
@@ -347,7 +391,7 @@ export default function CfbPicks() {
   }
 
   return (
-    <div className="min-h-screen pb-[90px]" style={{ background: CFB_THEME.pageCard }}>
+    <div className="min-h-screen pb-[220px]" style={{ background: CFB_THEME.pageCard }}>
       <PicksHeader
         backTo={`/cfb/pool/${poolId}`}
         backLabel="← Pool"
@@ -361,7 +405,11 @@ export default function CfbPicks() {
       />
 
       <div className="max-w-[560px] mx-auto px-4 pt-6">
-        {hasExistingCard && (
+        {resetRequested ? (
+          <p className="text-[12px] mb-3" style={{ color: CFB_THEME.muted2 }}>
+            Your previous picks were reset — build a fresh card from today's lines.
+          </p>
+        ) : hasExistingCard && (
           <p className="text-[12px] mb-3" style={{ color: CFB_THEME.muted2 }}>
             Your card's in — you can change it until it locks.
           </p>
@@ -371,22 +419,38 @@ export default function CfbPicks() {
           <p className="text-[12.5px] mb-3" style={{ color: CFB_THEME.warnInk }}>{submitError}</p>
         )}
 
-        <div className="space-y-3">
-          {games.map(game => (
-            <CfbGameCard
-              key={game.id}
-              game={game}
-              atsSelectedTeam={atsPicks[game.id] ?? null}
-              isDoubleDown={doubleDownGameId === game.id}
-              isUnderdogPick={underdogGameId === game.id}
-              atsFull={Object.keys(atsPicks).length >= 5}
-              dogFilled={underdogGameId != null}
-              onPickAts={handlePickAts}
-              onToggleDoubleDown={handleToggleDoubleDown}
-              onPickUnderdog={handlePickUnderdog}
-            />
-          ))}
-        </div>
+        <CfbGameFilterBar
+          search={search}
+          onSearchChange={setSearch}
+          conferences={conferences}
+          selectedConferences={selectedConferences}
+          onToggleConference={handleToggleConference}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+        />
+
+        {visibleGames.length === 0 ? (
+          <p className="text-[13px] text-center py-8" style={{ color: CFB_THEME.muted }}>
+            No games match your filters.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {visibleGames.map(game => (
+              <CfbGameCard
+                key={game.id}
+                game={game}
+                atsSelectedTeam={atsPicks[game.id] ?? null}
+                isDoubleDown={doubleDownGameId === game.id}
+                isUnderdogPick={underdogGameId === game.id}
+                atsFull={Object.keys(atsPicks).length >= 5}
+                dogFilled={underdogGameId != null}
+                onPickAts={handlePickAts}
+                onToggleDoubleDown={handleToggleDoubleDown}
+                onPickUnderdog={handlePickUnderdog}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <CfbCardTracker

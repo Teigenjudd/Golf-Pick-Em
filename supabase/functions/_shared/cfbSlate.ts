@@ -30,6 +30,16 @@ function median(nums: number[]) {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
+// Real sportsbook spreads are always whole- or half-point — never a quarter point.
+// An even-provider median (average of two middle values, e.g. -4 and -4.5) can land
+// on X.25/X.75, which is not a line anyone actually posted. Applied unconditionally
+// (even on a single "consensus" provider) as a hard guarantee: no quarter-point value
+// can ever be written to cfb.games, regardless of which path produced it. Ties round
+// toward +Infinity, matching doubleDownBuffer's existing "ties round up" convention.
+function roundToHalfPoint(n: number) {
+  return Math.round(n * 2) / 2
+}
+
 // Pick one home-perspective spread from a CFBD lines entry. Prefer the "consensus"
 // provider; otherwise pool providers by median. Returns { spread, formattedSpread } —
 // the text label (e.g. "Michigan -17.5") lets buildGameRows corroborate the sign.
@@ -48,7 +58,9 @@ export function chooseLine(lineEntry: any) {
   const consensus = providers.find(
     (p: any) => String(field(p, 'provider') ?? '').toLowerCase() === 'consensus',
   )
-  if (consensus) return { spread: Number(field(consensus, 'spread')), formattedSpread: fmt(consensus) }
+  if (consensus) {
+    return { spread: roundToHalfPoint(Number(field(consensus, 'spread'))), formattedSpread: fmt(consensus) }
+  }
 
   const med = median(providers.map((p: any) => Number(field(p, 'spread'))))
   let rep = providers[0]
@@ -57,7 +69,7 @@ export function chooseLine(lineEntry: any) {
     const d = Math.abs(Number(field(p, 'spread')) - (med as number))
     if (d < best) { best = d; rep = p }
   }
-  return { spread: med, formattedSpread: fmt(rep) }
+  return { spread: roundToHalfPoint(med as number), formattedSpread: fmt(rep) }
 }
 
 export function chooseSpread(lineEntry: any) {

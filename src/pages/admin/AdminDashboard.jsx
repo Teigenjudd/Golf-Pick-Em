@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import AdminShell from '../../components/admin/AdminShell'
 import {
-  getAdminPools, setPoolStatus, bumpRefreshCount,
+  getAdminPools, bumpRefreshCount,
   getPollingStatus, startPolling, stopPolling,
 } from '../../lib/golf'
+import { setPoolStatus } from '../../lib/pools'
 
 const STATUS_BADGE = {
   open:     'bg-fairway/10 text-fairway',
