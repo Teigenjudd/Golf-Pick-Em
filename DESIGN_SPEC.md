@@ -8,14 +8,15 @@ Derived from `docs/design_prototype/*.dc.html`. Detailed enough to rebuild any s
 
 ### Two-Register Theme
 
-The app has two distinct registers that swap the primary action color:
+The app has two distinct registers. **General** is brand-level and sport-agnostic (auth, dashboard, admin). **Sport-specific** is a pattern, not a single palette — each sport gets its own theme applied only to that sport's pool-detail and picks pages, swapped in per sport type. Two instances exist today:
 
-| Register | Pages | Primary CTA |
+| Register | Pages | Primary CTA / accent |
 |---|---|---|
-| **General** | Login, Join, Dashboard, Admin, Create Tournament | `#C14A18` (orange-red) |
-| **Sport-specific** | Tournament detail, Picks | `#1B4332` (fairway green) |
+| **General** | Login, Join, Dashboard, Admin | `#C14A18` (orange-red) |
+| **Sport-specific — Golf** | Tournament detail, Picks (`/tournament/:id`, `/tournament/:id/picks`) | `#1B4332` (fairway green) + `#C9A368` (gold) |
+| **Sport-specific — CFB** | CFB pool detail, CFB picks (`/cfb/pool/:id`, `/cfb/pool/:id/picks`) | "Varsity Navy" — `#101C3D`→`#0A1229` header gradient, `#D6291B` (brick) accent, `#2E8F4F` (green) for cover/win states; constants in `src/theme/cfb.js` |
 
-Everything else (backgrounds, text, borders) is shared across both registers.
+Everything else (backgrounds, text, borders) is shared across all registers. The rest of this page's palette (below) documents the golf instance in detail; the CFB instance is fully specified in `src/theme/cfb.js` rather than duplicated here. Future sports follow the same pattern: a new palette applied only to that sport's two pages.
 
 ### Full Palette
 
