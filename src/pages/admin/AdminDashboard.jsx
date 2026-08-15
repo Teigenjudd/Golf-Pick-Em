@@ -176,7 +176,9 @@ function TournamentsTab() {
       </div>
 
       {visible.length === 0 ? (
-        <p className="text-sm text-warm-400 py-4">No pools on the board yet.</p>
+        <p className="text-sm text-warm-400 py-4">
+          {tournaments.length === 0 ? 'No pools on the board yet.' : 'All pools are closed.'}
+        </p>
       ) : (
         <div className="space-y-[10px]">
           {visible.map(t => {

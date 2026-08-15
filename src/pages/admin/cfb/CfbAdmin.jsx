@@ -146,7 +146,9 @@ export default function CfbAdmin() {
       {loading ? (
         <p className="text-sm text-warm-400 py-4">Loading…</p>
       ) : visible.length === 0 ? (
-        <p className="text-sm text-warm-400 py-4">No CFB pools yet. Create one to seed a season of weekly slates.</p>
+        <p className="text-sm text-warm-400 py-4">
+          {pools.length === 0 ? 'No CFB pools yet. Create one to seed a season of weekly slates.' : 'All pools are closed.'}
+        </p>
       ) : (
         <div className="space-y-[10px]">
           {visible.map(p => (
