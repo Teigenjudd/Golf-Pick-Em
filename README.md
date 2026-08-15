@@ -2,7 +2,7 @@
 
 **The handshake bet, modernized.**
 
-A social sports pick'em platform for friend groups. Currently focused on PGA golf: a commissioner creates a tournament, shares a join link, friends each pick one golfer per tier, live scores update automatically throughout the weekend, and lowest score wins.
+A social sports pick'em platform for friend groups, multi-sport by design. A commissioner creates a pool, shares a join link, and friends compete against each other's picks — live scores and standings update automatically. Two sports are live today: **PGA golf** (pick one golfer per tier each tournament, lowest score wins) and **college football** (weekly against-the-spread picks with a season-long cumulative standings).
 
 ## Tech Stack
 

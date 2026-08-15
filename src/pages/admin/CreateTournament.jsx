@@ -322,7 +322,7 @@ export default function CreateTournament() {
           <Link to="/admin" className="text-[13px] text-warm-400 no-underline">← Admin</Link>
           <span className="text-[#EAD8C4] text-base select-none">|</span>
           <span className="font-display font-extrabold text-[22px] text-brand tracking-[.06em]">POOLD</span>
-          <span className="font-display font-bold text-[16px] text-[#1C1610] tracking-[.04em]">Create Tournament</span>
+          <span className="font-display font-bold text-[16px] text-[#1C1610] tracking-[.04em]">New Golf Pool</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-full bg-brand flex items-center justify-center">
@@ -352,7 +352,7 @@ export default function CreateTournament() {
             <div className="font-display font-extrabold text-[30px] text-[#1C1610] leading-none mb-6">Set it up.</div>
           <div className="bg-white border-[1.5px] border-[#EAD8C4] rounded-[16px] p-[22px] flex flex-col gap-[18px]">
             <div>
-              <label className={labelClass}>Tournament Name</label>
+              <label className={labelClass}>Pool Name</label>
               <input
                 type="text"
                 value={name}
@@ -565,7 +565,7 @@ export default function CreateTournament() {
                 disabled={saving}
                 className="flex-1 bg-fairway hover:bg-fairway/90 disabled:opacity-50 text-cream font-bold text-[15px] py-[13px] rounded-[11px] border-none cursor-pointer transition-colors"
               >
-                {saving ? 'Creating…' : 'Create Tournament'}
+                {saving ? 'Creating…' : 'Create Golf Pool →'}
               </button>
             </div>
           </div>

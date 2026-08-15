@@ -8,14 +8,15 @@ Derived from `docs/design_prototype/*.dc.html`. Detailed enough to rebuild any s
 
 ### Two-Register Theme
 
-The app has two distinct registers that swap the primary action color:
+The app has two distinct registers. **General** is brand-level and sport-agnostic (auth, dashboard, admin). **Sport-specific** is a pattern, not a single palette — each sport gets its own theme applied only to that sport's pool-detail and picks pages, swapped in per sport type. Two instances exist today:
 
-| Register | Pages | Primary CTA |
+| Register | Pages | Primary CTA / accent |
 |---|---|---|
-| **General** | Login, Join, Dashboard, Admin, Create Tournament | `#C14A18` (orange-red) |
-| **Sport-specific** | Tournament detail, Picks | `#1B4332` (fairway green) |
+| **General** | Login, Join, Dashboard, Admin | `#C14A18` (orange-red) |
+| **Sport-specific — Golf** | Tournament detail, Picks (`/tournament/:id`, `/tournament/:id/picks`) | `#1B4332` (fairway green) + `#C9A368` (gold) |
+| **Sport-specific — CFB** | CFB pool detail, CFB picks (`/cfb/pool/:id`, `/cfb/pool/:id/picks`) | "Varsity Navy" — `#101C3D`→`#0A1229` header gradient, `#D6291B` (brick) accent, `#2E8F4F` (green) for cover/win states; constants in `src/theme/cfb.js` |
 
-Everything else (backgrounds, text, borders) is shared across both registers.
+Everything else (backgrounds, text, borders) is shared across all registers. The rest of this page's palette (below) documents the golf instance in detail; the CFB instance is fully specified in `src/theme/cfb.js` rather than duplicated here. Future sports follow the same pattern: a new palette applied only to that sport's two pages.
 
 ### Full Palette
 
@@ -407,7 +408,7 @@ background: transparent
 ```
 - Lock: border `rgba(201,163,104,.5)`, color `#B8924F`
 - Re-open: border `rgba(27,67,50,.35)`, color `#1B4332`
-- Close Tournament: border `#EAD8C4`, color `#A08870`
+- Close Pool: border `#EAD8C4`, color `#A08870`
 - Remove (danger): border `rgba(193,74,24,.3)`, color `#C14A18`
 - Refresh Scores: border `rgba(27,67,50,.3)`, color `#1B4332`
 
@@ -433,7 +434,11 @@ white-space: nowrap
 | admin role | `rgba(27,67,50,.1)` | `#1B4332` |
 | player role | `#EBE3D4` | `#9E9488` |
 
-### 3.9 Tab Switcher
+### 3.9 Tab Switcher — currently unused
+
+No live page renders this pattern as of `feat/admin-refresh` (it was `AdminDashboard`'s
+Tournaments/Participants/Users switcher, now a single-page pool list — see §4 and
+`docs/PAGES.md` §9). Kept as a token spec in case a future page needs an in-page tab pattern.
 
 ```
 display: flex; gap: 2px
@@ -547,7 +552,7 @@ Sections:
 1. Header row: name (Inter 600 14.5px) + lock time (Inter 11.5px muted) + status badge
 2. Join link row: URL display box + Copy button
 3. Refresh row (if applicable): "N/3 score refreshes left" + Refresh Scores button
-4. Action row: Lock / Re-open / Close Tournament buttons
+4. Action row: Lock / Re-open / Close Pool buttons
 
 **Join link URL box:**
 ```
@@ -628,11 +633,11 @@ centered container: max-width 360px, text-align center, padding 8–32px
 | File | Screen | User | Key Layout |
 |---|---|---|---|
 | `01-login.dc.html` | **Login** | Any | Centered single column, max-w 360px. Wordmark above card. Card contains form or success state. Demo link below card. Two conditional states (`showForm` / `showSent`). |
-| `02-dashboard.dc.html` | **Dashboard** | Authenticated | Sticky top nav. Sticky bottom nav. Single column max-w 480px. Greeting header → nudge banner → section label → pool cards → dashed join card → sign out link. Pool cards stacked, each with sport strip + standing row + CTA row. |
+| `02-dashboard.dc.html` | **Dashboard** | Authenticated | Sticky top nav with header "+" (add-a-pool) button and avatar (`ProfileMenu`) — no bottom nav (removed; `BottomNav` deleted, `/profile` reached via the avatar). Single column max-w 480px. Greeting header → section label → pool cards → dashed join card → closed-pools collapsible → sign out link. Pool cards stacked (`PoolCard`), each with sport strip + standing row + CTA row. Join/create flows use the `BottomSheet` modal, not inline sections. |
 | `03-join.dc.html` | **Join Pool** | Any | Two root states toggled by prototype buttons: *Unauthenticated* (centered card with wordmark, email form, invite code displayed) and *Authenticated* (centered card with invite details + golf badge preview + CTA). Both max-w 360px centered. |
 | `04-tournament.dc.html` | **Tournament Detail** (Golf) | Authenticated | Full-bleed golf gradient header. Below: max-w 640px. Picks status banner → section label → standings table (expandable rows) → 2-column widget grid (prize pool, PGA leaders, most popular picks spanning 2 cols). |
 | `05-picks.dc.html` | **Make Picks** (Golf) | Authenticated | Full-bleed golf gradient header. Form or success state. Form: max-w 560px, stacked tier cards each with 2-col player grid. Sticky submit bar at bottom. Success: centered card with confirmation. |
-| `06-admin.dc.html` | **Admin Dashboard** | Admin | Sticky top nav with back link. Tab switcher (Tournaments / Participants / Users). Max-w 620px. Tournaments: list of tournament cards. Participants: tournament select → participant list. Users: user cards with role toggle. |
+| `06-admin.dc.html` | **Admin Dashboard** | Admin | As-built diverges from this prototype: no tab switcher — `/admin` is now a single pool list wrapped in the shared `AdminShell` (Max-w 3xl), which also fronts `/admin/cfb`. The Participants tab has no live replacement; Users moved to its own page, `/admin/users`, linked as "Users & Settings" from `AdminShell`. See `docs/PAGES.md` §9/§9b for current truth. |
 | `07-create-tournament.dc.html` | **Create Tournament** | Admin | Sticky top nav with step indicator. 3px progress bar below nav. Two steps: Step 1 (max-w 520px, single form card with all config fields) → Step 2 (max-w 760px, 2×2 tier grid with drag-player cards + back/create buttons). |
 
 ---
@@ -735,7 +740,7 @@ After submit, entire form section unmounts and success card mounts (`showForm �
 All immediate (no confirmation modal in prototype):
 - **Lock** → status changes `open → locked` (badge recolors to gold)
 - **Re-open** → `locked → open`
-- **Close Tournament** → any → `complete` (badge recolors to grey); action buttons disappear
+- **Close Pool** → any → `complete` (badge recolors to grey); action buttons disappear
 - **Make Admin / Make Player** toggle: role badge recolors immediately
 
 ### Copy Join Link
@@ -754,11 +759,12 @@ All immediate (no confirmation modal in prototype):
 
 Prototype-specific toggle buttons switch between auth states. Active: `bg-[#C14A18] color-white`. Inactive: `bg-[#F0E8DC] color-[#A08870]`.
 
-### Tournament Select (Admin Participants Tab)
+### Tournament Select (Admin Participants Tab) — removed
 
-- No tournament selected → show "Select a tournament to view participants."
-- Tournament selected, no participants → show "No cards in yet."
-- Otherwise → render participant card list
+The Admin Participants tab (tournament select → participant list → picks + remove) no longer
+exists in the live app (`feat/admin-refresh` deleted it from `AdminDashboard.jsx`); this spec is
+kept only as a record of the prototype behavior in case the capability is rebuilt. See
+`docs/PAGES.md` §9 and `agents/pm/DECISIONS.md` (2026-08-15).
 
 ### Live Dot
 

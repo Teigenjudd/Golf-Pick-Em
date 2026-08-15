@@ -40,7 +40,7 @@ export default function TournamentDetail() {
 
     const pool = await getPoolView(id)
     if (!pool) {
-      setError('Tournament not found.')
+      setError('Pool not found.')
       setLoading(false)
       setRefreshing(false)
       return
@@ -110,7 +110,7 @@ export default function TournamentDetail() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F4EFE4]">
         <div className="text-center">
-          <p className="text-charcoal font-medium mb-2">Tournament not found</p>
+          <p className="text-charcoal font-medium mb-2">Pool not found</p>
           <Link to="/dashboard" className="text-sm text-brand font-medium no-underline">
             ← Go to dashboard
           </Link>
@@ -195,7 +195,7 @@ export default function TournamentDetail() {
               <span className="text-[13px] text-[#1C1610]">
                 {userHasPicks
                   ? isLocked ? 'Your picks are locked in.' : 'Your card is in.'
-                  : isLocked ? 'Picks are locked for this tournament.' : "You haven't submitted picks yet."}
+                  : isLocked ? 'Picks are locked for this pool.' : "You haven't submitted picks yet."}
               </span>
             </div>
             {!isLocked && (
@@ -213,7 +213,7 @@ export default function TournamentDetail() {
         <StandingsCard>
           {isDraft ? (
             <div className="p-12 text-center">
-              <p className="text-[13px] text-warm-400">This tournament hasn&apos;t opened yet.</p>
+              <p className="text-[13px] text-warm-400">This pool hasn&apos;t opened yet.</p>
             </div>
           ) : !hasCache ? (
             <div className="p-12 text-center">

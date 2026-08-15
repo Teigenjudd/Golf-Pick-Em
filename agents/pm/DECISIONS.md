@@ -16,6 +16,34 @@
 
 ---
 
+## 2026-08-15 — Admin refresh: dropped the Participants tab (no UI replacement); bottom nav retired for a header avatar
+
+**Decision (`feat/admin-refresh`, senior review Q1/Q3):** `AdminDashboard`'s golf-only
+"Participants" tab is deleted with this PR, and nothing replaces it — a commissioner can no
+longer view every participant's submitted card or remove a participant from a pool through the
+app. The backing functions (`getPoolPicks`, `removePoolParticipant` in `src/lib/golf.js`) are
+left in place, unused, for a future rebuild. Separately, the app-wide `BottomNav` (Pools/You tabs)
+is deleted; `/profile` is now reached via a header avatar on Dashboard/Profile, and admins get a
+`ProfileMenu` dropdown (Profile / Admin) instead of an always-visible admin row. The display-name
+nudge that used to live on `BottomNav`'s "You" tab is now a small gold dot on the avatar.
+
+**Why:** Viewing a pool's picks is largely redundant with the public post-lock leaderboard, and
+the admin surface was overdue for consolidation (`AdminShell` now unifies golf/CFB chrome +
+`/admin/users`). Removing an entire tab was the fastest path to a cleaner admin area; nobody has
+hit the "kick a participant" need yet in practice. The bottom nav only ever had two real
+destinations, so a header avatar reads as less chrome for the same reach.
+
+**What we gave up:** Self-serve removal of a duplicate/mistaken/bad-actor participant now
+requires a developer to run SQL or restore the UI — there is no in-app path. Flagged explicitly
+by senior review as a real (if currently unused) capability loss, not just dead weight.
+
+**What would make us revisit:** The first time someone actually needs to remove a participant
+and can't. Rebuilding it is cheap — `removePoolParticipant`/`getPoolPicks` already exist; it just
+needs a screen (possibly folded into `/admin/users` or a per-pool admin detail view rather than
+a full tab).
+
+---
+
 ## 2026-08-14 — CFB auto-fill: underdog-eligibility for pick'em games, per-week advisory lock, and an always-on free cron ahead of the billable pollers
 
 **Decision (PR10, PR #56, senior review):** `cfb.autofill_week`'s random underdog draw is
