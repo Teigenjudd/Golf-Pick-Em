@@ -1,13 +1,15 @@
 import { CFB_THEME } from '../../theme/cfb'
 import { formatSpread, formatKickWithDate, pickLine } from '../../utils/cfbFormat'
 import { effectiveDoubleDownLine, underdogTier } from '../../utils/cfbScoring'
+import TeamCrest from './TeamCrest'
 
 // One game in the weekly card builder (docs/CFB_UI_PLAN.md §7). Pure presentational —
 // no data access. The page owns all card state and hands this component just what it
 // needs to render this one game's slice of it.
 //
 // Props:
-//   game              — { id, home_team, away_team, home_conference, away_conference,
+//   game              — { id, home_team, away_team, home_team_logo, away_team_logo,
+//                         home_conference, away_conference,
 //                         kickoff_at, home_spread, underdog_team, underdog_spread }
 //   atsSelectedTeam   — this game's current ATS pick (a team name), or null
 //   isDoubleDown      — is this game the flagged double-down?
@@ -18,13 +20,13 @@ import { effectiveDoubleDownLine, underdogTier } from '../../utils/cfbScoring'
 //   onToggleDoubleDown(gameId)
 //   onPickUnderdog(gameId)
 
-function TeamChip({ team, line, selected, disabled, onClick }) {
+function TeamChip({ team, logo, line, selected, disabled, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex-1 min-w-[104px] text-left rounded-[10px] px-3 py-[10px] border cursor-pointer transition-colors"
+      className="flex-1 min-w-[104px] text-center rounded-[10px] px-3 py-[10px] border cursor-pointer transition-colors"
       style={
         selected
           ? { background: CFB_THEME.accent, borderColor: CFB_THEME.accent, color: CFB_THEME.cream }
@@ -33,7 +35,10 @@ function TeamChip({ team, line, selected, disabled, onClick }) {
             : { background: CFB_THEME.cardWhite, borderColor: CFB_THEME.border, color: CFB_THEME.ink }
       }
     >
-      <div className="font-semibold text-[13.5px] truncate">{team}</div>
+      <div className="flex items-center justify-center gap-[6px]">
+        <TeamCrest src={logo} alt={team} />
+        <div className="font-semibold text-[13.5px] truncate">{team}</div>
+      </div>
       <div
         className="font-display font-bold tabular-nums text-[12px] mt-[1px]"
         style={{ color: selected ? 'rgba(248,245,238,.85)' : CFB_THEME.muted2 }}
@@ -49,7 +54,7 @@ function TeamChip({ team, line, selected, disabled, onClick }) {
 // flex-1/min-w footprint as the two TeamChips beside it so all three are always
 // the same size — a long team name truncates (single line, fixed height) rather
 // than growing the cell or wrapping to a second line.
-function UnderdogChip({ team, tier, selected, disabled, onClick }) {
+function UnderdogChip({ team, logo, tier, selected, disabled, onClick }) {
   const ink = selected ? CFB_THEME.positive : disabled ? CFB_THEME.muted : CFB_THEME.ink
   return (
     <button
@@ -65,7 +70,9 @@ function UnderdogChip({ team, tier, selected, disabled, onClick }) {
             : { background: 'transparent', borderColor: CFB_THEME.border }
       }
     >
-      <div className="text-[13px] leading-none mb-[4px]">🐕</div>
+      {logo
+        ? <div className="flex justify-center mb-[4px]"><TeamCrest src={logo} alt={team} /></div>
+        : <div className="text-[13px] leading-none mb-[4px]">🐕</div>}
       <div className="font-semibold text-[12.5px] truncate" style={{ color: ink }}>{team}</div>
       <div className="flex items-center justify-center gap-[4px] mt-[2px]">
         <span
@@ -138,6 +145,7 @@ export default function CfbGameCard({
       <div className="flex flex-wrap gap-[8px]">
         <TeamChip
           team={game.away_team}
+          logo={game.away_team_logo}
           line={awayLine}
           selected={atsSelectedTeam === game.away_team}
           disabled={atsChipsDisabled}
@@ -145,6 +153,7 @@ export default function CfbGameCard({
         />
         <TeamChip
           team={game.home_team}
+          logo={game.home_team_logo}
           line={homeLine}
           selected={atsSelectedTeam === game.home_team}
           disabled={atsChipsDisabled}
@@ -153,6 +162,7 @@ export default function CfbGameCard({
         {dogEligible && (
           <UnderdogChip
             team={game.underdog_team}
+            logo={game.underdog_team === game.home_team ? game.home_team_logo : game.away_team_logo}
             tier={tier}
             selected={isUnderdogPick}
             disabled={dogChipDisabled}

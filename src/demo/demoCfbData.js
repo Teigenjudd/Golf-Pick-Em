@@ -7,6 +7,34 @@
 import { shapeCard } from '../utils/cfbCard'
 import { projectSeasonStandings } from '../utils/cfbScoring'
 
+// ESPN CDN crest URLs, keyed by team name — mirrors how the real slate poller
+// (poll-cfb-lines -> buildGameRows) attaches home_team_logo/away_team_logo from
+// CFBD's teams/fbs `logos` field, so the demo renders the same crest UI without a
+// live API call. IDs looked up once from ESPN's public teams endpoint.
+const TEAM_LOGOS = {
+  'Ohio State': 'https://a.espncdn.com/i/teamlogos/ncaa/500/194.png',
+  'Texas': 'https://a.espncdn.com/i/teamlogos/ncaa/500/251.png',
+  'Georgia': 'https://a.espncdn.com/i/teamlogos/ncaa/500/61.png',
+  'Clemson': 'https://a.espncdn.com/i/teamlogos/ncaa/500/228.png',
+  'Oregon': 'https://a.espncdn.com/i/teamlogos/ncaa/500/2483.png',
+  'Michigan': 'https://a.espncdn.com/i/teamlogos/ncaa/500/130.png',
+  'Alabama': 'https://a.espncdn.com/i/teamlogos/ncaa/500/333.png',
+  'Wisconsin': 'https://a.espncdn.com/i/teamlogos/ncaa/500/275.png',
+  'Penn State': 'https://a.espncdn.com/i/teamlogos/ncaa/500/213.png',
+  'Illinois': 'https://a.espncdn.com/i/teamlogos/ncaa/500/356.png',
+  'Utah': 'https://a.espncdn.com/i/teamlogos/ncaa/500/254.png',
+  'USC': 'https://a.espncdn.com/i/teamlogos/ncaa/500/30.png',
+  'Notre Dame': 'https://a.espncdn.com/i/teamlogos/ncaa/500/87.png',
+  'NC State': 'https://a.espncdn.com/i/teamlogos/ncaa/500/152.png',
+  'Florida State': 'https://a.espncdn.com/i/teamlogos/ncaa/500/52.png',
+  'Miami': 'https://a.espncdn.com/i/teamlogos/ncaa/500/2390.png',
+}
+const withLogos = (games) => games.map(g => ({
+  ...g,
+  home_team_logo: TEAM_LOGOS[g.home_team] ?? null,
+  away_team_logo: TEAM_LOGOS[g.away_team] ?? null,
+}))
+
 export const demoCfbPool = {
   id: 'demo-cfb',
   name: 'Varsity Pick’em',
@@ -21,7 +49,7 @@ export const demoCfbWeeks = [
 ]
 
 // ── Week 1 — final, graded ───────────────────────────────────────────────────
-export const demoCfbWeek1Games = [
+export const demoCfbWeek1Games = withLogos([
   { id: 'demo-cfb-w1-g1', home_team: 'Ohio State', away_team: 'Texas', home_conference: 'Big Ten', away_conference: 'SEC', kickoff_at: '2026-09-05T19:30:00Z', home_spread: -13.5, underdog_team: 'Texas', underdog_spread: 13.5, status: 'final', home_score: 34, away_score: 20 },
   { id: 'demo-cfb-w1-g2', home_team: 'Georgia', away_team: 'Clemson', home_conference: 'SEC', away_conference: 'ACC', kickoff_at: '2026-09-05T20:00:00Z', home_spread: -3, underdog_team: 'Clemson', underdog_spread: 3, status: 'final', home_score: 27, away_score: 24 },
   { id: 'demo-cfb-w1-g3', home_team: 'Oregon', away_team: 'Michigan', home_conference: 'Big Ten', away_conference: 'Big Ten', kickoff_at: '2026-09-05T22:30:00Z', home_spread: -6.5, underdog_team: 'Michigan', underdog_spread: 6.5, status: 'final', home_score: 31, away_score: 17 },
@@ -30,7 +58,7 @@ export const demoCfbWeek1Games = [
   { id: 'demo-cfb-w1-g6', home_team: 'Utah', away_team: 'USC', home_conference: 'Big 12', away_conference: 'Big Ten', kickoff_at: '2026-09-06T20:00:00Z', home_spread: -4, underdog_team: 'USC', underdog_spread: 4, status: 'final', home_score: 20, away_score: 23 },
   { id: 'demo-cfb-w1-g7', home_team: 'Notre Dame', away_team: 'NC State', home_conference: 'Independent', away_conference: 'ACC', kickoff_at: '2026-09-06T19:30:00Z', home_spread: -8, underdog_team: 'NC State', underdog_spread: 8, status: 'final', home_score: 28, away_score: 14 },
   { id: 'demo-cfb-w1-g8', home_team: 'Florida State', away_team: 'Miami', home_conference: 'ACC', away_conference: 'ACC', kickoff_at: '2026-09-06T23:30:00Z', home_spread: -2.5, underdog_team: 'Miami', underdog_spread: 2.5, status: 'final', home_score: 17, away_score: 24 },
-]
+])
 
 export const demoCfbParticipants = [
   { user_id: 'demo-cfb-you', display_name: 'You' },
@@ -107,7 +135,7 @@ export const demoCfbSeasonStandings = (() => {
 })()
 
 // ── Week 2 — open, no picks yet (the visitor builds this one) ───────────────
-export const demoCfbWeek2Games = [
+export const demoCfbWeek2Games = withLogos([
   { id: 'demo-cfb-w2-g1', home_team: 'Clemson', away_team: 'Georgia', home_conference: 'ACC', away_conference: 'SEC', kickoff_at: '2026-09-12T19:30:00Z', home_spread: 2.5, underdog_team: 'Clemson', underdog_spread: 2.5, status: 'scheduled', home_score: null, away_score: null },
   { id: 'demo-cfb-w2-g2', home_team: 'Wisconsin', away_team: 'Alabama', home_conference: 'Big Ten', away_conference: 'SEC', kickoff_at: '2026-09-12T23:00:00Z', home_spread: 9, underdog_team: 'Wisconsin', underdog_spread: 9, status: 'scheduled', home_score: null, away_score: null },
   { id: 'demo-cfb-w2-g3', home_team: 'Michigan', away_team: 'Oregon', home_conference: 'Big Ten', away_conference: 'Big Ten', kickoff_at: '2026-09-13T16:00:00Z', home_spread: 5.5, underdog_team: 'Michigan', underdog_spread: 5.5, status: 'scheduled', home_score: null, away_score: null },
@@ -116,4 +144,4 @@ export const demoCfbWeek2Games = [
   { id: 'demo-cfb-w2-g6', home_team: 'NC State', away_team: 'Notre Dame', home_conference: 'ACC', away_conference: 'Independent', kickoff_at: '2026-09-13T19:30:00Z', home_spread: 7.5, underdog_team: 'NC State', underdog_spread: 7.5, status: 'scheduled', home_score: null, away_score: null },
   { id: 'demo-cfb-w2-g7', home_team: 'Miami', away_team: 'Florida State', home_conference: 'ACC', away_conference: 'ACC', kickoff_at: '2026-09-13T20:00:00Z', home_spread: -3.5, underdog_team: 'Florida State', underdog_spread: 3.5, status: 'scheduled', home_score: null, away_score: null },
   { id: 'demo-cfb-w2-g8', home_team: 'Texas', away_team: 'Ohio State', home_conference: 'SEC', away_conference: 'Big Ten', kickoff_at: '2026-09-13T23:30:00Z', home_spread: 3, underdog_team: 'Texas', underdog_spread: 3, status: 'scheduled', home_score: null, away_score: null },
-]
+])

@@ -78,7 +78,8 @@ export function buildPicksPayload({ atsPicks, doubleDownGameId, underdogGameId }
 // graded card shape consumed by CfbStandings and the read-only picks view:
 //   { total, picks: [{ slot, pickType, isDoubleDown, autoFilled, line, matchup,
 //                       awayTeam, homeTeam, awayScore, homeScore, status, live,
-//                       kickoffAt, result, points, selectedTeam, lockedSpread }] }
+//                       kickoffAt, result, points, selectedTeam, selectedTeamLogo,
+//                       lockedSpread }] }
 // Picks are ordered 5 ATS (by kickoff) then the underdog. gamesById is keyed by game_id.
 export function shapeCard(userPicks, gamesById) {
   const enriched = userPicks.map(p => {
@@ -105,6 +106,9 @@ export function shapeCard(userPicks, gamesById) {
 
   const displayPicks = [...ats, ...dogs].map(p => {
     const g = p.game ?? {}
+    const selectedTeamLogo = p.selected_team === g.home_team ? g.home_team_logo
+      : p.selected_team === g.away_team ? g.away_team_logo
+      : null
     return {
       slot: p.pick_type === 'underdog' ? null : ats.indexOf(p) + 1,
       pickType: p.pick_type,
@@ -118,6 +122,7 @@ export function shapeCard(userPicks, gamesById) {
       result: p.result,
       points: (p.base_points ?? 0) + (p.bonus_points ?? 0),
       selectedTeam: p.selected_team,
+      selectedTeamLogo,
       lockedSpread: p.locked_spread,
     }
   })

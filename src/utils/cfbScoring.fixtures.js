@@ -74,17 +74,17 @@ export const FIXTURES = {
   underdogTier: [
     { label: '+1.5 → T1', args: [1.5], expected: 1 },
     { label: '+6.5 → T1', args: [6.5], expected: 1 },
-    { label: '+7 → T2', args: [7], expected: 2 },
-    { label: '+13.5 → T2', args: [13.5], expected: 2 },
-    { label: '+14 → T3', args: [14], expected: 3 },
-    { label: '+28 → T3', args: [28], expected: 3 },
+    { label: '+7 → T2', args: [7], expected: 3 },
+    { label: '+13.5 → T2', args: [13.5], expected: 3 },
+    { label: '+14 → T3', args: [14], expected: 5 },
+    { label: '+28 → T3', args: [28], expected: 5 },
     { label: '+1 below minimum → 0', args: [1], expected: 0 },
   ],
 
   gradeUnderdogPick: [
     { label: '+3 dog wins → T1', args: [{ margin: 4, spread: 3 }], expected: { result: 'win', points: 1 } },
-    { label: '+9 dog wins → T2', args: [{ margin: 1, spread: 9 }], expected: { result: 'win', points: 2 } },
-    { label: '+17 dog wins → T3', args: [{ margin: 6, spread: 17 }], expected: { result: 'win', points: 3 } },
+    { label: '+9 dog wins → T2', args: [{ margin: 1, spread: 9 }], expected: { result: 'win', points: 3 } },
+    { label: '+17 dog wins → T3', args: [{ margin: 6, spread: 17 }], expected: { result: 'win', points: 5 } },
     { label: '+9 dog loses by 1 → 0', args: [{ margin: -1, spread: 9 }], expected: { result: 'loss', points: 0 } },
     { label: '+6.5 dog covers but loses → 0', args: [{ margin: -3, spread: 6.5 }], expected: { result: 'loss', points: 0 } },
     { label: 'null margin → null', args: [{ margin: null, spread: 9 }], expected: { result: null, points: 0 } },

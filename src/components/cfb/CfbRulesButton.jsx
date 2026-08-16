@@ -39,10 +39,10 @@ const RULES = [
     body: 'Pick a 6th, separate game — an underdog to win outright. Covering doesn’t count here.',
     tiers: [
       { range: '+1.5 to +6.5', points: '1 point' },
-      { range: '+7 to +13.5', points: '2 points' },
-      { range: '+14 or more', points: '3 points' },
+      { range: '+7 to +13.5', points: '3 points' },
+      { range: '+14 or more', points: '5 points' },
     ],
-    example: { line: '+9 underdog', context: 'Wins outright', result: 'Win', points: '2 points' },
+    example: { line: '+9 underdog', context: 'Wins outright', result: 'Win', points: '3 points' },
   },
 ]
 

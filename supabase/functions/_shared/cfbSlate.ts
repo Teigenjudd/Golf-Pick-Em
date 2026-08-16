@@ -98,6 +98,12 @@ export function buildGameRows(games: any[], lines: any[], fbsTeams: any[]) {
   const fbsSet = new Set(
     (fbsTeams ?? []).map((t: any) => field(t, 'school', 'team')).filter(Boolean),
   )
+  const logoBySchool = new Map<string, string>()
+  for (const t of fbsTeams ?? []) {
+    const school = field(t, 'school', 'team')
+    const logos = field(t, 'logos')
+    if (school && Array.isArray(logos) && logos[0]) logoBySchool.set(school, logos[0])
+  }
   const lineByGameId = new Map<string, any>()
   for (const entry of lines ?? []) {
     const id = field(entry, 'id', 'gameId', 'game_id')
@@ -146,6 +152,8 @@ export function buildGameRows(games: any[], lines: any[], fbsTeams: any[]) {
       week: field(g, 'week', 'weekNumber', 'week_number'), // for the poller's fan-out; stripped before write
       home_team: home,
       away_team: away,
+      home_team_logo: logoBySchool.get(home) ?? null,
+      away_team_logo: logoBySchool.get(away) ?? null,
       home_conference: field(g, 'homeConference', 'home_conference'),
       away_conference: field(g, 'awayConference', 'away_conference'),
       kickoff_at: field(g, 'startDate', 'start_date') || null,

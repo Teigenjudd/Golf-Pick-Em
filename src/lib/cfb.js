@@ -270,7 +270,8 @@ export async function getCfbParticipants(poolId) {
 export async function getCfbWeekGames(weekId) {
   const { data } = await cfb()
     .from('games')
-    .select('id, cfbd_game_id, home_team, away_team, home_conference, away_conference, ' +
+    .select('id, cfbd_game_id, home_team, away_team, home_team_logo, away_team_logo, ' +
+            'home_conference, away_conference, ' +
             'kickoff_at, home_spread, underdog_team, underdog_spread, status, ' +
             'home_score, away_score, live')
     .eq('week_id', weekId)
