@@ -521,6 +521,7 @@ that week if valid, else the first non-graded week, else the last.
 
 **What's on the page:**
 - **Header** (`PoolHeader`, CFB theme): badge, pool name, `"{season} · College Football"`, player count, a round badge (`Week N · Live/Locked/Final/Open`), and — as the header's `children` — `CfbWeekSelector` (a week dropdown) plus a "Live — scores update as games go final" line when any selected-week game is `in_progress`. Admins get a "Share invite" button that copies the join link.
+- `StandingsCard`'s label row also hosts `CfbRulesButton` (via `StandingsCard`'s `action` prop) — a "How scoring works" trigger, hidden until clicked, opening a modal that explains the 3 pick types (ATS, double-down, mandatory underdog) with worked examples and the underdog tier/point table. Shared with §10g and both `/demo/cfb` pages so the copy can't drift.
 - **Season Standings hero** (`CfbStandings`, inside `StandingsCard`): one row per participant — rank, name, "YOU" tag, season total (leader in the CFB accent), and a subtitle showing the selected week's state (`"+N this week"` / `"No card · Week N"` / hidden). Row expands (brick left-bar, the scorecard-expand pattern) into the selected week's 6 picks via the shared `CfbCardRows` (`src/components/cfb/CfbCardRows.jsx`, also used by the read-only Picks view — §10g): slot marker (1–5 ATS, ★ = double-down, 🐕 = underdog), the pick line (`"Michigan −7.5"`), a live/final/scheduled game line, a result pill (Cover/Push/Miss/Win/Loss), a double-down row's `DD → +4` effective-line chip, points, an `Auto` badge if auto-filled, and a `TOTAL · Week N` row. The page grades the selected week via the shared `shapeCard` transform (`src/utils/cfbCard.js`) off each game's live/final score — display-only; the server grader stays authoritative. Only `status === 'final'` games award points; an in-progress game shows its live score but stays ungraded so points don't flip-flop mid-game.
 - **"This week's slate" link card**, between the standings and the widget row: pool-name-styled row → `/cfb/pool/:id/slate?week={selectedWeek}` ("See all games →"). Replaces the old always-visible slate widget below — the full game-by-game list is now its own page (§10h) so pool-detail stays standings-first.
 - **Widget row** (`CfbWidgets`, inside `WidgetGrid`): Prize Pool (reused `PrizePoolWidget`, shown first when `stake_amount` is set) → Weekly Points, Most-Backed Teams, Underdog Board. **These three are hidden until the selected week locks**, replaced by a "Weekly points, most-backed teams, and the underdog board reveal when Week N locks" note — before lock, RLS only returns the viewer's own picks, so those widgets would otherwise read as a 1-player pool (`agents/pm/DECISIONS.md`, 2026-08-13).
@@ -597,6 +598,7 @@ visit to an in-progress card.
   `WEEK 4`), title "Build your card", subtitle `Locks {lock_time}` (via
   `formatLockLabel` in `src/utils/cfbFormat.js` — full date + local timezone, e.g.
   "Locks Sat, Sep 21, 12:00 PM PDT")
+- `CfbRulesButton` — a "How scoring works" trigger, right-aligned above the filter bar (same shared component as §10f)
 - `CfbGameFilterBar` (`src/components/cfb/CfbGameFilterBar.jsx`): search box (team name),
   conference filter chips, and a sort control (kickoff / spread) — **view-only**, applied
   on top of the full games list via `filterAndSortGames`/`conferencesInPlay`
@@ -606,9 +608,10 @@ visit to an in-progress card.
 - The (filtered/sorted) slate as a list of `CfbGameCard`s: two ATS team chips (tap to
   pick who covers, tap again to clear) plus, on any game with a real underdog side
   (`underdog_team` set — pick'em/spread-0 games are excluded, they have no underdog
-  side), a third inline chip — dashed border, 🐕, team name + `"Underdog · +{tier}"`
-  payout from `underdogTier` — the same size/row as the two ATS chips, wrapping to its
-  own line on a narrow card. Kickoff shows as `formatKickWithDate` (adds the MM/DD date,
+  side), a third inline chip — dashed border, 🐕, team name + `"Underdog · {tier} pts"`
+  (`"1 pt"` for tier 1) payout from `underdogTier`, points styled larger/bolder/green so
+  it reads as points and not a spread — the same size/row as the two ATS chips, wrapping
+  to its own line on a narrow card. Kickoff shows as `formatKickWithDate` (adds the MM/DD date,
   since a week's slate spans multiple days). A ★/☆ "Double-down" toggle appears once a
   game is an ATS pick, showing the **effective line** as a preview (`"Georgia -5.5"`, via
   `effectiveDoubleDownLine()` + `pickLine()`) whether or not it's flagged yet — not just
@@ -687,20 +690,50 @@ pool-detail).
 
 ### 11. Demo Landing — `/demo`
 
-**Theme:** General (with golf pool tile)
+**Theme:** General (a themed tile per sport — golf's fairway/gold, CFB's Varsity Navy)
 
-**What it does:** Public, no-auth showcase. Looks like the dashboard but populated with a static fixture dataset. Lets visitors see the product before signing up.
+**What it does:** Public, no-auth sport chooser. Two tiles, one per sport, each styled like its own player-facing pages so the choice previews what's on the other side. Lets visitors see the product before signing up.
 
 **Data available:**
-- `demoTournament` — static fixture with name, course, pick count, status
-- `demoParticipants` — fabricated participant picks
-- Participant count derived from above
+- Golf tile: static copy + `SportBadge` (no live fixture read — golf's demo detail lives at `/demo/tournament`)
+- CFB tile: static copy + `SportBadge` via `cfbBadge(2026)`, themed with `CFB_THEME` from `src/theme/cfb.js`
 
 **What must be on this page:**
 - Poold wordmark
-- Tagline / brief description
-- A single pool tile (the demo golf tournament) — same design as a dashboard tile
-- "Sign in to play for real" CTA
+- "Pick a Sport to Demo" section label
+- Golf card → "View golf demo →" to `/demo/tournament`
+- CFB card → "View CFB demo →" to `/demo/cfb`
+
+---
+
+### 11a. Demo CFB Pool Detail — `/demo/cfb`
+
+**Theme:** Sport-specific (CFB — Varsity Navy, same tokens as §10f)
+
+**What it does:** CFB counterpart to Demo Tournament — the CFB leaderboard/pool-detail experience on static fixture data. Renders through the real `PoolHeader`/`StandingsCard`/`WidgetGrid` shells and the real `CfbWeekSelector`/`CfbStandings`/`CfbWidgets` leaf components (not reimplemented), so it tracks `CfbPoolDetail` (§10f) automatically.
+
+**Data available (`src/demo/demoCfbData.js`):**
+- `demoCfbPool`, `demoCfbWeeks` — Week 1 graded, Week 2 open
+- `demoCfbParticipants`, `demoCfbSeasonStandings` — 8 fabricated players including "You"; Week 1 season standings computed via the real `projectSeasonStandings`/`shapeCard` scoring engine, not hand-typed
+- `demoCfbWeek1Games`/`demoCfbWeek1Picks` (graded, visible to all — same as post-lock RLS), `demoCfbWeek2Games` (open; picks come from `DemoCfbContext`'s in-memory visitor card, hidden from other rows pre-lock, mirroring real RLS)
+
+**What must be on this page:**
+- Same layout as CfbPoolDetail: navy `PoolHeader` + week selector, a Week 2 action banner ("Make picks →" / "Edit picks →" to `/demo/cfb/picks`), `StandingsCard` (label "Season Standings", with `CfbRulesButton` as its `action`) wrapping `CfbStandings`, and `WidgetGrid`/`CfbWidgets`
+- Week resolution: honors `?week=N`, else the earliest non-graded week, else the last
+
+---
+
+### 11b. Demo CFB Picks — `/demo/cfb/picks`
+
+**Theme:** Sport-specific (CFB — Varsity Navy, same tokens as §10g)
+
+**What it does:** CFB counterpart to Demo Picks — the weekly card-builder experience on static fixture data (always Week 2, the fixture's open week). Renders through the real `CfbGameCard`/`CfbGameFilterBar`/`CfbCardTracker` components and the real `cfbCardValidity`/`buildPicksPayload`/`shapeCard` helpers, so validity rules and scoring can't drift from the live builder (§10g). Selections are held in `DemoCfbContext` (memory only, no DB, no `cfb_submit_week_picks` call).
+
+**Data available:** `demoCfbWeek2Games` (the open week's slate)
+
+**What must be on this page:**
+- Same layout as CfbPicks: `PicksHeader` + `CfbRulesButton`, filter bar, game cards, `CfbCardTracker`
+- Submit drops the visitor's card into the Demo CFB Pool Detail standings as "You"
 
 ---
 
@@ -757,8 +790,8 @@ pages (§10f/§10g) pass their own.
 | `PoolHeader` | `backTo`, `backLabel`, `badgeConfig`, `subLabel`, `heroName`, `metaParts[]`, `roundBadge`, `updatedLabel`, `action`, `gradient` (default golf's fairway gradient), `accentColor` (default gold), `rib` (default null — segmented stripe under the header), `children` (default null) | TournamentDetail, DemoTournament, CfbPoolDetail |
 | `PicksHeader` | `backTo`, `backLabel`, `badgeConfig`, `eyebrow`, `title`, `subtitle`, `gradient` (default fairway), `accentColor` (default gold), `rib` (default null), `showBadge` (default true), `children` (default null) | Picks, DemoPicks, CfbPicks |
 | `PicksSubmitBar` | `selectedCount`, `totalCount`, `onSubmit`, `submitting`, `hasExistingPicks` | Picks, DemoPicks |
-| `StandingsCard` | `children` (standings table or empty state), `label` (default `"Pick'em Standings"`) | TournamentDetail, DemoTournament |
-| `WidgetGrid` | `leaderboardData`, `picks`, `stakeAmount`, `participantCount`, `payoutStructure`, `children` (when supplied, renders in place of golf's hardcoded widget set) | TournamentDetail, DemoTournament |
+| `StandingsCard` | `children` (standings table or empty state), `label` (default `"Pick'em Standings"`), `action` (default null — optional right-aligned slot next to the label; CFB uses it for `CfbRulesButton`) | TournamentDetail, DemoTournament, CfbPoolDetail, DemoCfbPoolDetail |
+| `WidgetGrid` | `leaderboardData`, `picks`, `stakeAmount`, `participantCount`, `payoutStructure`, `children` (when supplied, renders in place of golf's hardcoded widget set) | TournamentDetail, DemoTournament, CfbPoolDetail, DemoCfbPoolDetail |
 
 ### `BottomSheet` — `src/components/BottomSheet.jsx`
 
@@ -828,6 +861,7 @@ each one a display-ready shape.
 | `CfbCardRows` | `picks[]` (display-ready pick shape from `shapeCard`), `total`, `totalLabel` | The shared 6-pick-row + `TOTAL` renderer — slot marker, pick line, game line, result pill, `DD → +4` chip, points. Used by both `CfbStandings`' scorecard-expand and `CfbCardReadonly` so the two card views can't drift |
 | `CfbCardReadonly` | `card` (`{total, picks[]}` from `shapeCard`), `notice`, `variant` (`'autofilled'` or `null`), `weekLabel` | The frozen read-only card on the Picks page once a week locks (§10g) — brick left-bar chrome around `CfbCardRows`, plus the notice line above it |
 | `CfbCardTracker` | `atsCount`, `ddCount`, `dogCount`, `valid`, `warning`, `submitting`, `hasExistingCard`, `onSubmit` | Sticky "Card progress" panel on the picks builder (§10g) — progress bar + 3 stat tiles + submit button |
+| `CfbRulesButton` | none (owns its own open state) | "How scoring works" trigger button, fully hidden until clicked, then a modal explaining the 3 pick types (ATS, double-down, mandatory underdog) with worked examples and the underdog tier/point table. Shared by both live CFB pages (§10f, §10g) and both `/demo/cfb` pages so the copy can't drift |
 
 Display formatting shared by the picks page too: `src/utils/cfbFormat.js`
 (`formatSpread`, `pickLine`, `formatKick`, `formatKickWithDate`, `favoriteLine`,

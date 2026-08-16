@@ -44,9 +44,11 @@ as context underneath. Pool = the contest; event = the real-world tournament.
   ready-made subtitle (the "Best 5 of 8" string), so shared UI never reads golf params.
 - `public.pool_participants` (generic membership) so core RLS/standings never reach into
   golf's tables.
-- Internal table naming as below; `/demo` stays golf-only and unchanged; `api_usage`
-  stays generic in `public`; edge-function updates ride in the same PR; one prod
-  dashboard setting (Exposed Schemas) is handled via a manual checklist at cutover.
+- Internal table naming as below; `/demo` stays out of scope for this schema migration
+  (it never touches the DB either way — it since gained a CFB counterpart at
+  `/demo/cfb`, see `docs/PAGES.md` §11a/§11b); `api_usage` stays generic in `public`;
+  edge-function updates ride in the same PR; one prod dashboard setting (Exposed
+  Schemas) is handled via a manual checklist at cutover.
 
 ---
 
