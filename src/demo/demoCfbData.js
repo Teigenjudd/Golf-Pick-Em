@@ -5,6 +5,7 @@
 // No backend — DemoCfbContext holds the visitor's Week 2 card in memory.
 
 import { shapeCard } from '../utils/cfbCard'
+import { projectSeasonStandings } from '../utils/cfbScoring'
 
 export const demoCfbPool = {
   id: 'demo-cfb',
@@ -96,17 +97,13 @@ export const demoCfbSeasonStandings = (() => {
   const picksByUser = {}
   demoCfbWeek1Picks.forEach(p => { (picksByUser[p.user_id] ??= []).push(p) })
 
-  const totals = demoCfbParticipants.map(p => ({
+  const entries = demoCfbParticipants.map(p => ({
     user_id: p.user_id,
-    total: shapeCard(picksByUser[p.user_id] ?? [], week1GamesById).total,
+    display_name: p.display_name,
+    weeks: [{ week_number: 1, total: shapeCard(picksByUser[p.user_id] ?? [], week1GamesById).total }],
   }))
-  totals.sort((a, b) => b.total - a.total)
 
-  return totals.map((e, _i, arr) => ({
-    user_id: e.user_id,
-    rank: arr.findIndex(x => x.total === e.total) + 1,
-    total: e.total,
-  }))
+  return projectSeasonStandings(entries, { throughWeek: 1 })
 })()
 
 // ── Week 2 — open, no picks yet (the visitor builds this one) ───────────────
