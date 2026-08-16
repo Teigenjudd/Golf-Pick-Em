@@ -7,6 +7,7 @@ import WidgetGrid from '../../components/pool/WidgetGrid'
 import CfbWeekSelector from '../../components/cfb/CfbWeekSelector'
 import CfbStandings from '../../components/cfb/CfbStandings'
 import CfbWidgets from '../../components/cfb/CfbWidgets'
+import CfbRulesButton from '../../components/cfb/CfbRulesButton'
 import {
   getCfbPool, getCfbPoolWeeks, getCfbStandings, getCfbParticipants,
   getCfbWeekGames, getCfbWeekPicks, weekIsLocked,
@@ -220,7 +221,7 @@ export default function CfbPoolDetail() {
       </PoolHeader>
 
       <div className="max-w-[560px] mx-auto px-[18px] pt-[22px]">
-        <StandingsCard label="Season Standings">
+        <StandingsCard label="Season Standings" action={<CfbRulesButton />}>
           {!participants.length || !derived ? (
             <div className="p-12 text-center">
               <p className="text-[13px]" style={{ color: CFB_THEME.muted }}>

@@ -21,10 +21,13 @@ import CfbPicks from './pages/cfb/CfbPicks'
 import CfbSlate from './pages/cfb/CfbSlate'
 import TournamentDetail from './pages/TournamentDetail'
 import { DemoProvider } from './demo/DemoContext'
+import { DemoCfbProvider } from './demo/DemoCfbContext'
 import DemoLayout from './demo/DemoLayout'
 import DemoLanding from './demo/DemoLanding'
 import DemoTournament from './demo/DemoTournament'
 import DemoPicks from './demo/DemoPicks'
+import DemoCfbPoolDetail from './demo/DemoCfbPoolDetail'
+import DemoCfbPicks from './demo/DemoCfbPicks'
 
 function RootRoute() {
   // The landing page at "/". If you already have a session, skip the login
@@ -74,11 +77,14 @@ function App() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
 
-          {/* Public demo — no auth, sample data (DemoProvider persists picks across /demo/*) */}
-          <Route path="/demo" element={<DemoProvider><DemoLayout /></DemoProvider>}>
+          {/* Public demo — no auth, sample data (DemoProvider/DemoCfbProvider persist
+              picks across /demo/*, one per sport) */}
+          <Route path="/demo" element={<DemoProvider><DemoCfbProvider><DemoLayout /></DemoCfbProvider></DemoProvider>}>
             <Route index element={<DemoLanding />} />
             <Route path="tournament" element={<DemoTournament />} />
             <Route path="picks" element={<DemoPicks />} />
+            <Route path="cfb" element={<DemoCfbPoolDetail />} />
+            <Route path="cfb/picks" element={<DemoCfbPicks />} />
           </Route>
 
           {/* Not wrapped in ProtectedRoute — it is where ProtectedRoute sends you */}
