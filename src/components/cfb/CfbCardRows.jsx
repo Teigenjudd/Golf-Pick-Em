@@ -82,7 +82,7 @@ export function CfbPickRow({ p }) {
   return (
     <div className="flex items-center gap-[10px] py-[5px]">
       <SlotMarker p={p} />
-      <TeamCrest src={p.selectedTeamLogo} alt={p.selectedTeam} />
+      <TeamCrest src={p.selectedTeamLogo} alt={p.selectedTeam} reserveSpace />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-[6px]">
           <span className="text-[13.5px] font-semibold leading-tight truncate" style={{ color: CFB_THEME.ink }}>

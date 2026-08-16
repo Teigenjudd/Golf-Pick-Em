@@ -8,11 +8,20 @@ import { CFB_THEME } from '../../theme/cfb'
 // No circular mask: crests aren't drawn to fill a circle, so rounding the frame cropped
 // corners/edges off the mark — object-contain alone shows the whole logo, letterboxed
 // inside the square frame if the source isn't itself square.
-export default function TeamCrest({ src, alt, size = 20 }) {
+//
+// reserveSpace: for a caller laying out a fixed-width crest column (CfbCardRows) —
+// renders an empty same-size box instead of collapsing to nothing on a missing/failed
+// logo, so rows with and without a logo still line up under that column. CfbGameCard's
+// inline chip usage leaves this off; there the crest sits in a natural flex row where
+// collapsing is fine.
+export default function TeamCrest({ src, alt, size = 20, reserveSpace = false }) {
   const [failed, setFailed] = useState(false)
-  if (!src || failed) return null
+  if (!src || failed) {
+    return reserveSpace ? <span className="flex-none" style={{ width: size, height: size }} /> : null
+  }
   return (
     <img
+      key={src}
       src={src}
       alt={alt ?? ''}
       width={size}
