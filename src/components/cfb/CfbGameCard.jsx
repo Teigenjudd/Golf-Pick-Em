@@ -67,11 +67,19 @@ function UnderdogChip({ team, tier, selected, disabled, onClick }) {
     >
       <div className="text-[13px] leading-none mb-[4px]">🐕</div>
       <div className="font-semibold text-[12.5px] truncate" style={{ color: ink }}>{team}</div>
-      <div
-        className="font-display font-bold uppercase tracking-[.06em] text-[9px] mt-[2px]"
-        style={{ color: selected ? CFB_THEME.positive : CFB_THEME.muted }}
-      >
-        Underdog · +{tier}
+      <div className="flex items-center justify-center gap-[4px] mt-[2px]">
+        <span
+          className="font-display font-bold uppercase tracking-[.06em] text-[9px]"
+          style={{ color: selected ? CFB_THEME.positive : CFB_THEME.muted }}
+        >
+          Underdog ·
+        </span>
+        <span
+          className="font-display font-extrabold tabular-nums text-[11px]"
+          style={{ color: CFB_THEME.positive }}
+        >
+          {tier} {tier === 1 ? 'pt' : 'pts'}
+        </span>
       </div>
     </button>
   )

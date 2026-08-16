@@ -6,6 +6,7 @@ import CfbGameCard from '../../components/cfb/CfbGameCard'
 import CfbGameFilterBar from '../../components/cfb/CfbGameFilterBar'
 import CfbCardTracker from '../../components/cfb/CfbCardTracker'
 import CfbCardReadonly from '../../components/cfb/CfbCardReadonly'
+import CfbRulesButton from '../../components/cfb/CfbRulesButton'
 import {
   getCfbPool, getCfbPoolWeeks, getCfbWeekGames, getCfbWeekPicks, submitCfbWeekPicks,
   weekIsLocked,
@@ -405,6 +406,10 @@ export default function CfbPicks() {
       />
 
       <div className="max-w-[560px] mx-auto px-4 pt-6">
+        <div className="flex justify-end mb-3">
+          <CfbRulesButton />
+        </div>
+
         {resetRequested ? (
           <p className="text-[12px] mb-3" style={{ color: CFB_THEME.muted2 }}>
             Your previous picks were reset — build a fresh card from today's lines.

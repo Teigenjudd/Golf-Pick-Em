@@ -91,7 +91,7 @@ handed. CFB just needs one static config (see §9).
 | `/cfb/pool/:id/picks` | CFB Weekly Picks (resolves the open week) | Protected | §7 |
 | `/admin/cfb/create-pool` | Create CFB Pool | Admin | §8 |
 | `/admin/cfb/pool/:id` | CFB Weekly Ops console | Admin | §9b |
-| *(deferred)* `/demo/cfb…` | CFB demo | Public | §10 |
+| `/demo/cfb`, `/demo/cfb/picks` | CFB demo | Public | `docs/PAGES.md` §11a/§11b |
 
 The pool-detail **week selector** uses a query param (`?week=N`) — no separate route.
 
@@ -432,8 +432,7 @@ safety over polish. Make destructive/irreversible actions (lock, grade) confirm.
 
 ## 10. Deferred (not v1) — note for design
 
-- **CFB demo** (`/demo/cfb…`) — the golf demo pattern (static fixture, no auth) reskinned
-  for CFB. Nice for marketing; not required to ship. Mirror §6/§7 off a fixture later.
+- **CFB demo** — shipped (`/demo/cfb`, `/demo/cfb/picks`); truth is `docs/PAGES.md` §11a/§11b.
 - **Per-team badges / full CFB "sport pack" theme** — v1 is one static badge + the
   prop-based shell theming. The richer theming system (BRAINSTORM MS-9/10) is
   deliberately deferred.
