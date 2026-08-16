@@ -567,8 +567,9 @@ surface). Also linked from a new joiner's CFB Join card ("Join & make picks →"
 - `getCfbPoolWeeks(eventId)` — this season's `cfb.weeks` (`week_number`, `label`,
   `lock_time`, `status`), used to resolve the target week
 - `getCfbWeekGames(weekId)` — the target week's `cfb.games` (`home_team`/`away_team` +
-  conferences, `kickoff_at`, `home_spread`, `underdog_team`, `underdog_spread`, and the
-  live/final score used to grade the read-only card)
+  conferences, `home_team_logo`/`away_team_logo`, `kickoff_at`, `home_spread`,
+  `underdog_team`, `underdog_spread`, and the live/final score used to grade the read-only
+  card)
 - `getCfbWeekPicks(poolId, weekId)` — RLS returns only the viewer's own picks before lock,
   everyone's confirmed picks after; filtered client-side to `user.id` to seed the builder
   (editing an existing submission) or grade the read-only card
@@ -605,10 +606,13 @@ visit to an in-progress card.
   (`src/utils/cfbGameFilters.js`, shared with the Slate page, §10h) and never touches
   pick state or the submit payload, which stay keyed off the unfiltered game list. "No
   games match your filters." when the filtered list is empty.
-- The (filtered/sorted) slate as a list of `CfbGameCard`s: two ATS team chips (tap to
-  pick who covers, tap again to clear) plus, on any game with a real underdog side
+- The (filtered/sorted) slate as a list of `CfbGameCard`s: two ATS team chips (each
+  carrying its team's crest via `TeamCrest`, from `cfb.games.home_team_logo`/
+  `away_team_logo` — silently omitted when a team has no logo on file) — tap to
+  pick who covers, tap again to clear — plus, on any game with a real underdog side
   (`underdog_team` set — pick'em/spread-0 games are excluded, they have no underdog
-  side), a third inline chip — dashed border, 🐕, team name + `"Underdog · {tier} pts"`
+  side), a third inline chip — dashed border, the underdog's crest (falls back to 🐕
+  when it has no logo on file), team name + `"Underdog · {tier} pts"`
   (`"1 pt"` for tier 1) payout from `underdogTier`, points styled larger/bolder/green so
   it reads as points and not a spread — the same size/row as the two ATS chips, wrapping
   to its own line on a narrow card. Kickoff shows as `formatKickWithDate` (adds the MM/DD date,
@@ -858,10 +862,11 @@ each one a display-ready shape.
 | `CfbWidgets` | `weekPicks[]`, `weeklyPoints[]`, `weekLabel`, `locked`, `stakeAmount`, `participantCount`, `payoutStructure` | Weekly Points, Most-Backed Teams, Underdog Board, and the reused `PrizePoolWidget` — see §10f for the pre-lock hide rule. No longer takes `games`/renders a slate widget — that moved to its own page, §10h |
 | `CfbPoolTile` | `tile` (one row from `getMyCfbPools`, now including `status`) | The Dashboard's CFB pool tile — see §6 |
 | `CfbGameFilterBar` | `search`, `onSearchChange`, `conferences[]`, `selectedConferences` (Set), `onToggleConference`, `sortBy`, `onSortChange` | Search box + conference filter chips + sort control. View-only toolbar shared by `CfbPicks` (§10g) and `CfbSlate` (§10h), backed by `src/utils/cfbGameFilters.js` (`filterAndSortGames`, `conferencesInPlay`) |
-| `CfbCardRows` | `picks[]` (display-ready pick shape from `shapeCard`), `total`, `totalLabel` | The shared 6-pick-row + `TOTAL` renderer — slot marker, pick line, game line, result pill, `DD → +4` chip, points. Used by both `CfbStandings`' scorecard-expand and `CfbCardReadonly` so the two card views can't drift |
+| `CfbCardRows` | `picks[]` (display-ready pick shape from `shapeCard`), `total`, `totalLabel` | The shared 6-pick-row + `TOTAL` renderer — slot marker, team crest (`TeamCrest`, `reserveSpace` on so rows stay aligned when a logo is missing/broken), pick line, game line, result pill, `DD → +4` chip, points. Used by both `CfbStandings`' scorecard-expand and `CfbCardReadonly` so the two card views can't drift |
 | `CfbCardReadonly` | `card` (`{total, picks[]}` from `shapeCard`), `notice`, `variant` (`'autofilled'` or `null`), `weekLabel` | The frozen read-only card on the Picks page once a week locks (§10g) — brick left-bar chrome around `CfbCardRows`, plus the notice line above it |
 | `CfbCardTracker` | `atsCount`, `ddCount`, `dogCount`, `valid`, `warning`, `submitting`, `hasExistingCard`, `onSubmit` | Sticky "Card progress" panel on the picks builder (§10g) — progress bar + 3 stat tiles + submit button |
 | `CfbRulesButton` | none (owns its own open state) | "How scoring works" trigger button, fully hidden until clicked, then a modal explaining the 3 pick types (ATS, double-down, mandatory underdog) with worked examples and the underdog tier/point table. Shared by both live CFB pages (§10f, §10g) and both `/demo/cfb` pages so the copy can't drift |
+| `TeamCrest` | `src`, `alt`, `size` (default 20), `reserveSpace` (bool) | Small team logo (`cfb.games.home_team_logo`/`away_team_logo`, from CFBD's `teams/fbs` endpoint), letterboxed square, no circular mask. Renders nothing on a null/missing/failed URL — `reserveSpace` swaps that to an empty same-size box so a fixed-width crest column still lines up. Shared by `CfbGameCard` (§10g) and `CfbCardRows` so sizing/fallback can't drift |
 
 Display formatting shared by the picks page too: `src/utils/cfbFormat.js`
 (`formatSpread`, `pickLine`, `formatKick`, `formatKickWithDate`, `favoriteLine`,

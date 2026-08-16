@@ -87,8 +87,8 @@ underdog's spread size:
 | Underdog spread `|spread|` | Points on outright win |
 |---|---|
 | +1.5 to +6.5 | **1** |
-| +7 to +13.5 | **2** |
-| +14 or more | **3** |
+| +7 to +13.5 | **3** |
+| +14 or more | **5** |
 
 A losing underdog scores 0 (even if it would have covered).
 
@@ -126,7 +126,7 @@ false → cover **+1**, no bonus.
 `4.25` → ties up → **4.5**. A 10.5-point spread → `5.25` → ties up → **5.5**.
 
 **Underdog tiers** — a +3 underdog wins outright → tier 1 → **1**. A +9 underdog wins → tier 2 →
-**2**. A +17 underdog wins → tier 3 → **3**. A +9 underdog *loses* (even by a point) → **0**.
+**3**. A +17 underdog wins → tier 3 → **5**. A +9 underdog *loses* (even by a point) → **0**.
 
 ---
 

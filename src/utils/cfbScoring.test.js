@@ -154,15 +154,15 @@ describe('underdogTier — boundaries from the format table', () => {
   })
 
   it('tier 2: +7 to +13.5', () => {
-    expect(underdogTier(7)).toBe(2)
-    expect(underdogTier(9)).toBe(2)
-    expect(underdogTier(13.5)).toBe(2)
+    expect(underdogTier(7)).toBe(3)
+    expect(underdogTier(9)).toBe(3)
+    expect(underdogTier(13.5)).toBe(3)
   })
 
   it('tier 3: +14 or more', () => {
-    expect(underdogTier(14)).toBe(3)
-    expect(underdogTier(17)).toBe(3)
-    expect(underdogTier(28)).toBe(3)
+    expect(underdogTier(14)).toBe(5)
+    expect(underdogTier(17)).toBe(5)
+    expect(underdogTier(28)).toBe(5)
   })
 
   it('below the +1.5 minimum is not a real underdog → 0', () => {
@@ -177,12 +177,12 @@ describe('gradeUnderdogPick — outright win only, tiered', () => {
     expect(gradeUnderdogPick({ margin: 4, spread: 3 })).toEqual({ result: 'win', points: 1 })
   })
 
-  it('+9 dog wins → tier 2 → 2 (worked example)', () => {
-    expect(gradeUnderdogPick({ margin: 1, spread: 9 })).toEqual({ result: 'win', points: 2 })
+  it('+9 dog wins → tier 2 → 3 (worked example)', () => {
+    expect(gradeUnderdogPick({ margin: 1, spread: 9 })).toEqual({ result: 'win', points: 3 })
   })
 
-  it('+17 dog wins → tier 3 → 3 (worked example)', () => {
-    expect(gradeUnderdogPick({ margin: 6, spread: 17 })).toEqual({ result: 'win', points: 3 })
+  it('+17 dog wins → tier 3 → 5 (worked example)', () => {
+    expect(gradeUnderdogPick({ margin: 6, spread: 17 })).toEqual({ result: 'win', points: 5 })
   })
 
   it('+9 dog LOSES by a point → 0, even though covering is irrelevant (worked example)', () => {
@@ -227,15 +227,15 @@ describe('gradeWeekCard — the full 6-pick week', () => {
     { pick_type: 'ats', is_double_down: false, locked_spread: -7, margin: 7 },   // push 0
     { pick_type: 'ats', is_double_down: false, locked_spread: -7, margin: 3 },   // miss 0
     { pick_type: 'ats', is_double_down: false, locked_spread: 6.5, margin: -3 }, // dog covers +1
-    { pick_type: 'underdog', is_double_down: false, locked_spread: 9, margin: 1 }, // dog wins → tier 2 → 2
+    { pick_type: 'underdog', is_double_down: false, locked_spread: 9, margin: 1 }, // dog wins → tier 2 → 3
   ]
 
   it('breaks the week down into ats/bonus/underdog and totals them', () => {
     const g = gradeWeekCard(card)
     expect(g.atsPoints).toBe(3)       // 1 + 1 + 0 + 0 + 1
     expect(g.bonusPoints).toBe(1)     // the double-down
-    expect(g.underdogPoints).toBe(2)  // tier 2
-    expect(g.total).toBe(6)
+    expect(g.underdogPoints).toBe(3)  // tier 2
+    expect(g.total).toBe(7)
   })
 
   it('stamps each pick with the DB result + points columns', () => {
@@ -243,7 +243,7 @@ describe('gradeWeekCard — the full 6-pick week', () => {
     expect(g.picks[0]).toMatchObject({ result: 'cover', base_points: 1, bonus_points: 1 })
     expect(g.picks[2]).toMatchObject({ result: 'push', base_points: 0, bonus_points: 0 })
     expect(g.picks[3]).toMatchObject({ result: 'miss', base_points: 0, bonus_points: 0 })
-    expect(g.picks[5]).toMatchObject({ result: 'win', base_points: 2, bonus_points: 0 })
+    expect(g.picks[5]).toMatchObject({ result: 'win', base_points: 3, bonus_points: 0 })
   })
 
   it('a non-double-down pick never earns a bonus even if it clears the buffer', () => {

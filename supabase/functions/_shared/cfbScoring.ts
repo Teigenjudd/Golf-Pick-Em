@@ -91,11 +91,11 @@ export function gradeDoubleDown({ margin, lockedSpread }) {
 
 // Underdog tier by spread size (points on an outright win): 0 is not a real
 // underdog (guards spreads below the +1.5 minimum — shouldn't occur).
-//   +1.5 to +6.5 → 1 | +7 to +13.5 → 2 | +14 or more → 3
+//   +1.5 to +6.5 → 1 | +7 to +13.5 → 3 | +14 or more → 5
 export function underdogTier(spread) {
   const s = Math.abs(spread)
-  if (s >= 14) return 3
-  if (s >= 7) return 2
+  if (s >= 14) return 5
+  if (s >= 7) return 3
   if (s >= 1.5) return 1
   return 0
 }

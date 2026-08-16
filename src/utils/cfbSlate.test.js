@@ -66,7 +66,12 @@ describe('favoriteFromFormattedSpread', () => {
 })
 
 describe('buildGameRows', () => {
-  const fbs = [{ school: 'Michigan' }, { school: 'Ohio State' }, { school: 'Alabama' }, { school: 'Vanderbilt' }]
+  const fbs = [
+    { school: 'Michigan', logos: ['https://a.example/michigan.png'] },
+    { school: 'Ohio State', logos: ['https://a.example/ohio-state.png'] },
+    { school: 'Alabama' }, // no logos field → stays unmapped
+    { school: 'Vanderbilt', logos: [] }, // empty logos array → stays unmapped
+  ]
 
   it('shapes an FBS-vs-FBS game with a line: signed home_spread + positive underdog', () => {
     const games = [{ id: 1, week: 5, homeTeam: 'Michigan', awayTeam: 'Ohio State', homeConference: 'Big Ten', awayConference: 'Big Ten', startDate: '2026-10-10T16:00:00Z', completed: false }]
@@ -74,10 +79,18 @@ describe('buildGameRows', () => {
     const [row] = buildGameRows(games, lines, fbs)
     expect(row).toMatchObject({
       cfbd_game_id: '1', week: 5, home_team: 'Michigan', away_team: 'Ohio State',
+      home_team_logo: 'https://a.example/michigan.png', away_team_logo: 'https://a.example/ohio-state.png',
       home_spread: -7, is_fbs_vs_fbs: true, status: 'scheduled',
       home_score: null, away_score: null,
       underdog_team: 'Ohio State', underdog_spread: 7, // away is the dog, positive
     })
+  })
+
+  it('falls back to null when a team has no logo (missing or empty logos array)', () => {
+    const games = [{ id: 4, week: 5, homeTeam: 'Vanderbilt', awayTeam: 'Alabama' }]
+    const lines = [{ id: 4, lines: [{ provider: 'consensus', spread: 10, formattedSpread: 'Alabama -10' }] }]
+    const [row] = buildGameRows(games, lines, fbs)
+    expect(row).toMatchObject({ home_team_logo: null, away_team_logo: null })
   })
 
   it('excludes a game with no posted line', () => {

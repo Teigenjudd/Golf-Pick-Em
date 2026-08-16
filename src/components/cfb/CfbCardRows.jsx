@@ -1,6 +1,7 @@
 import { CFB_THEME } from '../../theme/cfb'
 import { formatKick, formatSpread } from '../../utils/cfbFormat'
 import { effectiveDoubleDownLine } from '../../utils/cfbScoring'
+import TeamCrest from './TeamCrest'
 
 // The shared renderer for a CFB weekly card's 6 pick rows + TOTAL row (5 ATS then the
 // underdog). Used by both the pool-detail standings expand (CfbStandings) and the
@@ -8,7 +9,7 @@ import { effectiveDoubleDownLine } from '../../utils/cfbScoring'
 // drift. Purely presentational — the page grades the card with shapeCard (utils/
 // cfbCard.js) and hands each row a display-ready shape:
 //   { slot, pickType, isDoubleDown, autoFilled, line, matchup, awayTeam, homeTeam,
-//     awayScore, homeScore, status, live, kickoffAt, result, points }
+//     awayScore, homeScore, status, live, kickoffAt, result, points, selectedTeamLogo }
 
 // ── result pill styling ──────────────────────────────────────────────────────
 const HIT = new Set(['cover', 'win'])
@@ -81,6 +82,7 @@ export function CfbPickRow({ p }) {
   return (
     <div className="flex items-center gap-[10px] py-[5px]">
       <SlotMarker p={p} />
+      <TeamCrest src={p.selectedTeamLogo} alt={p.selectedTeam} reserveSpace />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-[6px]">
           <span className="text-[13.5px] font-semibold leading-tight truncate" style={{ color: CFB_THEME.ink }}>
@@ -143,6 +145,7 @@ export default function CfbCardRows({ picks, total, totalLabel }) {
 
       {/* Total row */}
       <div className="flex items-center gap-[10px] pt-2 mt-[5px] border-t" style={{ borderColor: CFB_THEME.border }}>
+        <span className="w-[20px] flex-none" />
         <span className="w-[20px] flex-none" />
         <span className="flex-1 font-display font-bold text-[9px] uppercase tracking-[.16em]" style={{ color: CFB_THEME.muted }}>
           {totalLabel}

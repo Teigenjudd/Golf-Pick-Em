@@ -16,6 +16,31 @@
 
 ---
 
+## 2026-08-15 — CFB underdog scoring rebalanced to 1/3/5 (PR #60); already-graded weeks not retroactively rescored
+
+**Decision:** The mandatory-underdog point tiers move from 1/2/3 to 1/3/5 points on an
+outright win (spread bands unchanged: +1.5–6.5 → 1, +7–13.5 → 3, +14+ → 5), to widen the
+payout gap between a small dog and a big one. Changed in `src/utils/cfbScoring.js` and its
+server-side mirror `supabase/functions/_shared/cfbScoring.ts` (kept byte-for-byte
+identical, verified in senior review), fixtures/tests, `CfbRulesButton`'s rules modal, and
+`docs/CFB_FORMAT.md`'s rules-of-record table + worked examples.
+
+**Why:** 1/2/3 made the top underdog tier (+14 or more) barely worth more than the bottom
+one relative to the risk — 1/3/5 makes a big-dog swing genuinely pay off, sharpening the
+mandatory-underdog pick as a real strategic lever rather than a coin flip that pays roughly
+the same regardless of size.
+
+**What we gave up / open thread:** Grading is a one-time write
+(`base_points`/`bonus_points`); any week already graded under 1/2/3 keeps its old points —
+there's no retroactive rescore. Explicitly accepted as moot: no real users yet, and the
+`/demo/cfb` fixture recomputes its Week 1 in memory on load so the demo always shows the
+current tiers.
+
+**What would make us revisit:** If a real season is graded before a future rebalance,
+retroactive rescoring becomes a real question rather than a hypothetical.
+
+---
+
 ## 2026-08-15 — CFB prod cutover (PR #58): quarter-point spread backfill stays a one-off; edit-picks resets the card instead of pre-filling it
 
 **Decision 1 — data backfill (`cfb-admin-close-and-picks-ux`, senior review finding #1):**
