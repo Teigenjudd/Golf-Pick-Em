@@ -35,8 +35,10 @@ export default function CreateCfbPool() {
   const payoutSum = payouts.reduce((s, p) => s + (parseFloat(p) || 0), 0)
 
   // Week 0 is a real CFBD week (the pre-Labor-Day slate — TCU/UNC, etc.), so the floor
-  // is 0, not 1.
-  const weeksValid = Number(startWeek) >= 0 && Number(endWeek) >= Number(startWeek)
+  // is 0, not 1 — but that means Number('') === 0 would let an emptied field pass as
+  // "Week 0" instead of failing validation, so blank is checked explicitly.
+  const weeksValid = startWeek !== '' && endWeek !== ''
+    && Number(startWeek) >= 0 && Number(endWeek) >= Number(startWeek)
   const canSubmit = name.trim() && seasonYear && weeksValid && firstLockTime
 
   async function handleCreate() {
