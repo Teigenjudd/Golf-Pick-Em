@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   chooseLine, favoriteFromFormattedSpread, buildGameRows,
+  WEEK_ZERO_CFBD_WEEK, isWeekZeroGame, ourWeekToCfbdWeek,
 } from '../../supabase/functions/_shared/cfbSlate.ts'
 
 describe('chooseLine', () => {
@@ -136,5 +137,38 @@ describe('buildGameRows', () => {
     const games = [{ id: 7, week: 5, homeTeam: 'A', awayTeam: 'B', homeClassification: 'fbs', awayClassification: 'fbs' }]
     const lines = [{ id: 7, lines: [{ provider: 'consensus', spread: -3, formattedSpread: 'A -3' }] }]
     expect(buildGameRows(games, lines, []).length).toBe(1)
+  })
+})
+
+describe('isWeekZeroGame', () => {
+  it('matches a kickoff inside the configured 2026 window', () => {
+    expect(isWeekZeroGame(2026, '2026-08-29T19:00:00.000Z')).toBe(true)
+  })
+
+  it('matches a late Saturday-night ET kickoff that rolls into Sunday UTC', () => {
+    expect(isWeekZeroGame(2026, '2026-08-30T02:30:00.000Z')).toBe(true)
+  })
+
+  it('rejects the following weekend (the real Week 1, same CFBD week number)', () => {
+    expect(isWeekZeroGame(2026, '2026-09-05T19:00:00.000Z')).toBe(false)
+  })
+
+  it('rejects a season with no configured window', () => {
+    expect(isWeekZeroGame(2027, '2027-08-28T19:00:00.000Z')).toBe(false)
+  })
+
+  it('rejects a missing kickoff time', () => {
+    expect(isWeekZeroGame(2026, null)).toBe(false)
+  })
+})
+
+describe('ourWeekToCfbdWeek', () => {
+  it('maps our Week 0 to the CFBD week it actually draws from', () => {
+    expect(ourWeekToCfbdWeek(0)).toBe(WEEK_ZERO_CFBD_WEEK)
+  })
+
+  it('passes every other week number through unchanged', () => {
+    expect(ourWeekToCfbdWeek(1)).toBe(1)
+    expect(ourWeekToCfbdWeek(9)).toBe(9)
   })
 })

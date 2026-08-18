@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { field, toInt, gradeWeek, recomputeStandings } from '../_shared/cfbGrading.ts'
+import { ourWeekToCfbdWeek } from '../_shared/cfbSlate.ts'
 
 // grade-cfb-week — the manual / scan CFB grader. Runs server-side (service role) so
 // users can never grade their own picks. Same "cron OR admin manual-refresh" shape as
@@ -125,14 +126,18 @@ Deno.serve(async (req) => {
     .select('event_id, season_year').in('event_id', eventIds)
   const seasonByEvent = new Map((eds ?? []).map((e) => [e.event_id, e.season_year]))
 
-  // ── Group weeks by the REAL (season, week_number) so CFBD is hit once per real
-  //    week and fanned to every event's games sharing it. ───────────────────────
+  // ── Group weeks by the REAL (season, CFBD week) so CFBD is hit once per real week
+  //    and fanned to every event's games sharing it. Grouped by the RESOLVED CFBD
+  //    week, not the raw week_number — week_number 0 (Week 0) and 1 both draw from
+  //    CFBD's week 1 (ourWeekToCfbdWeek), so grouping by week_number would call CFBD
+  //    for that week twice. ─────────────────────────────────────────────────────
   const groups = new Map<string, { season: number; week: number; rows: typeof weeks }>()
   for (const w of weeks) {
     const season = seasonByEvent.get(w.event_id)
     if (season == null) continue
-    const key = `${season}::${w.week_number}`
-    const g = groups.get(key) ?? { season, week: w.week_number, rows: [] as typeof weeks }
+    const cfbdWeek = ourWeekToCfbdWeek(w.week_number)
+    const key = `${season}::${cfbdWeek}`
+    const g = groups.get(key) ?? { season, week: cfbdWeek, rows: [] as typeof weeks }
     g.rows.push(w)
     groups.set(key, g)
   }
