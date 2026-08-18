@@ -16,6 +16,47 @@
 
 ---
 
+## 2026-08-17 — CFB per-game kickoff lock added; "Edit picks" reset supersedes PR #58's full-reset call to a partial one
+
+**Decision:** `cfb_submit_week_picks` now enforces a lock per game, not just per week: once
+a game's `kickoff_at` has passed, its slot in a resubmitted card must exactly match what's
+already on file (unchanged carry-forward is fine; a new/changed/dropped pick on it is
+rejected). This closes a real gap — a week's `lock_time` can be set generously (e.g. Friday
+evening, so players have time to build Saturday's picks), which had been leaving
+Thursday/Friday games pickable well after they'd already kicked off. Client mirrors it
+(`gameHasStarted` in `src/utils/cfbCard.js`) so `CfbGameCard` greys out started games before
+the RPC ever has to reject anything. See
+`supabase/migrations/20260817000000_cfb_game_kickoff_lock.sql`, `docs/CFB_FORMAT.md`.
+
+**This supersedes half of the 2026-08-15 (PR #58) entry below.** That entry decided the
+"Edit picks" flow should reset the whole card (`?reset=1` → empty builder) rather than
+pre-fill it, specifically to avoid stale-looking selections whose line had quietly moved.
+That still holds for games that haven't started — but a *full* reset now conflicts with the
+new kickoff lock: once any game in the week has started, the RPC will reject a payload that
+drops or changes that game's pick, so a full wipe would make it impossible to ever resubmit
+again mid-week. The reset is now **partial**: it clears only not-yet-started games and
+carries forward any already-started pick pre-filled and locked
+(`src/pages/cfb/CfbPicks.jsx`, `src/components/cfb/CfbPoolTile.jsx`).
+
+**Why:** The alternative — blocking "Edit picks" entirely once any game in the week has
+started — was considered and rejected: it would strand a player who wants to fix a
+not-yet-started Sunday pick just because Thursday's game already kicked off, for the whole
+rest of the week. Partial reset preserves the original PR #58 rationale (no stale-looking
+re-locked lines) for the picks that can still change, without breaking editability outright.
+
+**What we gave up:** A started game's carried-forward pick still has its `locked_spread`
+recomputed from the current game row on every resubmit (the RPC always re-derives it, and
+`matches_existing` deliberately ignores `locked_spread`) — so if a line somehow moved after
+kickoff, that pick's grading spread would silently shift. Accepted as academic: lines don't
+move post-kickoff in practice (flagged, not blocking, in
+`agents/senior-dev/reviews/feat-cfb-kickoff-lock-and-og-card.md`).
+
+**What would make us revisit:** If CFBD is ever observed correcting a spread after kickoff,
+`matches_existing` would need to also pin `locked_spread` for started games rather than only
+the pick fields.
+
+---
+
 ## 2026-08-15 — CFB underdog scoring rebalanced to 1/3/5 (PR #60); already-graded weeks not retroactively rescored
 
 **Decision:** The mandatory-underdog point tiers move from 1/2/3 to 1/3/5 points on an
