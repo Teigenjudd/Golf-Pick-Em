@@ -10,9 +10,11 @@
 //   • home_spread is signed from the HOME team's perspective (negative = home favored).
 //   • underdog_team is the ACTUAL underdog; underdog_spread is stored POSITIVE. A
 //     pick'em (spread 0) has no underdog → both NULL.
-//   • buildGameRows also surfaces `week` (CFBD week number) so the poller can fan a
-//     shaped row out to every pool's matching cfb.weeks row. `week` is stripped before
-//     the row is written to cfb.games (which keys off week_id, not week_number).
+//   • buildGameRows also surfaces `week` (CFBD's OWN week number) so the poller can fan
+//     a shaped row out to every pool's matching cfb.weeks row. `week` is stripped
+//     before the row is written to cfb.games (which keys off week_id, not
+//     week_number). See WEEK_ZERO_CFBD_WEEK below for why that fan-out needs more than
+//     a straight week-number match.
 
 // CFBD has shipped both snake_case and camelCase field names across versions.
 export function field(obj: any, ...names: string[]) {
@@ -20,6 +22,43 @@ export function field(obj: any, ...names: string[]) {
     if (obj?.[n] !== undefined && obj?.[n] !== null) return obj[n]
   }
   return null
+}
+
+// ── "Week 0" (the pre-Labor-Day slate — e.g. TCU/UNC) ───────────────────────────────
+// CFBD does NOT give this slate its own week number — confirmed against real CFBD
+// output, not assumed. It lumps those games together with the following weekend's
+// real Week 1 games under the SAME week: 1. So arithmetic can't split them; only
+// kickoff date can. cfb.weeks.week_number = 0 is the fan-facing "Week 0" a pool can
+// start at (see the 20260817 migration); it always draws its games from CFBD's week 1.
+//
+// The date window is deliberately a manual, per-season lookup, not computed — "the
+// Saturday before Labor Day" shifts every year and CFBD's own boundary for it isn't
+// worth reverse-engineering. UPDATE THIS before each new season Week 0 support is
+// needed; a season missing from the map just never resolves a game to Week 0 (its
+// week-1 games all land in week_number 1, i.e. Week 0 support silently does nothing
+// for that season — not broken, just inert).
+export const WEEK_ZERO_CFBD_WEEK = 1
+
+// [start, end) UTC bounds, generous enough to cover a Saturday-night ET kickoff that
+// crosses into the next UTC day. Confirmed for 2026: the slate plays Sat 8/29.
+const WEEK_ZERO_WINDOW: Record<number, [string, string]> = {
+  2026: ['2026-08-29T00:00:00Z', '2026-08-31T00:00:00Z'],
+}
+
+// Does this CFBD game (already known to report week: WEEK_ZERO_CFBD_WEEK) actually
+// belong to the Week 0 slate, by kickoff date? False for a season with no configured
+// window, or a game with no kickoff time yet.
+export function isWeekZeroGame(season: number, kickoffIso: string | null | undefined): boolean {
+  const window = WEEK_ZERO_WINDOW[season]
+  if (!window || !kickoffIso) return false
+  const [start, end] = window
+  return kickoffIso >= start && kickoffIso < end
+}
+
+// cfb.weeks.week_number 0 → the CFBD week its games actually live under. (Every other
+// week_number passes through unchanged — no season-wide offset, only Week 0 is special.)
+export function ourWeekToCfbdWeek(ourWeek: number): number {
+  return ourWeek === 0 ? WEEK_ZERO_CFBD_WEEK : ourWeek
 }
 
 // Median of a numeric list (pools multiple providers' spreads).

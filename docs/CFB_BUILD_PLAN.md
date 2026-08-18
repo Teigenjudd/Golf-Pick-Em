@@ -346,6 +346,10 @@ same shape as golf's `poll-leaderboard`. Two modes: grade one week (`{ week_id }
 (cron mode). CFBD's `/games` endpoint is deduped by the real `(season, week_number)` — one
 fetch fanned out to every event's games sharing it, mirroring the golf poller's per-tournament
 dedup (D3) — and counted against `public.api_usage.cfbd_calls` under the shared 1000/mo cap.
+(Grouping key is actually the *resolved* CFBD week, via `ourWeekToCfbdWeek` in
+`_shared/cfbSlate.ts` — identical to `week_number` for every week except our Week 0, which
+draws from CFBD's week 1 and so groups with week_number 1. See `agents/pm/DECISIONS.md`,
+2026-08-18.)
 For each due week it writes final scores onto `cfb.games`, grades every pick with the shared
 scoring engine, sets the week's status to `graded` (or leaves it `locked` if any game isn't
 yet `completed`), and recomputes each affected pool's season-cumulative

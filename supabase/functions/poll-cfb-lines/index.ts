@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { buildGameRows } from '../_shared/cfbSlate.ts'
+import { buildGameRows, WEEK_ZERO_CFBD_WEEK, isWeekZeroGame } from '../_shared/cfbSlate.ts'
 
 // poll-cfb-lines — the automated slate + spread refresher. Runs server-side (service
 // role), on an hourly-ish cron (armed in PR9). Replaces the old manual per-week import:
@@ -151,13 +151,19 @@ Deno.serve(async (req) => {
         const koMs = row.kickoff_at ? Date.parse(row.kickoff_at) : NaN
         if (Number.isFinite(koMs) && koMs <= nowMs) continue
 
-        const targets = weekIdsBySeasonWeek.get(`${season}::${row.week}`) ?? []
+        // CFBD lumps the Week 0 slate into the same week: WEEK_ZERO_CFBD_WEEK as the
+        // following weekend's real Week 1 — only kickoff date tells them apart. Every
+        // other week number is our week_number, unmodified.
+        const ourWeek = row.week === WEEK_ZERO_CFBD_WEEK && isWeekZeroGame(season, row.kickoff_at)
+          ? 0
+          : row.week
+        const targets = weekIdsBySeasonWeek.get(`${season}::${ourWeek}`) ?? []
         if (!targets.length) continue // no pool plays this week
 
         const prev = currentSpread.get(row.cfbd_game_id)
         if (prev === undefined || Number(prev) !== Number(row.home_spread)) {
           historyRows.push({
-            cfbd_game_id: row.cfbd_game_id, season_year: season, week_number: row.week,
+            cfbd_game_id: row.cfbd_game_id, season_year: season, week_number: ourWeek,
             home_team: row.home_team, away_team: row.away_team,
             home_spread: row.home_spread,
             underdog_team: row.underdog_team, underdog_spread: row.underdog_spread,
