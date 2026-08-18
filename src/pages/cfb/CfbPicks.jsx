@@ -11,7 +11,7 @@ import {
   getCfbPool, getCfbPoolWeeks, getCfbWeekGames, getCfbWeekPicks, submitCfbWeekPicks,
   weekIsLocked,
 } from '../../lib/cfb'
-import { cfbCardValidity, buildPicksPayload, shapeCard } from '../../utils/cfbCard'
+import { cfbCardValidity, buildPicksPayload, shapeCard, gameHasStarted } from '../../utils/cfbCard'
 import { conferencesInPlay, filterAndSortGames } from '../../utils/cfbGameFilters'
 import { formatLockLabel } from '../../utils/cfbFormat'
 import { CFB_THEME } from '../../theme/cfb'
@@ -126,6 +126,12 @@ export default function CfbPicks() {
   // resets the card (resubmitting re-locks every line to today's numbers, not what
   // was originally picked — cfb_submit_week_picks reads the current game row), then
   // lands here with this flag so the builder starts empty instead of pre-filled.
+  // EXCEPT for a game that's already kicked off: the RPC's kickoff lock won't let a
+  // resubmit drop that game's pick (only the exact on-file value carries forward), so
+  // a full wipe would make it impossible to ever resubmit again once any game in the
+  // week has started. Reset therefore only clears picks on games still open — a
+  // started game's pick is carried forward pre-filled and locked (CfbGameCard already
+  // disables it), same as the non-reset path.
   const resetRequested = searchParams.get('reset') === '1'
 
   // ── target-week slate + this user's existing card ───────────────────────────
@@ -147,26 +153,25 @@ export default function CfbPicks() {
       setMyPicks(mine)
       setHasExistingCard(mine.length > 0)
 
-      if (resetRequested) {
-        setAtsPicks({})
-        setDoubleDownGameId(null)
-        setUnderdogGameId(null)
-      } else {
-        const ats = {}
-        let dd = null
-        let dog = null
-        mine.forEach(pk => {
-          if (pk.pick_type === 'ats') {
-            ats[pk.game_id] = pk.selected_team
-            if (pk.is_double_down) dd = pk.game_id
-          } else if (pk.pick_type === 'underdog') {
-            dog = pk.game_id
-          }
-        })
-        setAtsPicks(ats)
-        setDoubleDownGameId(dd)
-        setUnderdogGameId(dog)
-      }
+      const gamesById = Object.fromEntries(g.map(gm => [gm.id, gm]))
+      const carryForward = resetRequested
+        ? mine.filter(pk => gameHasStarted(gamesById[pk.game_id]))
+        : mine
+
+      const ats = {}
+      let dd = null
+      let dog = null
+      carryForward.forEach(pk => {
+        if (pk.pick_type === 'ats') {
+          ats[pk.game_id] = pk.selected_team
+          if (pk.is_double_down) dd = pk.game_id
+        } else if (pk.pick_type === 'underdog') {
+          dog = pk.game_id
+        }
+      })
+      setAtsPicks(ats)
+      setDoubleDownGameId(dd)
+      setUnderdogGameId(dog)
       setGamesLoaded(true)
     })().catch(err => { if (active) { setError(err.message); setGamesLoaded(true) } })
     return () => { active = false }
@@ -181,7 +186,17 @@ export default function CfbPicks() {
     }
   }, [atsPicks, doubleDownGameId])
 
+  // Games whose kickoff has already passed — the client-side mirror of the RPC's
+  // kickoff lock. Recomputed whenever the slate loads; a game crossing kickoff
+  // mid-session just means the guard catches up on the next re-render (the RPC is
+  // the real backstop either way).
+  const startedGameIds = useMemo(
+    () => new Set(games.filter(gameHasStarted).map(g => g.id)),
+    [games],
+  )
+
   const handlePickAts = useCallback((gameId, team) => {
+    if (startedGameIds.has(gameId)) return // kicked off — frozen
     if (underdogGameId === gameId) return // mutual exclusion — this game is the dog pick
     setAtsPicks(prev => {
       const already = prev[gameId]
@@ -193,17 +208,19 @@ export default function CfbPicks() {
       if (already == null && Object.keys(prev).length >= 5) return prev // 5 slots full
       return { ...prev, [gameId]: team }
     })
-  }, [underdogGameId])
+  }, [underdogGameId, startedGameIds])
 
   const handleToggleDoubleDown = useCallback((gameId) => {
+    if (startedGameIds.has(gameId)) return // kicked off — frozen
     if (atsPicks[gameId] == null) return // only legal on a current ATS pick
     setDoubleDownGameId(dd => (dd === gameId ? null : gameId))
-  }, [atsPicks])
+  }, [atsPicks, startedGameIds])
 
   const handlePickUnderdog = useCallback((gameId) => {
+    if (startedGameIds.has(gameId)) return // kicked off — frozen
     if (atsPicks[gameId] != null) return // mutual exclusion — this game is an ATS pick
     setUnderdogGameId(dog => (dog === gameId ? null : gameId))
-  }, [atsPicks])
+  }, [atsPicks, startedGameIds])
 
   const validity = useMemo(
     () => cfbCardValidity({ atsPicks, doubleDownGameId, underdogGameId }),
@@ -412,7 +429,8 @@ export default function CfbPicks() {
 
         {resetRequested ? (
           <p className="text-[12px] mb-3" style={{ color: CFB_THEME.muted2 }}>
-            Your previous picks were reset — build a fresh card from today's lines.
+            Your picks on games that haven't started were reset — build those against
+            today's lines. Anything already underway stays locked in as you had it.
           </p>
         ) : hasExistingCard && (
           <p className="text-[12px] mb-3" style={{ color: CFB_THEME.muted2 }}>
@@ -449,6 +467,7 @@ export default function CfbPicks() {
                 isUnderdogPick={underdogGameId === game.id}
                 atsFull={Object.keys(atsPicks).length >= 5}
                 dogFilled={underdogGameId != null}
+                started={startedGameIds.has(game.id)}
                 onPickAts={handlePickAts}
                 onToggleDoubleDown={handleToggleDoubleDown}
                 onPickUnderdog={handlePickUnderdog}

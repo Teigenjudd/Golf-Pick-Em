@@ -59,8 +59,10 @@ export default function CfbPoolTile({ tile }) {
   // Editing an already-submitted card re-locks EVERY line to today's numbers on
   // resubmit, not what was originally picked (cfb_submit_week_picks reads the
   // current game row, not the old locked_spread). So editing confirms up front, then
-  // lands on a cleared builder (?reset=1) rather than pre-filling the old picks —
-  // no stale-looking selections whose underlying line quietly changed.
+  // lands on a builder (?reset=1) that clears every not-yet-started pick — no
+  // stale-looking selections whose underlying line quietly changed. A pick on a game
+  // that's already kicked off is carried forward pre-filled and locked instead of
+  // cleared: the RPC's kickoff lock won't let a resubmit drop it (CfbPicks.jsx).
   function confirmEdit() {
     setConfirmingReset(false)
     navigate(`/cfb/pool/${tile.poolId}/picks?reset=1`)
@@ -162,8 +164,8 @@ export default function CfbPoolTile({ tile }) {
 
       <BottomSheet open={confirmingReset} onClose={() => setConfirmingReset(false)} title="Edit your card?">
         <p className="text-[13.5px] leading-relaxed mb-5 text-[#736A5F]">
-          All your existing picks for this week will be reset — you&apos;ll be offered only today&apos;s
-          lines to build a fresh card from.
+          Your picks on games that haven&apos;t started will be reset — you&apos;ll be offered only
+          today&apos;s lines to build those fresh. Anything already underway stays locked in as-is.
         </p>
         <div className="flex gap-[9px]">
           <button
