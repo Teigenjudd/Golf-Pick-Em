@@ -141,6 +141,16 @@ false → cover **+1**, no bonus.
   underdog on a separate game). The picks are flagged `auto_filled` and **score normally**.
 - **Auto-fill forfeits the double-down** for that week — an auto-filled card carries no double-down,
   so no bonus is possible that week.
+- **Per-game kickoff lock, on top of the week-level lock.** A week's `lock_time` can be set well
+  before its last kickoff (e.g. Friday evening, to give players time to build Saturday's picks) —
+  but that would leave earlier games (Thursday/Friday night) pickable after they've already
+  started. So `cfb_submit_week_picks` separately enforces, per game: once a game's `kickoff_at` has
+  passed, its slot in the submitted card must exactly match what's already on file — an unchanged
+  carry-forward is fine (the client always resubmits the whole 6-pick card), but a new, changed, or
+  dropped pick on that game is rejected. `CfbGameCard`/`CfbPicks.jsx` grey out started games
+  client-side so a player can't produce a payload the RPC would reject; the "Edit picks" reset flow
+  (`?reset=1`) only clears not-yet-started games, carrying forward any already-started pick
+  pre-filled and locked. See `supabase/migrations/20260817000000_cfb_game_kickoff_lock.sql`.
 
 ---
 
