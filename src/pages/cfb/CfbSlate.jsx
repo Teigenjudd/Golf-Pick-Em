@@ -90,8 +90,11 @@ export default function CfbSlate() {
   // order as CfbPoolDetail's selectedWeek.
   const selectedWeek = useMemo(() => {
     if (!weeks.length) return null
-    const wanted = Number(searchParams.get('week'))
-    const byNum = weeks.find(w => w.week_number === wanted)
+    // A missing ?week param must NOT resolve to Week 0 — see CfbPoolDetail's
+    // selectedWeek for why (Week 0 is a real, selectable week now).
+    const wantedRaw = searchParams.get('week')
+    const wanted = wantedRaw != null ? Number(wantedRaw) : null
+    const byNum = wanted != null ? weeks.find(w => w.week_number === wanted) : null
     if (byNum) return byNum
     return weeks.find(w => w.status !== 'graded') ?? weeks[weeks.length - 1]
   }, [weeks, searchParams])
