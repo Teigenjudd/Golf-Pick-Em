@@ -16,6 +16,36 @@
 
 ---
 
+## 2026-08-18 — CFB Week 0 maps to CFBD's week 1 by kickoff date; unconfigured-season guard deferred
+
+**Decision:** The 2026-08-17 entry below assumed `cfb.weeks.week_number = 0` would draw its
+games from CFBD the same way any other week does — by CFBD reporting a matching week number.
+Live testing after that PR shipped found this false: CFBD does **not** give the pre-Labor-Day
+slate (TCU/UNC, etc.) its own week number — it lumps those games into the same `week: 1` as
+the following weekend's real Week 1. So the Week 0 row from #62 could exist but nothing ever
+populated it; the poller and grader were both matching games to weeks by CFBD's raw week
+number, which conflates the two. Fixed by teaching `_shared/cfbSlate.ts` the split: a
+`WEEK_ZERO_CFBD_WEEK = 1` constant, a manual per-season UTC date window
+(`WEEK_ZERO_WINDOW`, currently only 2026), `isWeekZeroGame` (route a `week: 1` game to our
+week 0 vs. 1 by kickoff date), and `ourWeekToCfbdWeek` (0 → 1, every other week passes
+through unchanged — not a season-wide offset). `poll-cfb-lines` uses this to fan the right
+games to the right `cfb.weeks` row; `grade-cfb-week` uses it to group week 0 and week 1 into
+one CFBD `/games` call (cost dedup, not a correctness requirement — each week is still graded
+individually off its own `cfb.games` rows). See
+`agents/senior-dev/reviews/feat-cfb-week-0-cfbd-mapping.md`.
+
+**Founder call — deferred guard rail:** the date window is a manual per-season lookup; a
+season missing from it means a Week-0 pool created for it comes up permanently empty (no
+slate, autofill can't fill what was never imported) with no error surfaced anywhere. Asked
+whether to guard this now (warn/block `First Week = 0` in `CreateCfbPool.jsx` for an
+unconfigured season) or defer, the founder chose **defer — log it, don't build it**: severity
+is low because pool creation is founder-only and the founder is the one who'd need to
+remember the yearly edit anyway. Logged as `docs/BACKLOG.md` C7. **What would make us
+revisit:** CFB pool creation becoming self-serve (removes the "only the founder can trigger
+this" mitigation), or a season actually getting missed in practice.
+
+---
+
 ## 2026-08-17 — CFB pools can start at Week 0; `?week=0` is a first-class deep-link
 
 **Decision:** Lowered the CFB admin create-pool form's "First Week"/"Last Week" floor from 1

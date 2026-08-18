@@ -189,6 +189,18 @@
   it forward if signup drop-off shows up on social channels. See the ROADMAP status log
   (2026-07-15) and the C1 Closed entry.
 
+- [ ] ⚪ **C7 — CFB Week 0: an unconfigured season fails silently.**
+  `WEEK_ZERO_WINDOW` (`supabase/functions/_shared/cfbSlate.ts`) is a manual, per-season
+  UTC date map (only 2026 is populated) that tells CFBD's lumped `week: 1` games apart
+  into our Week 0 vs. Week 1. Creating a Week-0 pool for a season missing from that map
+  leaves the week permanently empty — no game ever resolves to it, so no slate ever
+  populates, and `autofill_week` can't fill a card it was never given games for — with
+  no error surfaced anywhere in the admin UI. Low severity today (pool creation is
+  founder-only, and the founder is the one who'd forget to update the map). **Fix:** warn
+  or block "First Week = 0" in `CreateCfbPool.jsx` when the selected season isn't in
+  `WEEK_ZERO_WINDOW`, before this is relied on for a season nobody remembered to add.
+  Decided not to build now — see `agents/pm/DECISIONS.md` (2026-08-18).
+
 ---
 
 ## D. Performance
