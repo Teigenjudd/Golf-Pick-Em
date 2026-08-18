@@ -62,8 +62,12 @@ export default function CfbPoolDetail() {
   // else the last. Default-selects "the week in focus."
   const selectedWeek = useMemo(() => {
     if (!weeks.length) return null
-    const wanted = Number(searchParams.get('week'))
-    const byNum = weeks.find(w => w.week_number === wanted)
+    // A missing ?week param must NOT resolve to Week 0 — Number(null) is 0, so the
+    // param's presence is checked separately from its value (Week 0 is a real week now
+    // that pools can start there, e.g. the pre-Labor-Day TCU/UNC slate).
+    const wantedRaw = searchParams.get('week')
+    const wanted = wantedRaw != null ? Number(wantedRaw) : null
+    const byNum = wanted != null ? weeks.find(w => w.week_number === wanted) : null
     if (byNum) return byNum
     return weeks.find(w => w.status !== 'graded') ?? weeks[weeks.length - 1]
   }, [weeks, searchParams])

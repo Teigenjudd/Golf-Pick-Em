@@ -16,6 +16,27 @@
 
 ---
 
+## 2026-08-17 — CFB pools can start at Week 0; `?week=0` is a first-class deep-link
+
+**Decision:** Lowered the CFB admin create-pool form's "First Week"/"Last Week" floor from 1
+to 0, so pools can seed CFBD's real pre-Labor-Day slate (e.g. TCU/UNC) as Week 0 — nothing in
+`cfb.weeks` (no range check on `week_number`, just `NOT NULL` + `UNIQUE(event_id,
+week_number)`) was blocking it; the admin form was the only gate. This makes `?week=0` a
+real, resolvable value everywhere a page reads a `?week=N` URL param (`CfbPicks`,
+`CfbPoolDetail`, `CfbSlate`, `DemoCfbPoolDetail`), so those four sites now distinguish "param
+absent" from "param is 0" (`!= null`, not truthiness) — previously a missing param
+coerced to `0` via bare `Number()`, which was harmless before Week 0 existed but would have
+silently resolved to it instead of the intended current/open-week default. Confirmed with
+the founder (raised as an open question in the senior-dev review,
+`agents/senior-dev/reviews/feat-cfb-week-0-support.md`): an old bookmark/share link carrying
+`?week=0` will now land on a Week 0 card rather than falling through to "current week" — no
+migration needed since no such links could exist before this branch. **What would make us
+revisit:** if CFBD's Week 0 numbering ever turns out inconsistent season-to-season (e.g. some
+years omit it), the admin form's floor may need to move from a hardcoded 0 to something
+provider-driven.
+
+---
+
 ## 2026-08-17 — CFB per-game kickoff lock added; "Edit picks" reset supersedes PR #58's full-reset call to a partial one
 
 **Decision:** `cfb_submit_week_picks` now enforces a lock per game, not just per week: once

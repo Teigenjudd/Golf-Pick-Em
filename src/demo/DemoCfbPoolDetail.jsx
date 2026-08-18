@@ -28,8 +28,11 @@ export default function DemoCfbPoolDetail() {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const selectedWeek = useMemo(() => {
-    const wanted = Number(searchParams.get('week'))
-    const byNum = demoCfbWeeks.find(w => w.week_number === wanted)
+    // A missing ?week param must NOT resolve to Week 0 — see CfbPoolDetail's
+    // selectedWeek for why (Week 0 is a real, selectable week now).
+    const wantedRaw = searchParams.get('week')
+    const wanted = wantedRaw != null ? Number(wantedRaw) : null
+    const byNum = wanted != null ? demoCfbWeeks.find(w => w.week_number === wanted) : null
     if (byNum) return byNum
     return demoCfbWeeks.find(w => w.status !== 'graded') ?? demoCfbWeeks[demoCfbWeeks.length - 1]
   }, [searchParams])

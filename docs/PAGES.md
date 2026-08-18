@@ -449,6 +449,7 @@ mirroring `createGolfPool`. Shipped 2026-08-13, PR #46.
 **Design notes:**
 - Same input/label/card styling as `CreateTournament` (`rounded-[11px] border-[1.5px] border-[#EAD8C4] bg-[#FFFAF6]` inputs, sand page background).
 - Field is labeled "First-Week Lock," not "Week 1 Lock" — a pool can start at any week (e.g. `startWeek=4`), so the field always sets whichever week is seeded first, not literally week 1 (senior-review nit, fixed in this PR).
+- "First Week"/"Last Week" floor at 0, not 1 — CFBD has a real Week 0 (the pre-Labor-Day slate, e.g. TCU/UNC), and nothing in the `cfb.weeks` schema blocks it, so this form is the only gate. Validity checks the raw field isn't blank before coercing to a number (`startWeek !== '' && Number(startWeek) >= 0`), so an emptied field can't silently coerce to "Week 0" and pass.
 
 ---
 
@@ -509,7 +510,9 @@ by season total** (`public.pool_standings`, written by `grade-cfb-week`). A **we
 selector** (`CfbWeekSelector`, rendered inside the navy `PoolHeader` band) scopes the
 scorecard-expand and the widget row to one chosen week — it does **not** re-rank the
 season standings. Selection lives in a `?week=N` query param; on load it resolves to
-that week if valid, else the first non-graded week, else the last.
+that week if valid, else the first non-graded week, else the last. A missing param is
+distinguished from an explicit `?week=0` (checked via `!= null`, not truthiness) so it
+doesn't coerce to Week 0 — a real, selectable week now that pools can start there.
 
 **Data available** (`src/lib/cfb.js`, all read-only):
 - `getCfbPool(poolId)` — pool row + `stake_amount`/`payout_structure` (added this PR so the Prize Pool widget can render)
@@ -577,11 +580,12 @@ surface). Also linked from a new joiner's CFB Join card ("Join & make picks →"
   friendly message on rejection (surfaced as-is)
 
 **Target-week resolution:** honors a locked `?week=N` deep-link (so a bookmarked link to a
-past week still resolves there), else the earliest still-open week (the one to build), else
-— with nothing open — the most recent locked/graded week (`weekIsLocked(w)` — status
-`locked`/`graded`, or `lock_time` in the past — exported from `src/lib/cfb.js` and shared
-with CfbPoolDetail so the two pages can't drift). `null` only when the pool has no weeks at
-all.
+past week still resolves there — a present-but-`0` param resolves to Week 0, distinguished
+from a missing param via `!= null`, not truthiness), else the earliest still-open week (the
+one to build), else — with nothing open — the most recent locked/graded week
+(`weekIsLocked(w)` — status `locked`/`graded`, or `lock_time` in the past — exported from
+`src/lib/cfb.js` and shared with CfbPoolDetail so the two pages can't drift). `null` only
+when the pool has no weeks at all.
 
 **Editing an existing card resets the not-yet-started part of it:** the Dashboard tile's
 "Edit picks" button confirms first ("Your picks on games that haven't started will be
@@ -686,8 +690,9 @@ inlining the list. No pick state — pure viewing, no writes.
 - `getCfbPool(poolId)`, `getCfbPoolWeeks(eventId)` — pool + season's weeks
 - `getCfbWeekGames(weekId)` — the selected week's `cfb.games`, including live/final score
 
-**Week resolution:** honors `?week=N` if valid, else the first non-graded week, else the
-last — same order as `CfbPoolDetail`'s `selectedWeek`. Has its own `CfbWeekSelector`
+**Week resolution:** honors `?week=N` if valid (missing vs. explicit `?week=0` disambiguated
+the same way as `CfbPoolDetail`, since Week 0 is a real week now), else the first non-graded
+week, else the last — same order as `CfbPoolDetail`'s `selectedWeek`. Has its own `CfbWeekSelector`
 dropdown in the header (shared component, §Shared Components — used here and on
 pool-detail).
 
@@ -736,7 +741,8 @@ pool-detail).
 
 **What must be on this page:**
 - Same layout as CfbPoolDetail: navy `PoolHeader` + week selector, a Week 2 action banner ("Make picks →" / "Edit picks →" to `/demo/cfb/picks`), `StandingsCard` (label "Season Standings", with `CfbRulesButton` as its `action`) wrapping `CfbStandings`, and `WidgetGrid`/`CfbWidgets`
-- Week resolution: honors `?week=N`, else the earliest non-graded week, else the last
+- Week resolution: honors `?week=N` (missing vs. explicit `?week=0` disambiguated, matching
+  `CfbPoolDetail`), else the earliest non-graded week, else the last
 
 ---
 

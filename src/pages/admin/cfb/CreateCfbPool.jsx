@@ -34,7 +34,11 @@ export default function CreateCfbPool() {
   function updatePayout(i, val) { setPayouts(p => p.map((x, idx) => (idx === i ? val : x))) }
   const payoutSum = payouts.reduce((s, p) => s + (parseFloat(p) || 0), 0)
 
-  const weeksValid = Number(startWeek) >= 1 && Number(endWeek) >= Number(startWeek)
+  // Week 0 is a real CFBD week (the pre-Labor-Day slate — TCU/UNC, etc.), so the floor
+  // is 0, not 1 — but that means Number('') === 0 would let an emptied field pass as
+  // "Week 0" instead of failing validation, so blank is checked explicitly.
+  const weeksValid = startWeek !== '' && endWeek !== ''
+    && Number(startWeek) >= 0 && Number(endWeek) >= Number(startWeek)
   const canSubmit = name.trim() && seasonYear && weeksValid && firstLockTime
 
   async function handleCreate() {
@@ -118,7 +122,7 @@ export default function CreateCfbPool() {
               <label className={labelClass}>First Week</label>
               <input
                 type="number"
-                min={1}
+                min={0}
                 max={20}
                 value={startWeek}
                 onChange={e => setStartWeek(e.target.value)}
@@ -129,7 +133,7 @@ export default function CreateCfbPool() {
               <label className={labelClass}>Last Week</label>
               <input
                 type="number"
-                min={1}
+                min={0}
                 max={20}
                 value={endWeek}
                 onChange={e => setEndWeek(e.target.value)}
