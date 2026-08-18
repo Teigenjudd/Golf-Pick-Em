@@ -16,6 +16,15 @@ import { pickLine } from './cfbFormat'
 //   doubleDownGameId — a game_id that's a key of atsPicks, or null (≤1 double-down)
 //   underdogGameId   — a game_id (the mandatory 6th, distinct game), or null
 
+// True once a game's kickoff has passed — the client-side mirror of the RPC's
+// kickoff lock (see the 20260817000000 migration). A started game can't be newly
+// picked, changed, or dropped; the builder greys it out rather than letting a
+// player produce a payload the RPC will just reject.
+export function gameHasStarted(game) {
+  if (!game?.kickoff_at) return false
+  return new Date(game.kickoff_at) <= new Date()
+}
+
 // Live validity + counts for the sticky tracker. `valid` mirrors the RPC's whole-card
 // rule: exactly 5 ATS on 5 distinct games + exactly 1 underdog on a distinct 6th game +
 // the double-down (if any) is one of the 5 ATS games. `warning` is a short human string

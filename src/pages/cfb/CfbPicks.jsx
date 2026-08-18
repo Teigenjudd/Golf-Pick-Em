@@ -11,7 +11,7 @@ import {
   getCfbPool, getCfbPoolWeeks, getCfbWeekGames, getCfbWeekPicks, submitCfbWeekPicks,
   weekIsLocked,
 } from '../../lib/cfb'
-import { cfbCardValidity, buildPicksPayload, shapeCard } from '../../utils/cfbCard'
+import { cfbCardValidity, buildPicksPayload, shapeCard, gameHasStarted } from '../../utils/cfbCard'
 import { conferencesInPlay, filterAndSortGames } from '../../utils/cfbGameFilters'
 import { formatLockLabel } from '../../utils/cfbFormat'
 import { CFB_THEME } from '../../theme/cfb'
@@ -181,7 +181,17 @@ export default function CfbPicks() {
     }
   }, [atsPicks, doubleDownGameId])
 
+  // Games whose kickoff has already passed — the client-side mirror of the RPC's
+  // kickoff lock. Recomputed whenever the slate loads; a game crossing kickoff
+  // mid-session just means the guard catches up on the next re-render (the RPC is
+  // the real backstop either way).
+  const startedGameIds = useMemo(
+    () => new Set(games.filter(gameHasStarted).map(g => g.id)),
+    [games],
+  )
+
   const handlePickAts = useCallback((gameId, team) => {
+    if (startedGameIds.has(gameId)) return // kicked off — frozen
     if (underdogGameId === gameId) return // mutual exclusion — this game is the dog pick
     setAtsPicks(prev => {
       const already = prev[gameId]
@@ -193,17 +203,19 @@ export default function CfbPicks() {
       if (already == null && Object.keys(prev).length >= 5) return prev // 5 slots full
       return { ...prev, [gameId]: team }
     })
-  }, [underdogGameId])
+  }, [underdogGameId, startedGameIds])
 
   const handleToggleDoubleDown = useCallback((gameId) => {
+    if (startedGameIds.has(gameId)) return // kicked off — frozen
     if (atsPicks[gameId] == null) return // only legal on a current ATS pick
     setDoubleDownGameId(dd => (dd === gameId ? null : gameId))
-  }, [atsPicks])
+  }, [atsPicks, startedGameIds])
 
   const handlePickUnderdog = useCallback((gameId) => {
+    if (startedGameIds.has(gameId)) return // kicked off — frozen
     if (atsPicks[gameId] != null) return // mutual exclusion — this game is an ATS pick
     setUnderdogGameId(dog => (dog === gameId ? null : gameId))
-  }, [atsPicks])
+  }, [atsPicks, startedGameIds])
 
   const validity = useMemo(
     () => cfbCardValidity({ atsPicks, doubleDownGameId, underdogGameId }),
@@ -449,6 +461,7 @@ export default function CfbPicks() {
                 isUnderdogPick={underdogGameId === game.id}
                 atsFull={Object.keys(atsPicks).length >= 5}
                 dogFilled={underdogGameId != null}
+                started={startedGameIds.has(game.id)}
                 onPickAts={handlePickAts}
                 onToggleDoubleDown={handleToggleDoubleDown}
                 onPickUnderdog={handlePickUnderdog}

@@ -6,6 +6,14 @@
   HTML and not SVG: Chrome loads the real Barlow Condensed / Inter webfonts, so the card
   is set in the actual brand faces. Crawlers won't render SVG, and iMessage needs a PNG.
 
+  This card is the app's front door — every sport's invite unfurls through it (per-sport
+  images are backlogged, docs/BACKLOG.md H5) — so it's styled off the neutral general
+  register (sand background, brand-rust wordmark, same tokens as Login/Dashboard), not
+  golf's fairway/gold pool-detail look. The two shields on the right are one badge per
+  sport Poold actually runs today — Golf's SportBadge default (src/components/
+  SportBadge.jsx DEFAULT_BADGE) and CFB's (src/theme/cfb.js CFB_BADGE) — not a specific
+  tournament's badge, so the card doesn't imply "golf majors only."
+
   Edit this file, re-run `npm run og`, commit the PNG.
 -->
 <html lang="en">
@@ -25,18 +33,10 @@
         justify-content: center;
         gap: 26px;
         padding: 0 96px;
-        background: linear-gradient(105deg, #1B4332, #0D1F18);
+        background: #F8F0E4; /* sand — the general/dashboard register's page background */
         font-family: 'Inter', system-ui, sans-serif;
         overflow: hidden;
         position: relative;
-      }
-
-      /* the gold rule, same accent the app uses on the scorecard expand */
-      .rule {
-        position: absolute;
-        left: 0; top: 0; bottom: 0;
-        width: 14px;
-        background: #C9A368;
       }
 
       .wordmark {
@@ -45,7 +45,7 @@
         font-size: 132px;
         letter-spacing: .07em;
         line-height: .9;
-        color: #F8F5EE;
+        color: #C14A18; /* brand rust — same as the Login/Dashboard wordmark */
       }
 
       .tagline {
@@ -53,14 +53,14 @@
         font-weight: 700;
         font-style: italic;
         font-size: 40px;
-        color: #C9A368;
+        color: #9E9488; /* warm-400, matching Login's tagline */
         letter-spacing: .01em;
       }
 
       .promise {
         font-size: 26px;
         font-weight: 500;
-        color: rgba(248, 245, 238, .72);
+        color: #4A4440; /* warm-600 */
         letter-spacing: .01em;
       }
 
@@ -103,8 +103,6 @@
     </style>
   </head>
   <body>
-    <div class="rule"></div>
-
     <div>
       <div class="wordmark">POOLD</div>
       <div class="tagline">Make it interesting.</div>
@@ -112,14 +110,15 @@
 
     <div class="promise">No app. No password. No download.</div>
 
+    <!-- one badge per sport Poold runs, not a specific tournament's -->
     <div class="badges">
-      <div class="badge" style="background:#162258; border:5px solid #C9A368">
-        <span class="l1">THE</span>
-        <span class="l2" style="color:#C9A368">OPEN</span>
+      <div class="badge" style="background:#1F6F47; border:5px solid #E6C66B">
+        <span class="l1">GO</span>
+        <span class="l2" style="color:#E6C66B">GOLF</span>
       </div>
-      <div class="badge" style="background:#004F2D; border:5px solid #E8C872">
-        <span class="l1">MAS</span>
-        <span class="l2" style="color:#E8C872">AUGUSTA</span>
+      <div class="badge" style="background:#101C3D; border:5px solid #D6291B">
+        <span class="l1">CFB</span>
+        <span class="l2" style="color:#D6291B">26</span>
       </div>
     </div>
   </body>

@@ -16,6 +16,9 @@ import TeamCrest from './TeamCrest'
 //   isUnderdogPick    — is this game the mandatory underdog pick?
 //   atsFull           — true when 5 ATS slots are already used elsewhere (globally)
 //   dogFilled         — true when the underdog slot is already used elsewhere (globally)
+//   started           — true once this game's kickoff has passed — every pick control
+//                        is disabled (an already-selected chip stays visibly selected,
+//                        just not clickable); server-side backstop in the RPC
 //   onPickAts(gameId, team)
 //   onToggleDoubleDown(gameId)
 //   onPickUnderdog(gameId)
@@ -99,6 +102,7 @@ export default function CfbGameCard({
   isUnderdogPick,
   atsFull,
   dogFilled,
+  started,
   onPickAts,
   onToggleDoubleDown,
   onPickUnderdog,
@@ -106,13 +110,13 @@ export default function CfbGameCard({
   const homeLine = formatSpread(game.home_spread)
   const awayLine = formatSpread(-Number(game.home_spread))
 
-  const atsChipsDisabled = isUnderdogPick || (atsFull && !atsSelectedTeam)
+  const atsChipsDisabled = started || isUnderdogPick || (atsFull && !atsSelectedTeam)
 
   const tier = underdogTier(game.underdog_spread)
   // Pick'em games (spread 0) have no underdog side — underdog_team is null and
   // tier is 0. No third chip at all in that case, rather than a dead "outright" option.
   const dogEligible = !!game.underdog_team && tier > 0
-  const dogChipDisabled = !!atsSelectedTeam || (dogFilled && !isUnderdogPick)
+  const dogChipDisabled = started || !!atsSelectedTeam || (dogFilled && !isUnderdogPick)
 
   // Shown on the double-down toggle whether or not it's flagged yet, so the effective
   // line is visible up front rather than only after committing to the flag.
@@ -137,7 +141,9 @@ export default function CfbGameCard({
             ? `${game.away_conference} @ ${game.home_conference}`
             : `${game.away_team} @ ${game.home_team}`}
         </span>
-        <span className="tabular-nums">{formatKickWithDate(game.kickoff_at)}</span>
+        <span className="tabular-nums" style={started ? { color: CFB_THEME.warnInk } : null}>
+          {started ? 'Started' : formatKickWithDate(game.kickoff_at)}
+        </span>
       </div>
 
       {/* flex-wrap: on a narrow card, the third (underdog) chip drops to its own row
@@ -175,12 +181,14 @@ export default function CfbGameCard({
         <button
           type="button"
           onClick={() => onToggleDoubleDown(game.id)}
+          disabled={started}
           className="w-full mt-[8px] flex items-center justify-between rounded-[10px] px-3 py-[8px] border cursor-pointer transition-colors"
-          style={
-            isDoubleDown
+          style={{
+            ...(isDoubleDown
               ? { background: CFB_THEME.accentSoft, borderColor: CFB_THEME.accent }
-              : { background: 'transparent', borderColor: CFB_THEME.border }
-          }
+              : { background: 'transparent', borderColor: CFB_THEME.border }),
+            ...(started ? { cursor: 'default', opacity: 0.7 } : null),
+          }}
         >
           <span
             className="text-[12.5px] font-semibold"
