@@ -1,8 +1,8 @@
 # Senior review — feat/cfb-kickoff-lock-and-og-card
 
-- **Reviewed:** 2026-08-17
-- **Head:** 530a66e (`git rev-parse --short HEAD`)
-- **Verdict:** CHANGES NEEDED
+- **Reviewed:** 2026-08-17 (re-reviewed after fix commit 9d8f9ad)
+- **Head:** 9d8f9ad (`git rev-parse --short HEAD`)
+- **Verdict:** APPROVE
 
 ## Summary
 Two unrelated changes bundled in one PR. (1) A per-game kickoff lock: `cfb_submit_week_picks`
@@ -12,87 +12,62 @@ page always resubmits the whole 6-pick card. Client mirror greys out started gam
 cosmetic reskin of the default OG link-preview image (golf look → neutral general register,
 two golf-major badges → one generic badge per sport).
 
-The SQL itself is well-built and, taken in isolation, correct — the `v_started`/`v_dropped`
-two-direction check is sound and the type-coercion worry the task flagged is a non-issue
-(all columns are `text`/`uuid`/`boolean`, no enums, so every jsonb→column comparison is a
-like-for-like match). The OG change is low-risk and fine. **But the server lock collides
-with the one edit path the UI actually offers**: the "Edit picks" button always resets the
-card to empty, and once any game has kicked off, an emptied-then-rebuilt card is guaranteed
-to be rejected by the very lock this PR adds. That is the feature's primary use case, so it
-can't merge as-is.
+The SQL is well-built and correct — the `v_started`/`v_dropped` two-direction check is sound,
+and the type-coercion worry the task flagged is a non-issue (all columns are
+`text`/`uuid`/`boolean`, no enums, so every jsonb→column comparison is like-for-like). The
+original blocker — the "Edit picks" reset flow dead-ending once any game kicked off — has
+been fixed and verified (see below). OG change is low-risk and fine. Remaining items are
+debt/nits, none blocking. **Clear to merge.**
 
 ## Findings
 
-### 1. BLOCKER — the "Edit picks" (reset) flow dead-ends the moment any game kicks off
-`src/components/cfb/CfbPoolTile.jsx:64-66,129-136` · `src/pages/cfb/CfbPicks.jsx:150-153,256-270`
-· `src/utils/cfbCard.js:67-84` · migration `v_dropped` at `...kickoff_lock.sql:183-199`
+### 1. RESOLVED (was BLOCKER) — reset flow no longer dead-ends after kickoff
+Fix commit `9d8f9ad`, `src/pages/cfb/CfbPicks.jsx:158-174`, `src/components/cfb/CfbPoolTile.jsx`.
 
-The whole point of this feature (per the migration header) is to let a week's `lock_time`
-sit late — Friday evening — while Thursday/Friday games that have already kicked off become
-un-pickable. So the intended live state is: **week still open, some games already started.**
+The fix implements the recommended option: on `?reset=1`, instead of wiping the whole card,
+it carries forward only the picks whose game has already started
+(`carryForward = mine.filter(pk => gameHasStarted(gamesById[pk.game_id]))`) and clears the
+rest. Traced end-to-end and it closes the hole:
 
-In that exact state, walk the only edit path the UI gives a submitted card:
-1. The tile's "Edit picks" button (the *sole* editor entry for a `card-in` week) always
-   navigates to `?reset=1` and the confirm sheet promises "all your existing picks will be
-   reset — you'll be offered only today's lines." There is no non-reset edit entry.
-2. `?reset=1` clears the builder to empty (`CfbPicks.jsx:150-153`).
-3. The started game is greyed out, so the player can't re-add it, and `buildPicksPayload`
-   (`cfbCard.js:67-84`) builds the payload *only* from current builder state — it never
-   re-injects the started game's on-file pick.
-4. On submit, the RPC's `v_dropped` counter finds the still-on-file pick for the started
-   game absent from the payload → raises *"One of those games has already kicked off — you
-   can't add, drop, or change that pick."*
+- The started game's on-file pick is pre-filled into `atsPicks`/`doubleDownGameId`/
+  `underdogGameId` and `CfbGameCard` keeps it greyed/disabled, so it's re-sent unchanged.
+- On resubmit, `buildPicksPayload` includes that exact carried-forward slot →
+  `matches_existing` is true → `v_started` doesn't count it, and it's present in the payload
+  → `v_dropped` doesn't count it. The submit succeeds. The previous guaranteed-rejection is
+  gone.
+- `gamesById` is built from the freshly-fetched slate `g` (not the not-yet-committed `games`
+  state), so the started-game determination is consistent with `startedGameIds` — correct.
+- Copy is accurate: the confirm sheet ("your picks on games that haven't started will be
+  reset… anything already underway stays locked in as-is"), the `resetRequested` banner, and
+  the `confirmEdit` comment all now describe the partial reset rather than a full wipe.
 
-Net: once a single game in the week has kicked off, a player who already submitted **cannot
-edit their card for the rest of the week** — every resubmit is rejected, with an error that
-blames a game they never touched. This is not an edge case; it's the headline scenario the
-feature creates. The lock logic is correct — the reset-based editor is what's incompatible
-with it.
-
-Fix direction: in reset mode, don't clear started games — pre-fill (and lock) the started
-slots and clear only the not-yet-started ones, so the carry-forward the RPC requires is
-actually present in the payload. (Note the reset flow's original rationale — "resubmit
-re-locks every line to today's numbers" — no longer holds for started games anyway, since
-their line *can't* change; pre-filling them is the more correct behavior now, not a
-workaround.) Whatever the fix, the confirm-sheet copy at `CfbPoolTile.jsx:164-167` needs to
-stop promising a full reset.
+Minor residual (not blocking): the RPC still recomputes `locked_spread` from the current game
+row for the carried-forward started game on re-insert, and `matches_existing` deliberately
+ignores `locked_spread` — so if a line somehow moved after kickoff, the started game's grading
+spread would silently shift on resubmit. This is a pre-existing property of the resubmit
+design (lines always re-lock to current) and lines don't move post-kickoff in practice, so
+it's academic — noting only for completeness.
 
 ### 2. DEBT (minor) — `p_picks` is expanded three times in one RPC call
 `...kickoff_lock.sql:96-146` (WITH `input`), `:183-195` (`v_dropped` subquery), `:231-239`
 (INSERT source). Correct, and at 6 elements the cost is nil, but the `v_dropped` check
-re-does the same jsonb-to-columns unpacking the `joined` CTE already computed
-(`matches_existing`). The dropped-pick count could be derived in the same pass (e.g. a FULL
-JOIN of existing↔input, or an anti-join count folded into the first `SELECT ... INTO`),
-leaving one canonical expansion. Not blocking; note for whoever next touches this RPC.
+re-does the same jsonb-to-columns unpacking the `joined` CTE already computed. Could be
+folded into the first pass (anti-join count). Not blocking; note for whoever next touches
+this RPC.
 
 ### 3. NIT — NULL `kickoff_at` fails open
 `...kickoff_lock.sql:142,188` and `cfbCard.js:71`. A game with no `kickoff_at` is treated as
-"not started" and stays fully pickable. That's the opposite posture from the week-join
-cutoff (which CLAUDE.md notes "fails closed if unset"). Almost certainly fine — CFBD always
-supplies a kickoff and the week `lock_time` is the real backstop — but worth a conscious
-nod. If a game ever lands with a null kickoff, this lock silently won't cover it.
+"not started" and stays fully pickable — opposite posture from the week-join cutoff (which
+fails closed if unset). Almost certainly fine (CFBD always supplies a kickoff; the week
+`lock_time` is the real backstop), just a conscious nod.
 
 ### 4. NIT — OG badge values are hand-copied, not read from the source constants
-`scripts/og/card.html:113-121`. The comment says the two badges mirror `DEFAULT_BADGE`
-(SportBadge) and `CFB_BADGE` (`theme/cfb.js`), but the hex/lines are hard-typed into the
-static HTML, so if those constants change the card won't. This is inherent to the
-static-HTML→PNG toolchain (the PNG is regenerated by hand anyway), so it's acceptable — just
-don't expect the card to track the constants automatically. Also cosmetic: the golf badge's
-line-1 "GO" over line-2 "GOLF" reads a little oddly next to "CFB"/"26".
+`scripts/og/card.html:113-121`. The hex/lines are hard-typed into the static HTML, so if
+`DEFAULT_BADGE`/`CFB_BADGE` change the card won't. Inherent to the static-HTML→PNG toolchain
+(PNG is regenerated by hand anyway), so acceptable. Also cosmetic: the golf badge's line-1
+"GO" over line-2 "GOLF" reads a little oddly next to "CFB"/"26".
 
 ## Questions for the founder
-
-1. **The edit-after-kickoff dead end (Finding 1) is the one real decision here.** The
-   feature is designed to produce "week open, some games already started," and in that state
-   the current "Edit picks" button leads to a guaranteed-failing submit. The clean fix is:
-   when a player edits after a game has started, keep that started game's pick locked in
-   place (pre-filled, greyed) instead of wiping the whole card — they edit only the games
-   that haven't kicked off yet. Is that the behavior you want? (The alternative — telling a
-   player "you can't edit any of your picks once the earliest game starts, even the Saturday
-   ones" — is simpler to build but a worse deal for the player and not what the migration
-   header describes.)
-
-2. **Bundling.** The kickoff lock and the OG-card reskin are unrelated and the OG half is
-   clean. If Finding 1 needs a round of work, do you want to split the OG change out so it
-   can land now, or hold both together? Your call — just flagging that one half is ready and
-   the other isn't.
+None — clean to merge. (The one blocker is fixed and verified. On bundling: the coordinator
+elected to keep the OG-card change in this PR since the fix was small and both were reviewed
+together — that's reasonable; no objection.)
