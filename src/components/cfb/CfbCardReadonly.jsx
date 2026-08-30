@@ -33,7 +33,7 @@ export default function CfbCardReadonly({ card, notice, variant, weekLabel }) {
         style={{ background: CFB_THEME.cardWhite, border: `1px solid ${CFB_THEME.border}` }}
       >
         <div className="w-[3px] flex-none" style={{ background: CFB_THEME.accent }} />
-        <div className="flex-1 px-4 py-3">
+        <div className="flex-1 min-w-0 px-4 py-3">
           <CfbCardRows
             picks={card.picks}
             total={card.total}

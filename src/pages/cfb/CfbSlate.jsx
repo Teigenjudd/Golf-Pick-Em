@@ -15,6 +15,26 @@ import { CFB_THEME } from '../../theme/cfb'
 // standings-first surface; this is the place to browse "where all the games are
 // sitting." No pick state at all — pure viewing.
 
+// Down/distance/possession/clock line, shown only while a game is in progress —
+// CFBD's scoreboard reports the spot and down already baked into one string
+// (`situation`, e.g. "1st & 10 at UNLV 26"); `possession` is just 'home'/'away' so it's
+// resolved to the actual team name here.
+function LiveDetail({ game }) {
+  const live = game.live
+  if (!live) return null
+  const possessionTeam = live.possession === 'home' ? game.home_team
+    : live.possession === 'away' ? game.away_team
+    : null
+  const clockLabel = [live.period ? `Q${live.period}` : null, live.clock].filter(Boolean).join(' ')
+  const parts = [possessionTeam ? `${possessionTeam} ball` : null, live.situation, clockLabel].filter(Boolean)
+  if (!parts.length) return null
+  return (
+    <div className="mt-[8px] pt-[8px] border-t text-[11.5px] truncate" style={{ borderColor: CFB_THEME.divider, color: CFB_THEME.muted2 }}>
+      {parts.join(' · ')}
+    </div>
+  )
+}
+
 function SlateRow({ game }) {
   const fav = favoriteLine(game)
   const live = game.status === 'in_progress'
@@ -52,6 +72,7 @@ function SlateRow({ game }) {
           )}
         </div>
       </div>
+      {live && <LiveDetail game={game} />}
     </div>
   )
 }

@@ -105,7 +105,7 @@ export default function CfbStandings({ entries, currentUserId, weekLabel }) {
             {isOpen && (
               <div className="flex border-t" style={{ borderColor: CFB_THEME.divider }}>
                 <div className="w-[3px] flex-none" style={{ background: CFB_THEME.accent }} />
-                <div className="flex-1 px-4 py-3" style={{ background: CFB_THEME.expandTint }}>
+                <div className="flex-1 min-w-0 px-4 py-3" style={{ background: CFB_THEME.expandTint }}>
                   {wk.state === 'nocard' ? (
                     <p className="text-[12.5px] py-2" style={{ color: CFB_THEME.muted }}>
                       No card in for {weekLabel}.
