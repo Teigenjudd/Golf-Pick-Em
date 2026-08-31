@@ -4,12 +4,21 @@ import { supabase } from '../lib/supabase'
 import Footer from '../components/Footer'
 
 export default function Login() {
+  const [mode, setMode] = useState('link') // 'link' | 'password'
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  async function handleSubmit(e) {
+  function switchMode(next) {
+    setMode(next)
+    setError(null)
+    setSent(false)
+    setPassword('')
+  }
+
+  async function handleLinkSubmit(e) {
     e.preventDefault()
     setLoading(true)
     setError(null)
@@ -22,6 +31,17 @@ export default function Login() {
     } else {
       setSent(true)
     }
+    setLoading(false)
+  }
+
+  async function handlePasswordSubmit(e) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    // On success AuthContext's onAuthStateChange picks up the session and
+    // RootRoute redirects to /dashboard -- nothing else to do here.
+    if (error) setError(error.message)
     setLoading(false)
   }
 
@@ -56,37 +76,114 @@ export default function Login() {
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit}>
-              <p className="text-[13px] text-warm-400 text-center mb-[22px] leading-[1.55]">
-                Sign in with your email.<br />No password — we&apos;ll email you a sign-in link.
-              </p>
-              <div className="mb-[14px]">
-                <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-warm-400 mb-[7px]">
-                  Email address
-                </div>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  className="w-full px-[15px] py-[13px] border-[1.5px] border-[#EAD8C4] rounded-[11px] text-[15px] text-[#1C1610] bg-[#FFFAF6] outline-none placeholder:text-warm-300"
-                />
+            <>
+              <div className="flex bg-[#F3E9DC] rounded-[10px] p-1 mb-5">
+                <button
+                  type="button"
+                  onClick={() => switchMode('link')}
+                  className={`flex-1 text-[12.5px] font-semibold py-2 rounded-[8px] border-none cursor-pointer transition-colors ${
+                    mode === 'link' ? 'bg-white text-brand shadow-sm' : 'bg-transparent text-warm-400'
+                  }`}
+                >
+                  Sign-in link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode('password')}
+                  className={`flex-1 text-[12.5px] font-semibold py-2 rounded-[8px] border-none cursor-pointer transition-colors ${
+                    mode === 'password' ? 'bg-white text-brand shadow-sm' : 'bg-transparent text-warm-400'
+                  }`}
+                >
+                  Password
+                </button>
               </div>
-              {error && <p className="text-sm text-birdie mb-3">{error}</p>}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-brand text-white font-bold text-[15px] py-[14px] rounded-[11px] border-none cursor-pointer disabled:opacity-50"
-              >
-                {loading ? 'Sending…' : 'Email me a sign-in link'}
-              </button>
+
+              {mode === 'link' ? (
+                <form onSubmit={handleLinkSubmit}>
+                  <p className="text-[13px] text-warm-400 text-center mb-[22px] leading-[1.55]">
+                    Sign in with your email.<br />No password — we&apos;ll email you a sign-in link.
+                  </p>
+                  <div className="mb-[14px]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-warm-400 mb-[7px]">
+                      Email address
+                    </div>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="w-full px-[15px] py-[13px] border-[1.5px] border-[#EAD8C4] rounded-[11px] text-[15px] text-[#1C1610] bg-[#FFFAF6] outline-none placeholder:text-warm-300"
+                    />
+                  </div>
+                  {error && <p className="text-sm text-birdie mb-3">{error}</p>}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-brand text-white font-bold text-[15px] py-[14px] rounded-[11px] border-none cursor-pointer disabled:opacity-50"
+                  >
+                    {loading ? 'Sending…' : 'Email me a sign-in link'}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handlePasswordSubmit}>
+                  <p className="text-[13px] text-warm-400 text-center mb-[22px] leading-[1.55]">
+                    Sign in with your email and password.
+                  </p>
+                  <div className="mb-[14px]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-warm-400 mb-[7px]">
+                      Email address
+                    </div>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      className="w-full px-[15px] py-[13px] border-[1.5px] border-[#EAD8C4] rounded-[11px] text-[15px] text-[#1C1610] bg-[#FFFAF6] outline-none placeholder:text-warm-300"
+                    />
+                  </div>
+                  <div className="mb-[10px]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[.12em] text-warm-400 mb-[7px]">
+                      Password
+                    </div>
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-[15px] py-[13px] border-[1.5px] border-[#EAD8C4] rounded-[11px] text-[15px] text-[#1C1610] bg-[#FFFAF6] outline-none placeholder:text-warm-300"
+                    />
+                  </div>
+                  <p className="text-[12px] text-warm-300 leading-[1.5] mb-[14px]">
+                    New here, or haven&apos;t set a password yet?{' '}
+                    <button
+                      type="button"
+                      onClick={() => switchMode('link')}
+                      className="text-brand font-semibold bg-transparent border-none cursor-pointer p-0 underline"
+                    >
+                      Use a sign-in link instead
+                    </button>
+                    , then set one from your profile.
+                  </p>
+                  {error && <p className="text-sm text-birdie mb-3">{error}</p>}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-brand text-white font-bold text-[15px] py-[14px] rounded-[11px] border-none cursor-pointer disabled:opacity-50"
+                  >
+                    {loading ? 'Signing in…' : 'Sign in'}
+                  </button>
+                </form>
+              )}
+
               <p className="text-[11px] text-warm-300 leading-[1.5] text-center mt-3 mb-0">
                 By signing in you agree to our{' '}
                 <Link to="/terms" className="text-warm-400 underline">Terms</Link> and{' '}
                 <Link to="/privacy" className="text-warm-400 underline">Privacy Policy</Link>.
               </p>
-            </form>
+            </>
           )}
         </div>
 
