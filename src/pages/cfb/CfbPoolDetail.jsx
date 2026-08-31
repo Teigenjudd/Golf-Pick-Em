@@ -227,7 +227,7 @@ export default function CfbPoolDetail() {
       </PoolHeader>
 
       <div className="max-w-[560px] mx-auto px-[18px] pt-[22px]">
-        {selectedWeek && derived && !preSeason && (
+        {selectedWeek && derived && (
           <div
             className="flex items-center justify-between rounded-[12px] px-4 py-[13px] mb-[14px]"
             style={{ background: CFB_THEME.cardWhite, border: `1px solid ${CFB_THEME.border}` }}
