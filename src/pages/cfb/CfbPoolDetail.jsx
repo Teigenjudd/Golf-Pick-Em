@@ -159,7 +159,9 @@ export default function CfbPoolDetail() {
       }
     })
 
-    return { entries, flatPicks, weeklyPoints, hasStandings, locked }
+    const myWeek = entries.find(e => e.user_id === user?.id)?.week ?? null
+
+    return { entries, flatPicks, weeklyPoints, hasStandings, locked, myWeek }
   }, [selectedWeek, weekGames, weekPicks, standings, participants, user?.id])
 
   if (loading) {
@@ -225,6 +227,37 @@ export default function CfbPoolDetail() {
       </PoolHeader>
 
       <div className="max-w-[560px] mx-auto px-[18px] pt-[22px]">
+        {selectedWeek && derived && (
+          <div
+            className="flex items-center justify-between rounded-[12px] px-4 py-[13px] mb-[14px]"
+            style={{ background: CFB_THEME.cardWhite, border: `1px solid ${CFB_THEME.border}` }}
+          >
+            <div className="flex items-center gap-[9px]">
+              {derived.myWeek?.state === 'card' ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={CFB_THEME.positive} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                <span className="w-[7px] h-[7px] rounded-full" style={{ background: CFB_THEME.accent }} />
+              )}
+              <span className="text-[13px]" style={{ color: CFB_THEME.ink }}>
+                {derived.myWeek?.state === 'card'
+                  ? derived.locked ? 'Your picks are locked in.' : `Your card is in for ${weekLabel}.`
+                  : derived.locked ? 'Picks are locked for this week.' : `You haven't made your picks for ${weekLabel} yet.`}
+              </span>
+            </div>
+            {!derived.locked && (
+              <Link
+                to={`/cfb/pool/${poolId}/picks?week=${selectedWeek.week_number}`}
+                className="text-[12.5px] font-semibold no-underline"
+                style={{ color: CFB_THEME.accent }}
+              >
+                {derived.myWeek?.state === 'card' ? 'Edit picks →' : 'Make picks →'}
+              </Link>
+            )}
+          </div>
+        )}
+
         <StandingsCard label="Season Standings" action={<CfbRulesButton />}>
           {!participants.length || !derived ? (
             <div className="p-12 text-center">
