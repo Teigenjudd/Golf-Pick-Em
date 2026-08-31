@@ -73,6 +73,18 @@
   transit. **Fix:** add a one-line Resend entry alongside Supabase/Netlify. Source
   file, not a doc — flagged here per the ownership index, not fixed in this PR.
 
+- [ ] ⚪ **A11 — Two Supabase Dashboard auth settings need founder verification against password sign-in.**
+  Password sign-in/reset (`feat/password-auth`) assumes two Supabase Authentication
+  settings are at their defaults, but neither has been checked in the dashboard: (1) the
+  configured password minimum length may not match the client-side `PASSWORD_MIN = 8`
+  in `src/lib/profile.js`; (2) "Secure password change" / reauthentication, if toggled
+  on, would make `updateUser({ password })` on `/profile` refuse and require an emailed
+  one-time code instead — silently breaking the no-reset-email design (see
+  `agents/pm/DECISIONS.md`, 2026-08-31). Off/8+ by default, so low risk, but unverified.
+  **Fix:** founder confirms both settings in Authentication → Policies; no code change
+  either way unless a mismatch is found. Flagged in
+  `agents/senior-dev/reviews/feat-password-auth.md`.
+
 - [ ] ⚪ **A10 — CFB's join-season cutoff is enforced client-side only.**
   `Join.jsx`'s `joinClosed` check (the "season already started" gate) reads
   `cfbPool.lock_time` in the browser; there's no RLS/RPC backstop preventing a

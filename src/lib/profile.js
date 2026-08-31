@@ -42,3 +42,22 @@ export async function saveDisplayName(userId, raw) {
     .eq('id', userId)
   return error
 }
+
+export const PASSWORD_MIN = 8
+
+// Client-side heads-up only -- the real gate is whatever minimum length is
+// configured in the Supabase Dashboard (Authentication > Policies). Keep this at
+// least as strict as that setting.
+export function validatePassword(raw) {
+  if ((raw ?? '').length < PASSWORD_MIN) return `Use at least ${PASSWORD_MIN} characters.`
+  return null
+}
+
+// Sets/replaces the password on the signed-in user's own account. No "current
+// password" step: being signed in at all (via a sign-in link or an existing
+// password) is enough to set a new one. This doubles as the password-reset path --
+// forgot it, sign in with a link, come back here and set a new one.
+export async function savePassword(newPassword) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  return error
+}

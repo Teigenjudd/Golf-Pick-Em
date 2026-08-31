@@ -54,11 +54,11 @@ regulated real-money operator).
 ### Surfaces (15 pages)
 | Surface | What the user gets |
 |---|---|
-| **Login** (`/`) | Magic-link email sign-in. No passwords, ever. |
+| **Login** (`/`) | Sign-in link (magic link) by default, with a password option a user opts into from `/profile`; no separate reset flow — forgot it → sign in with a link → set a new one. |
 | **Join** (`/join/:code`) | The invite landing page — the conversion moment. Shows pool name + CTA; handles signed-out arrivals. |
 | **Welcome** (`/welcome`) | First-run: pick the display name the rest of your pool will see. A wall, not a prompt — a new account cannot reach a pool without one. Carries the join code through, so an invite still lands where it was going. |
 | **Dashboard** (`/dashboard`) | Home base: your pools, pick status per pool, quick links to picks/leaderboard. Admin section for admins. |
-| **You** (`/profile`) | Account surface behind the "You" tab: change your display name, sign out. Shows no email address. |
+| **You** (`/profile`) | Account surface behind the "You" tab: change your display name, set/replace a password, sign out. Shows no email address. |
 | **Leaderboard** (`/tournament/:id`) | The main event. Pick'em standings with the signature expandable scorecard, plus widgets: Prize Pool, PGA Leaders, Most Popular Picks, Tier Value. Weather inline in the header. |
 | **Picks** (`/tournament/:id/picks`) | The tier picker: one player per tier, odds shown as context, resubmittable until lock. |
 | **Admin** (`/admin`) | Ops panel: tournament status controls (lock/reopen/close), join-link copy, manual score refresh, leaderboard-polling on/off toggle, participant management, user roles. |
