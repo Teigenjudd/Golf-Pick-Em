@@ -147,6 +147,7 @@ export default function Profile() {
           <form onSubmit={handlePasswordSubmit}>
             <input
               type="password"
+              autoComplete="new-password"
               value={password}
               onChange={e => { setPassword(e.target.value); setPwError(null); setPwSaved(false) }}
               placeholder="New password"
@@ -154,6 +155,7 @@ export default function Profile() {
             />
             <input
               type="password"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={e => { setConfirmPassword(e.target.value); setPwError(null); setPwSaved(false) }}
               placeholder="Confirm password"
