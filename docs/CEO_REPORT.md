@@ -1,12 +1,12 @@
 # Poold — CEO Report
 
-*Updated 2026-08-31 · latest: PR #64 (CFB picks nudge + live-game polish)*
+*Updated 2026-08-31 · latest: PR #65 (password sign-in)*
 
 **Status:** 🟢 Golf live in prod · 🟢 CFB cut over to prod (all code + infra live) — no real season run through it yet · Sports live: **1** (CFB awaiting real users)
 
 **State of the app.** Golf pick'em is live in production (auth, pools, picks, live leaderboards, prize-pool math). CFB is fully cut over: edge functions deployed, three billable pollers armed.
 
-**Recent wins.** CFB's pool page now nudges players who haven't made their weekly picks yet, mirroring golf's leaderboard banner — visible from an open pool's very first week, not just after a week's graded. Also fixed a mobile layout bug (a graded game's score text could overflow the card instead of truncating) and added a live down/distance/clock line to in-progress games on the weekly slate page.
+**Recent wins.** Login now offers email+password as a second sign-in method alongside the sign-in link (unchanged, still default). A new Password card on the account page sets one and doubles as "forgot my password" — no separate reset email. Two Supabase dashboard settings still need a quick founder check (BACKLOG A11); no code risk either way.
 
 **Next up.** Self-serve pool creation — still the top blocker for either sport, since pool creation remains founder-only.
 

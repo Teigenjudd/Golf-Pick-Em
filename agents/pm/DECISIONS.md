@@ -16,6 +16,39 @@
 
 ---
 
+## 2026-08-31 — Password sign-in added as a second auth method; reset is "sign in with a link, then set one," not a separate email flow
+
+**Decision:** `feat/password-auth` adds `supabase.auth.signInWithPassword` as an
+alternative to the sign-in link on `Login.jsx` (a pill toggle; the link tab stays the
+default and is unchanged), plus a "Password" card on `/profile` that sets/replaces a
+password via `supabase.auth.updateUser({ password })`. Two deliberate calls ride with it:
+
+1. **No separate password-reset email/token flow.** Forgetting a password just means
+   signing in with the existing sign-in link and setting a new one from `/profile`.
+   Rejected a dedicated reset-email flow to avoid standing up a second branded auth
+   email template (on top of Magic Link) for a case the link flow already covers for
+   free — anyone who can request a reset email can already request a sign-in link.
+2. **No "current password" step to change a password.** Being signed in at all — via
+   either method — is treated as sufficient authorization to set a new one, matching how
+   the display-name field already works. Rejected requiring the old password because a
+   user resetting via the link flow (case 1) wouldn't have one to enter anyway.
+
+**What we gave up:** a user can't tell, from the UI, whether their account currently has
+a password set (there's no "remove password" or "you don't have a password yet" state) —
+acceptable since the link flow always works as a fallback regardless.
+
+**Still open, not blocking:** two Supabase Dashboard auth settings were never verified
+against this design — the configured password minimum length (vs. client-side
+`PASSWORD_MIN = 8`) and whether "Secure password change"/reauthentication is toggled on
+(which would make `updateUser({ password })` demand an emailed one-time code, defeating
+decision 1's whole point). Tracked as BACKLOG A11. **Revisit if:** either check turns up
+a mismatch, or growth ever makes "no current-password check" feel too loose (e.g. shared
+devices) and a re-auth step becomes worth the email it costs.
+
+See `agents/senior-dev/reviews/feat-password-auth.md` for the full review.
+
+---
+
 ## 2026-08-18 — CFB Week 0 maps to CFBD's week 1 by kickoff date; unconfigured-season guard deferred
 
 **Decision:** The 2026-08-17 entry below assumed `cfb.weeks.week_number = 0` would draw its

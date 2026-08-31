@@ -121,11 +121,13 @@ writing code.
 - Multiple pools per event is wired in the schema but **not surfaced in UI** — the app
   still assumes one pool per event. Future feature, not a bug (BACKLOG G3).
 - Commissioner tools are a first-class surface, not an afterthought.
-- Picks auto-confirm on submit; join code + sign-in link is the entire access gate (no
-  approval step, no passwords). User-facing copy says "sign-in link" (not "magic link,"
-  and deliberately not "invite" — that word names the pool join-code flow); Supabase's
-  own dashboard template is still fixed-labeled "Magic Link" internally (PR #36,
-  2026-07-17).
+- Picks auto-confirm on submit; join code + a working sign-in method is the entire access
+  gate (no approval step). Sign-in link (`signInWithOtp`) remains the default and only
+  method for a brand-new account; email+password (`signInWithPassword`) is now available
+  as a second method a user opts into from `/profile` — see CLAUDE.md's Auth bullet. User-
+  facing copy calls the link method a "sign-in link" (not "magic link," and deliberately
+  not "invite" — that word names the pool join-code flow); Supabase's own dashboard
+  template is still fixed-labeled "Magic Link" internally (PR #36, 2026-07-17).
 - WD/CUT players are penalized +20 and stay in the scoring pool; best N of M scores count.
 - Tier format is currently hardcoded (6 regular tiers of 6 + 2 wildcard tiers);
   making it commissioner-configurable is backlogged (G1).
