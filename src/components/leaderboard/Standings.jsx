@@ -33,15 +33,15 @@ export default function Standings({ standings, currentUserId, pickCount }) {
           <div key={entry.user_id} className="border-b border-[#EFE8DA] last:border-0">
             <button
               onClick={() => toggleExpanded(entry.user_id)}
-              className="w-full flex items-center gap-3 px-[18px] py-[14px] hover:bg-[#FAF6EE] transition-colors text-left cursor-pointer border-none bg-transparent"
+              className="w-full flex items-center gap-3 px-[18px] py-[8px] hover:bg-[#FAF6EE] transition-colors text-left cursor-pointer border-none bg-transparent"
             >
               {/* Rank rail */}
-              <span className="w-5 flex-none text-right font-display font-bold text-base tabular-nums leading-none text-warm-500">
+              <span className="w-[18px] flex-none text-right font-display font-bold text-base tabular-nums leading-none text-warm-500">
                 {entry.rank ?? '—'}
               </span>
 
               {/* Avatar */}
-              <Avatar name={entry.display_name} avatarUrl={entry.avatar_url} size={36} bg="#1B4332" textColor="#F8F5EE" />
+              <Avatar name={entry.display_name} avatarUrl={entry.avatar_url} size={56} bg="#1B4332" textColor="#F8F5EE" />
 
               {/* Name + subtitle */}
               <div className="flex-1 min-w-0 text-left">

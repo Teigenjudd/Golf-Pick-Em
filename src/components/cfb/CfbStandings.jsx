@@ -46,18 +46,18 @@ export default function CfbStandings({ entries, currentUserId, weekLabel }) {
           <div key={entry.user_id} className="border-b last:border-0" style={{ borderColor: CFB_THEME.divider }}>
             <button
               onClick={() => toggle(entry.user_id)}
-              className="w-full flex items-center gap-3 px-[18px] py-[14px] text-left cursor-pointer border-none bg-transparent transition-colors hover:brightness-[.99]"
+              className="w-full flex items-center gap-3 px-[18px] py-[8px] text-left cursor-pointer border-none bg-transparent transition-colors hover:brightness-[.99]"
             >
               {/* Rank rail */}
               <span
-                className="w-5 flex-none text-right font-display font-bold text-base tabular-nums leading-none"
+                className="w-[18px] flex-none text-right font-display font-bold text-base tabular-nums leading-none"
                 style={{ color: CFB_THEME.muted2 }}
               >
                 {entry.rank ?? '—'}
               </span>
 
               {/* Avatar */}
-              <Avatar name={entry.display_name} avatarUrl={entry.avatar_url} size={36} bg={CFB_THEME.navy} textColor={CFB_THEME.cream} />
+              <Avatar name={entry.display_name} avatarUrl={entry.avatar_url} size={56} bg={CFB_THEME.navy} textColor={CFB_THEME.cream} />
 
               {/* Name + week subtitle */}
               <div className="flex-1 min-w-0">
