@@ -265,11 +265,14 @@ box-shadow: 0 12px 36px -24px rgba(20,48,38,.35)
 **Standing row (collapsed):**
 ```
 border-bottom: 1px solid #EFE8DA
-button: width:100%; flex; align-items:center; gap:12px; padding:14px 18px
+button: width:100%; flex; align-items:center; gap:12px; padding:8px 18px
 hover: background: #FAF6EE
 ```
-- Rank rail: 20px-wide plain numeral, right-aligned, Barlow 700 16px `text-warm-500` (no background — rank moved out of the circle so the circle could hold the avatar, see below)
-- Avatar: 36px circle (shared `Avatar` component, `src/components/Avatar.jsx`) — the player's uploaded photo, or a fairway-on-cream initials fallback (`bg="#1B4332"`)
+Row height lands at 72px (driven by the 56px avatar + 8px vertical padding). Same values
+are used by `CfbStandings`' row (navy/brick palette, otherwise identical layout — see
+`docs/PAGES.md` §CFB leaf components).
+- Rank rail: 18px-wide plain numeral, right-aligned, Barlow 700 16px `text-warm-500` (no background — rank moved out of the circle so the circle could hold the avatar, see below)
+- Avatar: 56px circle (shared `Avatar` component, `src/components/Avatar.jsx`) — the player's uploaded photo, or a fairway-on-cream initials fallback (`bg="#1B4332"`)
 - Name: Inter 600 15px `#2D2D2A`
 - YOU badge: `Barlow 700 10px letterSpacing .08em bg-[#C9A368] color-[#15130F] px-7px py-2px rounded-full`
 - Score: Barlow 800 26px tabular-nums, color by value
