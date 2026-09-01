@@ -2,6 +2,13 @@ import { useState, useEffect, useCallback } from 'react'
 import Cropper from 'react-easy-crop'
 
 const MIN_ZOOM = 0.5
+// Avatars never render bigger than a few dozen px on screen, so the export is
+// capped here rather than kept at the source photo's full resolution -- a
+// phone photo would otherwise become a multi-MB upload for a coin-sized
+// circle, and at extreme zoom-out on a large image could bust the bucket's
+// 5MB cap after the modal's already closed. Math.min so a crop smaller than
+// this never gets upscaled.
+const EXPORT_SIZE = 512
 
 // Renders the crop region onto a canvas and exports it as a JPEG blob --
 // standard react-easy-crop recipe. crossOrigin isn't needed since imageSrc is
@@ -18,16 +25,17 @@ function getCroppedBlob(imageSrc, cropPixels) {
   return new Promise((resolve, reject) => {
     const image = new Image()
     image.onload = () => {
+      const size = Math.min(cropPixels.width, cropPixels.height, EXPORT_SIZE)
       const canvas = document.createElement('canvas')
-      canvas.width = cropPixels.width
-      canvas.height = cropPixels.height
+      canvas.width = size
+      canvas.height = size
       const ctx = canvas.getContext('2d')
       ctx.fillStyle = '#FFFFFF'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(
         image,
         cropPixels.x, cropPixels.y, cropPixels.width, cropPixels.height,
-        0, 0, cropPixels.width, cropPixels.height,
+        0, 0, canvas.width, canvas.height,
       )
       canvas.toBlob(blob => {
         if (!blob) { reject(new Error('Could not crop that image.')); return }
