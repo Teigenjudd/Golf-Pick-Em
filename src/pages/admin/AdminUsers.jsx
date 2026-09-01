@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import AdminShell from '../../components/admin/AdminShell'
 import Avatar from '../../components/Avatar'
+import AvatarCropModal from '../../components/AvatarCropModal'
 import { uploadAvatarForUser } from '../../lib/profile'
 
 // Sport-agnostic admin page (/admin/users) — user/role management, formerly a tab
@@ -18,6 +19,7 @@ export default function AdminUsers() {
   const [uploadingAvatar, setUploadingAvatar] = useState(null)
   const [error, setError] = useState(null)
   const [avatarError, setAvatarError] = useState(null)
+  const [cropTarget, setCropTarget] = useState(null) // { userId, file }
   const fileInputRefs = useRef({})
 
   const load = useCallback(async () => {
@@ -44,18 +46,24 @@ export default function AdminUsers() {
     setUpdating(null)
   }
 
+  function handleFilePicked(userId, e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setAvatarError(null)
+    setCropTarget({ userId, file })
+  }
+
   // Uploads on the target user's behalf (the avatars bucket's storage policies
   // allow an admin to write into any user's folder, not just their own -- see
   // 20260831020000_profile_avatars.sql), then writes profiles.avatar_url through
   // admin_set_avatar_url since the plain column grant only allows self-writes.
-  async function handleAvatarChange(userId, e) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-
+  async function handleCropped(blob) {
+    const { userId } = cropTarget
+    setCropTarget(null)
     setUploadingAvatar(userId)
     setAvatarError(null)
-    const { url, error: uploadError } = await uploadAvatarForUser(userId, file)
+    const { url, error: uploadError } = await uploadAvatarForUser(userId, blob)
     if (uploadError) { setAvatarError(uploadError.message); setUploadingAvatar(null); return }
 
     const { error: rpcError } = await supabase.rpc('admin_set_avatar_url', {
@@ -106,7 +114,7 @@ export default function AdminUsers() {
                   ref={el => { fileInputRefs.current[u.id] = el }}
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
-                  onChange={e => handleAvatarChange(u.id, e)}
+                  onChange={e => handleFilePicked(u.id, e)}
                   className="hidden"
                 />
 
@@ -132,6 +140,14 @@ export default function AdminUsers() {
             ))}
           </div>
         </>
+      )}
+
+      {cropTarget && (
+        <AvatarCropModal
+          file={cropTarget.file}
+          onCancel={() => setCropTarget(null)}
+          onCropped={handleCropped}
+        />
       )}
     </AdminShell>
   )

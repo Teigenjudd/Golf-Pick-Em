@@ -7,6 +7,7 @@ import {
   uploadAvatarForUser, saveAvatarUrl,
 } from '../lib/profile'
 import Avatar from '../components/Avatar'
+import AvatarCropModal from '../components/AvatarCropModal'
 import Footer from '../components/Footer'
 
 export default function Profile() {
@@ -28,6 +29,7 @@ export default function Profile() {
 
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState(null)
+  const [cropFile, setCropFile] = useState(null)
   const fileInputRef = useRef(null)
 
   if (loading) return null
@@ -73,14 +75,19 @@ export default function Profile() {
     setTimeout(() => setPwSaved(false), 2500)
   }
 
-  async function handleAvatarChange(e) {
+  function handleFilePicked(e) {
     const file = e.target.files?.[0]
     e.target.value = '' // lets the user re-pick the same file later if they retry
     if (!file) return
+    setAvatarError(null)
+    setCropFile(file)
+  }
 
+  async function handleCropped(blob) {
+    setCropFile(null)
     setAvatarUploading(true)
     setAvatarError(null)
-    const { url, error: uploadError } = await uploadAvatarForUser(user.id, file)
+    const { url, error: uploadError } = await uploadAvatarForUser(user.id, blob)
     if (uploadError) { setAvatarError(uploadError.message); setAvatarUploading(false); return }
 
     const saveError = await saveAvatarUrl(user.id, url)
@@ -117,7 +124,7 @@ export default function Profile() {
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            onChange={handleAvatarChange}
+            onChange={handleFilePicked}
             className="hidden"
           />
           <div className="min-w-0">
@@ -230,6 +237,14 @@ export default function Profile() {
       <div className="mt-auto">
         <Footer />
       </div>
+
+      {cropFile && (
+        <AvatarCropModal
+          file={cropFile}
+          onCancel={() => setCropFile(null)}
+          onCropped={handleCropped}
+        />
+      )}
     </div>
   )
 }
