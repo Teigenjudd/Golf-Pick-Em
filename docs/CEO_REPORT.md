@@ -1,12 +1,12 @@
 # Poold — CEO Report
 
-*Updated 2026-08-31 · latest: PR #65 (password sign-in)*
+*Updated 2026-08-31 · latest: PR #66 (profile avatars)*
 
 **Status:** 🟢 Golf live in prod · 🟢 CFB cut over to prod (all code + infra live) — no real season run through it yet · Sports live: **1** (CFB awaiting real users)
 
 **State of the app.** Golf pick'em is live in production (auth, pools, picks, live leaderboards, prize-pool math). CFB is fully cut over: edge functions deployed, three billable pollers armed.
 
-**Recent wins.** Login now offers email+password as a second sign-in method alongside the sign-in link (unchanged, still default). A new Password card on the account page sets one and doubles as "forgot my password" — no separate reset email. Two Supabase dashboard settings still need a quick founder check (BACKLOG A11); no code risk either way.
+**Recent wins.** Players can now upload a profile photo — shows on the account page, the dashboard header, and both leaderboards (golf and CFB), with initials as the fallback everywhere else. Admins can set anyone's photo from Users & Settings. This is the app's first use of Supabase's file-storage product, locked down so uploads can only land in your own folder, must be a real small image, and the profile field can't be redirected to an outside link. Login still offers email+password alongside the sign-in link (BACKLOG A11 open, no code risk).
 
 **Next up.** Self-serve pool creation — still the top blocker for either sport, since pool creation remains founder-only.
 

@@ -159,7 +159,7 @@ position: sticky; top: 0; z-index: 10
 - Admin / Create Tournament: `← Dashboard` link in Inter 13px `#A08870` + `|` divider in `#EAD8C4` + wordmark `POOLD` + section title (Barlow 700 16px `#1C1610`)
 
 **Right side variants:**
-- Dashboard: `+ New` text link (Inter 500 12px `#A08870`) + avatar circle (34px `bg-[#C14A18]`, initials Barlow 700 13px white)
+- Dashboard: `+ New` text link (Inter 500 12px `#A08870`) + avatar (34px, shared `Avatar` component — uploaded photo if set, else `bg-[#C14A18]` initials circle Barlow 700 13px white)
 - Admin: `Sign out` link (Inter 12px `#C8B8A4`)
 - Create Tournament: step indicator (20px circle `bg-[#C14A18]`, Barlow 700 11px white digit + "of 2" label Inter 12px muted)
 
@@ -268,7 +268,8 @@ border-bottom: 1px solid #EFE8DA
 button: width:100%; flex; align-items:center; gap:12px; padding:14px 18px
 hover: background: #FAF6EE
 ```
-- Rank circle: 36px, bg gold-tint for 1st / `#EBE3D4` for rest, Barlow 700 16px
+- Rank rail: 20px-wide plain numeral, right-aligned, Barlow 700 16px `text-warm-500` (no background — rank moved out of the circle so the circle could hold the avatar, see below)
+- Avatar: 36px circle (shared `Avatar` component, `src/components/Avatar.jsx`) — the player's uploaded photo, or a fairway-on-cream initials fallback (`bg="#1B4332"`)
 - Name: Inter 600 15px `#2D2D2A`
 - YOU badge: `Barlow 700 10px letterSpacing .08em bg-[#C9A368] color-[#15130F] px-7px py-2px rounded-full`
 - Score: Barlow 800 26px tabular-nums, color by value

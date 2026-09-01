@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatScore } from '../../utils/scoring'
+import Avatar from '../Avatar'
 
 function scoreColor(score, active = true) {
   if (score === null || !active) return 'text-warm-300'
@@ -34,16 +35,13 @@ export default function Standings({ standings, currentUserId, pickCount }) {
               onClick={() => toggleExpanded(entry.user_id)}
               className="w-full flex items-center gap-3 px-[18px] py-[14px] hover:bg-[#FAF6EE] transition-colors text-left cursor-pointer border-none bg-transparent"
             >
-              {/* Rank circle */}
-              <span
-                className="w-9 h-9 rounded-full flex items-center justify-center flex-none font-display font-bold text-base tabular-nums leading-none"
-                style={{
-                  background: entry.rank === 1 ? 'rgba(201,163,104,.2)' : '#EBE3D4',
-                  color: entry.rank === 1 ? '#C9A368' : '#736A5F',
-                }}
-              >
+              {/* Rank rail */}
+              <span className="w-5 flex-none text-right font-display font-bold text-base tabular-nums leading-none text-warm-500">
                 {entry.rank ?? '—'}
               </span>
+
+              {/* Avatar */}
+              <Avatar name={entry.display_name} avatarUrl={entry.avatar_url} size={36} bg="#1B4332" textColor="#F8F5EE" />
 
               {/* Name + subtitle */}
               <div className="flex-1 min-w-0 text-left">

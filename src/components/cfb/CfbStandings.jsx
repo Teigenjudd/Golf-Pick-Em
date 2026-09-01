@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { CFB_THEME } from '../../theme/cfb'
 import CfbCardRows from './CfbCardRows'
+import Avatar from '../Avatar'
 
 // CFB season-standings hero + the scorecard-expand, the CFB analogue of golf's
 // Standings.jsx (docs/CFB_UI_PLAN.md §6). Purely presentational: the page joins
@@ -47,16 +48,16 @@ export default function CfbStandings({ entries, currentUserId, weekLabel }) {
               onClick={() => toggle(entry.user_id)}
               className="w-full flex items-center gap-3 px-[18px] py-[14px] text-left cursor-pointer border-none bg-transparent transition-colors hover:brightness-[.99]"
             >
-              {/* Rank */}
+              {/* Rank rail */}
               <span
-                className="w-9 h-9 rounded-full flex items-center justify-center flex-none font-display font-bold text-base tabular-nums leading-none"
-                style={{
-                  background: leader ? CFB_THEME.accentSoft : CFB_THEME.rankBg,
-                  color: leader ? CFB_THEME.accent : CFB_THEME.muted2,
-                }}
+                className="w-5 flex-none text-right font-display font-bold text-base tabular-nums leading-none"
+                style={{ color: CFB_THEME.muted2 }}
               >
                 {entry.rank ?? '—'}
               </span>
+
+              {/* Avatar */}
+              <Avatar name={entry.display_name} avatarUrl={entry.avatar_url} size={36} bg={CFB_THEME.navy} textColor={CFB_THEME.cream} />
 
               {/* Name + week subtitle */}
               <div className="flex-1 min-w-0">
