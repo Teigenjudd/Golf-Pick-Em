@@ -16,6 +16,47 @@
 
 ---
 
+## 2026-08-31 — Avatar photos are public-by-URL, not gated to pool members; `avatar_url` locked to our own Storage bucket
+
+**Decision:** `feat/profile-avatars` adds user-uploadable profile photos on top of the app's
+first Supabase Storage bucket (`avatars`). Two calls were surfaced by senior-dev review
+(`agents/senior-dev/reviews/feat-profile-avatars.md`, Q1/Q2) and both were resolved before
+merge:
+
+1. **The bucket stays `public = true`.** Anyone with an avatar's URL can fetch it — not just
+   signed-in users, not just people in that player's pool — which is the simplest way to
+   serve `<img src>` without signed-URL plumbing, and matches how the photo is already used
+   (rendered on leaderboards). Founder-confirmed after the trade was spelled out: friend-group
+   pool photos are low-sensitivity enough that plain public hosting isn't worth the added
+   complexity of gating reads to pool members. **Revisit if:** Poold ever handles photos more
+   sensitive than a casual pool avatar, or a user complains about discoverability.
+2. **`avatar_url` is now locked to our own storage, not left as an arbitrary string.** The
+   self-service column-grant pattern (`GRANT UPDATE (avatar_url)` + row RLS) checks *who* can
+   write the column, never *what* they write — so without a guard, a user could skip the
+   uploader entirely and PATCH `avatar_url` to any external URL, including a tracking pixel
+   that logs every pool member's IP when the leaderboard renders it. Closed with a `CHECK`
+   constraint (`profiles_avatar_url_is_our_storage`,
+   `supabase/migrations/20260831030000_lock_avatar_url_to_storage.sql`) requiring the value be
+   null or start with this project's own storage public-URL prefix. Unlike decision 1, this
+   wasn't a trade-off to weigh — it was a real gap the review caught, fixed on the same branch.
+
+**What we gave up:** nothing load-bearing on decision 1 (public read was always the plan;
+this just makes the trade explicit and findable instead of an implicit default). Decision 2
+gives up letting a technically-minded user self-host their own avatar image — acceptable,
+since the uploader was always the only intended path.
+
+**Not fixed, logged as acceptable (not oversights):** switching a re-upload's file extension
+(e.g. `.jpg` → `.png`) orphans the old object at its old key instead of replacing it — one
+stray file per user max, 5MB cap, not worth the extra list+delete logic yet. The stored
+`avatar_url` also bakes in a `?v=<timestamp>` cache-buster at upload time rather than at
+render time — works fine, just worth knowing if `avatar_url` is ever compared/deduped by
+exact string elsewhere.
+
+See `agents/senior-dev/reviews/feat-profile-avatars.md` for the full security trace (storage
+RLS, path-traversal, the admin RPC) — all traced clear, no other findings.
+
+---
+
 ## 2026-08-31 — Password sign-in added as a second auth method; reset is "sign in with a link, then set one," not a separate email flow
 
 **Decision:** `feat/password-auth` adds `supabase.auth.signInWithPassword` as an
