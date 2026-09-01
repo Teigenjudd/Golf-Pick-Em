@@ -133,6 +133,7 @@ export default function CfbPoolDetail() {
       return {
         user_id: uid,
         display_name: part.display_name,
+        avatar_url: part.avatar_url,
         rank: s?.rank ?? null,
         total: Number(s?.total ?? 0),
         week,

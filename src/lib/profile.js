@@ -61,3 +61,46 @@ export async function savePassword(newPassword) {
   const { error } = await supabase.auth.updateUser({ password: newPassword })
   return error
 }
+
+const AVATAR_MAX_BYTES = 5 * 1024 * 1024
+const AVATAR_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' }
+
+// Client-side heads-up only -- the avatars bucket enforces both server-side too
+// (20260831020000_profile_avatars.sql), so a request that skips this never
+// actually gets through.
+export function validateAvatarFile(file) {
+  if (!AVATAR_TYPES[file.type]) return 'Use a JPEG, PNG, or WebP image.'
+  if (file.size > AVATAR_MAX_BYTES) return 'Keep it under 5MB.'
+  return null
+}
+
+// Uploads to a fixed per-user path (userId/avatar.<ext>) with upsert so a
+// re-upload replaces the old file instead of piling up orphans, and stamps a
+// cache-busting query param onto the stored URL so the new photo shows up
+// immediately instead of whatever was cached at that same path/filename.
+// targetUserId is a separate param from the caller's own id so an admin can
+// upload on someone else's behalf -- the avatars bucket's storage policies
+// (same migration) allow that for admins, self-only otherwise.
+export async function uploadAvatarForUser(targetUserId, file) {
+  const invalid = validateAvatarFile(file)
+  if (invalid) return { url: null, error: new Error(invalid) }
+
+  const ext = AVATAR_TYPES[file.type]
+  const path = `${targetUserId}/avatar.${ext}`
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { upsert: true, contentType: file.type })
+  if (uploadError) return { url: null, error: uploadError }
+
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+  return { url: `${data.publicUrl}?v=${Date.now()}`, error: null }
+}
+
+// Self-service write -- same GRANT UPDATE (avatar_url) path as display_name.
+export async function saveAvatarUrl(userId, url) {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ avatar_url: url })
+    .eq('id', userId)
+  return error
+}

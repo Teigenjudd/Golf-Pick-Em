@@ -258,11 +258,15 @@ export async function getCfbParticipants(poolId) {
   if (!userIds.length) return []
 
   const { data: profs } = await supabase
-    .from('profiles').select('id, display_name').in('id', userIds)
-  const nameById = {}
-  ;(profs ?? []).forEach(p => { nameById[p.id] = p.display_name ?? 'Participant' })
+    .from('profiles').select('id, display_name, avatar_url').in('id', userIds)
+  const profById = {}
+  ;(profs ?? []).forEach(p => { profById[p.id] = p })
 
-  return userIds.map(uid => ({ user_id: uid, display_name: nameById[uid] ?? 'Participant' }))
+  return userIds.map(uid => ({
+    user_id: uid,
+    display_name: profById[uid]?.display_name ?? 'Participant',
+    avatar_url: profById[uid]?.avatar_url ?? null,
+  }))
 }
 
 // The slate for one week: cfb.games with the live blob + scores/status the poller

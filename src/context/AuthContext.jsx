@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
     for (let attempt = 0; attempt <= retries; attempt++) {
       const { data } = await supabase
         .from('profiles')
-        .select('id, display_name, display_name_set_at, role, status, created_at')
+        .select('id, display_name, display_name_set_at, avatar_url, role, status, created_at')
         .eq('id', userId)
         .maybeSingle()
       if (data) {

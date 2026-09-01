@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   saveDisplayName, validateDisplayName, randomNamePlaceholder, NAME_MAX,
   savePassword, validatePassword,
+  uploadAvatarForUser, saveAvatarUrl,
 } from '../lib/profile'
-import { getInitials } from '../utils/format'
+import Avatar from '../components/Avatar'
 import Footer from '../components/Footer'
 
 export default function Profile() {
@@ -25,11 +26,14 @@ export default function Profile() {
   const [pwSaving, setPwSaving] = useState(false)
   const [pwSaved, setPwSaved] = useState(false)
 
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarError, setAvatarError] = useState(null)
+  const fileInputRef = useRef(null)
+
   if (loading) return null
   if (!user) return <Navigate to="/" replace />
 
   const name = draft ?? profile?.display_name ?? ''
-  const initials = getInitials(profile?.display_name)
   const dirty = name.trim() !== (profile?.display_name ?? '')
   // Pre-onboarding accounts still wear the local-part of their email as a name.
   const neverChosen = profile && !profile.display_name_set_at
@@ -69,6 +73,23 @@ export default function Profile() {
     setTimeout(() => setPwSaved(false), 2500)
   }
 
+  async function handleAvatarChange(e) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // lets the user re-pick the same file later if they retry
+    if (!file) return
+
+    setAvatarUploading(true)
+    setAvatarError(null)
+    const { url, error: uploadError } = await uploadAvatarForUser(user.id, file)
+    if (uploadError) { setAvatarError(uploadError.message); setAvatarUploading(false); return }
+
+    const saveError = await saveAvatarUrl(user.id, url)
+    setAvatarUploading(false)
+    if (saveError) { setAvatarError(saveError.message); return }
+
+    await refreshProfile()
+  }
+
   return (
     <div className="min-h-screen bg-sand pb-10 flex flex-col">
 
@@ -79,10 +100,26 @@ export default function Profile() {
       <div className="max-w-[480px] mx-auto px-[18px] pt-[22px]">
 
         {/* Identity block */}
-        <div className="flex items-center gap-[13px] mb-[22px]">
-          <div className="w-[54px] h-[54px] rounded-full bg-brand flex items-center justify-center flex-none">
-            <span className="font-display font-bold text-[19px] text-white">{initials}</span>
-          </div>
+        <div className="flex items-center gap-[13px] mb-[10px]">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={avatarUploading}
+            title="Change photo"
+            className="relative rounded-full border-none bg-transparent p-0 cursor-pointer flex-none disabled:opacity-60"
+          >
+            <Avatar name={profile?.display_name} avatarUrl={profile?.avatar_url} size={54} bg="#C14A18" textColor="#FFFFFF" />
+            <span className="absolute -bottom-[2px] -right-[2px] w-[20px] h-[20px] rounded-full bg-charcoal border-2 border-sand flex items-center justify-center">
+              <span className="font-display font-bold text-[13px] text-white leading-none">+</span>
+            </span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleAvatarChange}
+            className="hidden"
+          />
           <div className="min-w-0">
             <div className="font-display font-extrabold text-[30px] text-[#1C1610] leading-none truncate">
               {profile?.display_name ?? 'You'}
@@ -91,6 +128,11 @@ export default function Profile() {
               {profile?.role === 'admin' ? 'Admin' : 'Player'}
             </div>
           </div>
+        </div>
+
+        <div className="mb-[22px]">
+          {avatarUploading && <p className="text-[12px] text-warm-400 m-0">Uploading…</p>}
+          {avatarError && <p className="text-[12px] text-birdie m-0">{avatarError}</p>}
         </div>
 
         <div className="font-display font-bold text-[10px] uppercase tracking-[.22em] text-warm-400 mb-[10px]">

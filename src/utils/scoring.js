@@ -83,6 +83,7 @@ const WD_PENALTY = 20
       userMap[uid] = {
         user_id: uid,
         display_name: pick.profiles?.display_name ?? 'Participant',
+        avatar_url: pick.profiles?.avatar_url ?? null,
         rawPicks: [],
       }
     }
@@ -118,6 +119,7 @@ const WD_PENALTY = 20
       return {
         user_id: user.user_id,
         display_name: user.display_name,
+        avatar_url: user.avatar_url,
         total_score: totalScore,
         picks: [
           ...used.map(p => ({ ...p, used_in_total: true })),

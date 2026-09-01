@@ -84,11 +84,17 @@ export async function getPoolPicks(poolId, { confirmedOnly = true } = {}) {
   if (!picks?.length) return []
 
   const userIds = [...new Set(picks.map(p => p.user_id))]
-  const { data: profs } = await supabase.from('profiles').select('id, display_name').in('id', userIds)
-  const nameById = {}
-  ;(profs ?? []).forEach(p => { nameById[p.id] = p.display_name })
+  const { data: profs } = await supabase.from('profiles').select('id, display_name, avatar_url').in('id', userIds)
+  const profById = {}
+  ;(profs ?? []).forEach(p => { profById[p.id] = p })
 
-  return picks.map(p => ({ ...p, profiles: { display_name: nameById[p.user_id] ?? 'Participant' } }))
+  return picks.map(p => ({
+    ...p,
+    profiles: {
+      display_name: profById[p.user_id]?.display_name ?? 'Participant',
+      avatar_url: profById[p.user_id]?.avatar_url ?? null,
+    },
+  }))
 }
 
 // The current user's pick rows (pool_id + status), for the dashboard summary.

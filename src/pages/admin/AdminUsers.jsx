@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../context/AuthContext'
 import AdminShell from '../../components/admin/AdminShell'
+import Avatar from '../../components/Avatar'
+import { uploadAvatarForUser } from '../../lib/profile'
 
 // Sport-agnostic admin page (/admin/users) — user/role management, formerly a tab
 // buried inside the golf-only AdminDashboard. Roles aren't scoped to a sport, so
@@ -13,7 +15,10 @@ export default function AdminUsers() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(null)
   const [error, setError] = useState(null)
+  const [avatarError, setAvatarError] = useState(null)
+  const fileInputRefs = useRef({})
 
   const load = useCallback(async () => {
     // Email is column-restricted on profiles; admins read it via this RPC.
@@ -39,6 +44,29 @@ export default function AdminUsers() {
     setUpdating(null)
   }
 
+  // Uploads on the target user's behalf (the avatars bucket's storage policies
+  // allow an admin to write into any user's folder, not just their own -- see
+  // 20260831020000_profile_avatars.sql), then writes profiles.avatar_url through
+  // admin_set_avatar_url since the plain column grant only allows self-writes.
+  async function handleAvatarChange(userId, e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+
+    setUploadingAvatar(userId)
+    setAvatarError(null)
+    const { url, error: uploadError } = await uploadAvatarForUser(userId, file)
+    if (uploadError) { setAvatarError(uploadError.message); setUploadingAvatar(null); return }
+
+    const { error: rpcError } = await supabase.rpc('admin_set_avatar_url', {
+      target_user: userId,
+      url,
+    })
+    setUploadingAvatar(null)
+    if (rpcError) { setAvatarError(rpcError.message); return }
+    await load()
+  }
+
   return (
     <AdminShell activeSport={null}>
       <div className="font-display font-extrabold text-[28px] text-[#1C1610] leading-none mb-5">Users</div>
@@ -56,10 +84,32 @@ export default function AdminUsers() {
               Couldn’t change that role — {error}
             </p>
           )}
+          {avatarError && (
+            <p className="text-[12px] text-birdie border border-birdie/30 bg-birdie/5 rounded-[8px] px-3 py-2 mb-3">
+              Couldn’t update that photo — {avatarError}
+            </p>
+          )}
 
           <div className="flex flex-col gap-2">
             {users.map(u => (
               <div key={u.id} className="bg-white border border-[#EAD8C4] rounded-[13px] px-4 py-[13px] flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileInputRefs.current[u.id]?.click()}
+                  disabled={uploadingAvatar === u.id}
+                  title="Change photo"
+                  className="rounded-full border-none bg-transparent p-0 cursor-pointer flex-none disabled:opacity-50"
+                >
+                  <Avatar name={u.display_name} avatarUrl={u.avatar_url} size={36} bg="#C14A18" textColor="#FFFFFF" />
+                </button>
+                <input
+                  ref={el => { fileInputRefs.current[u.id] = el }}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={e => handleAvatarChange(u.id, e)}
+                  className="hidden"
+                />
+
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-semibold text-[#1C1610] truncate">{u.display_name || '—'}</p>
                   <p className="text-[12px] text-warm-400 mt-[1px] truncate">{u.email}</p>

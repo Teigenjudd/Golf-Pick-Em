@@ -4,8 +4,8 @@ import { Navigate, Link, useNavigate } from 'react-router-dom'
 import { getMyPickRows, getPoolViewsByIds, getPoolPicks, getLatestLeaderboard } from '../lib/golf'
 import { getMyCfbPools } from '../lib/cfb'
 import { computeScores, assignRanks, formatScore } from '../utils/scoring'
-import { getInitials } from '../utils/format'
 import SportBadge from '../components/SportBadge'
+import Avatar from '../components/Avatar'
 import Footer from '../components/Footer'
 import CfbPoolTile from '../components/cfb/CfbPoolTile'
 import BottomSheet from '../components/BottomSheet'
@@ -95,7 +95,7 @@ function AddPoolSheetContent({ onJoinWithCode }) {
 // Header avatar. Non-admins go straight to /profile as before. Admins get a
 // small dropdown (Profile / Admin) anchored under the avatar instead of a
 // separate always-visible "Admin Panel" row taking up space on the dashboard.
-function ProfileMenu({ initials, needsName, isAdmin }) {
+function ProfileMenu({ displayName, avatarUrl, needsName, isAdmin }) {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -111,8 +111,8 @@ function ProfileMenu({ initials, needsName, isAdmin }) {
 
   if (!isAdmin) {
     return (
-      <Link to="/profile" className="relative w-[34px] h-[34px] rounded-full bg-brand flex items-center justify-center no-underline">
-        <span className="font-display font-bold text-[13px] text-white">{initials}</span>
+      <Link to="/profile" className="relative no-underline">
+        <Avatar name={displayName} avatarUrl={avatarUrl} size={34} bg="#C14A18" textColor="#FFFFFF" />
         {badge}
       </Link>
     )
@@ -122,9 +122,9 @@ function ProfileMenu({ initials, needsName, isAdmin }) {
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="relative w-[34px] h-[34px] rounded-full bg-brand flex items-center justify-center border-none cursor-pointer"
+        className="relative rounded-full border-none bg-transparent p-0 cursor-pointer"
       >
-        <span className="font-display font-bold text-[13px] text-white">{initials}</span>
+        <Avatar name={displayName} avatarUrl={avatarUrl} size={34} bg="#C14A18" textColor="#FFFFFF" />
         {badge}
       </button>
 
@@ -370,7 +370,6 @@ export default function Dashboard() {
   if (loading) return null
   if (!user) return <Navigate to="/" replace />
 
-  const initials = getInitials(profile?.display_name)
   const needsName = !!profile && !profile.display_name_set_at
   const openTournaments = myTournaments.filter(t => t.tournamentStatus !== 'complete')
   const closedTournaments = myTournaments.filter(t => t.tournamentStatus === 'complete')
@@ -391,7 +390,12 @@ export default function Dashboard() {
           >
             <span className="font-display font-bold text-[17px] text-brand leading-none">+</span>
           </button>
-          <ProfileMenu initials={initials} needsName={needsName} isAdmin={profile?.role === 'admin'} />
+          <ProfileMenu
+            displayName={profile?.display_name}
+            avatarUrl={profile?.avatar_url}
+            needsName={needsName}
+            isAdmin={profile?.role === 'admin'}
+          />
         </div>
       </div>
 
