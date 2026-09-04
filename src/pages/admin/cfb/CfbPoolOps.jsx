@@ -4,6 +4,7 @@ import {
   getCfbPool, getCfbPoolWeeks, getCfbdUsage,
   updateWeekLockTime, refreshCfbSlates, refreshCfbScores,
   gradeCfbWeek, finalizeCfbWeek, autofillCfbWeek, weekIsLocked,
+  adminLockWeek, adminUnlockWeek,
 } from '../../../lib/cfb'
 
 // Admin: the CFB season ops surface. Slates are imported AUTOMATICALLY by the
@@ -50,6 +51,7 @@ export default function CfbPoolOps() {
   const [scoresMsg, setScoresMsg] = useState(null)
   const [gradingWeek, setGradingWeek] = useState(null) // weekId currently grading/finalizing
   const [autofillingWeek, setAutofillingWeek] = useState(null) // weekId currently auto-filling
+  const [lockToggling, setLockToggling] = useState(null) // weekId currently locking/unlocking
   const [weekMsgs, setWeekMsgs] = useState({}) // weekId -> { text, isError }
 
   // Initial load. Async IIFE so setState only happens after an await (the lint-clean
@@ -175,6 +177,51 @@ export default function CfbPoolOps() {
     }
   }
 
+  async function handleLockWeek(w) {
+    const confirmed = window.confirm(
+      `Lock ${w.label} right now? This closes picks immediately, even though its lock time hasn't passed, and auto-fills a random card for anyone who hasn't submitted yet.`,
+    )
+    if (!confirmed) return
+    setLockToggling(w.id)
+    setWeekMsg(w.id, null)
+    setError(null)
+    try {
+      const filled = await adminLockWeek(w.id)
+      setWeekMsg(
+        w.id,
+        filled > 0
+          ? `Locked — ${filled} missing ${filled === 1 ? 'card' : 'cards'} auto-filled.`
+          : 'Locked.',
+      )
+      await reload()
+    } catch (err) {
+      setWeekMsg(w.id, err.message, true)
+    } finally {
+      setLockToggling(null)
+    }
+  }
+
+  async function handleUnlockWeek(w) {
+    const lockTimePassed = w.lock_time && new Date(w.lock_time) <= new Date()
+    const warning = lockTimePassed
+      ? ` Its lock time (${new Date(w.lock_time).toLocaleString()}) is still in the past, so it will automatically re-lock within 10 minutes unless you also push "Lock" forward below.`
+      : ''
+    const confirmed = window.confirm(`Unlock ${w.label} and reopen it for picks?${warning}`)
+    if (!confirmed) return
+    setLockToggling(w.id)
+    setWeekMsg(w.id, null)
+    setError(null)
+    try {
+      await adminUnlockWeek(w.id)
+      setWeekMsg(w.id, 'Unlocked — open for picks again.')
+      await reload()
+    } catch (err) {
+      setWeekMsg(w.id, err.message, true)
+    } finally {
+      setLockToggling(null)
+    }
+  }
+
   async function handleFinalizeWeek(w) {
     const confirmed = window.confirm(
       `Finalize ${w.label} as-is? Games that haven't finished will be scored as no-contest pushes and the week will be marked graded.`,
@@ -293,17 +340,37 @@ export default function CfbPoolOps() {
                       />
                       <button
                         onClick={() => handleSaveLock(w)}
-                        disabled={!lockDirty(w) || savingWeek === w.id}
+                        disabled={!lockDirty(w) || savingWeek === w.id || lockToggling === w.id}
                         className="text-[13px] font-semibold px-3 py-[7px] rounded-[9px] border-[1.5px] border-[#EAD8C4] text-warm-500 hover:bg-warm-100 disabled:opacity-40 bg-transparent cursor-pointer transition-colors"
                       >
                         {savingWeek === w.id ? 'Saving…' : 'Save lock'}
                       </button>
 
+                      {w.status === 'locked' ? (
+                        <button
+                          onClick={() => handleUnlockWeek(w)}
+                          disabled={lockToggling === w.id}
+                          title="Reopen this week for picks, independent of its lock time"
+                          className="text-[13px] font-semibold px-3 py-[7px] rounded-[9px] border-[1.5px] border-fairway/30 text-fairway hover:bg-fairway/5 disabled:opacity-40 bg-transparent cursor-pointer transition-colors"
+                        >
+                          {lockToggling === w.id ? 'Unlocking…' : 'Unlock'}
+                        </button>
+                      ) : w.status !== 'graded' ? (
+                        <button
+                          onClick={() => handleLockWeek(w)}
+                          disabled={lockToggling === w.id}
+                          title="Close picks for this week right now, regardless of its lock time"
+                          className="text-[13px] font-semibold px-3 py-[7px] rounded-[9px] border-[1.5px] border-gold/40 text-gold hover:bg-gold/10 disabled:opacity-40 bg-transparent cursor-pointer transition-colors"
+                        >
+                          {lockToggling === w.id ? 'Locking…' : 'Lock now'}
+                        </button>
+                      ) : null}
+
                       {w.status !== 'graded' && weekIsLocked(w) && (
                         <>
                           <button
                             onClick={() => handleAutofillWeek(w)}
-                            disabled={autofillingWeek === w.id || gradingWeek === w.id}
+                            disabled={autofillingWeek === w.id || gradingWeek === w.id || lockToggling === w.id}
                             title="Fill a random card (no double-down) for every participant who never submitted"
                             className="text-[13px] font-semibold px-3 py-[7px] rounded-[9px] border-[1.5px] border-[#EAD8C4] text-warm-500 hover:bg-warm-100 disabled:opacity-40 bg-transparent cursor-pointer transition-colors"
                           >
@@ -311,14 +378,14 @@ export default function CfbPoolOps() {
                           </button>
                           <button
                             onClick={() => handleGradeWeek(w)}
-                            disabled={gradingWeek === w.id || autofillingWeek === w.id}
+                            disabled={gradingWeek === w.id || autofillingWeek === w.id || lockToggling === w.id}
                             className="text-[13px] font-bold px-3 py-[7px] rounded-[9px] border-none text-white bg-brand hover:opacity-90 disabled:opacity-50 cursor-pointer transition-opacity"
                           >
                             {gradingWeek === w.id ? 'Working…' : 'Grade week'}
                           </button>
                           <button
                             onClick={() => handleFinalizeWeek(w)}
-                            disabled={gradingWeek === w.id || autofillingWeek === w.id}
+                            disabled={gradingWeek === w.id || autofillingWeek === w.id || lockToggling === w.id}
                             title="Escape hatch — grades finished games, marks the rest no-contest, forces the week graded"
                             className="text-[13px] font-semibold px-3 py-[7px] rounded-[9px] border-[1.5px] border-birdie/30 text-birdie hover:bg-birdie/5 disabled:opacity-40 bg-transparent cursor-pointer transition-colors"
                           >
