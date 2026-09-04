@@ -151,6 +151,20 @@ false → cover **+1**, no bonus.
   client-side so a player can't produce a payload the RPC would reject; the "Edit picks" reset flow
   (`?reset=1`) only clears not-yet-started games, carrying forward any already-started pick
   pre-filled and locked. See `supabase/migrations/20260817000000_cfb_game_kickoff_lock.sql`.
+- **`cfb.weeks.status` is a one-way ratchet, by design, with one manual escape hatch.** The
+  `cfb-lock-autofill` cron (`cfb.process_locked_weeks()`) only ever moves a week's `status`
+  forward (`scheduled`/`open` → `locked`) once `lock_time` passes; nothing moves it back
+  automatically, and correcting `lock_time` after the fact (admin ops page "Save lock" →
+  `updateWeekLockTime`) never touches `status` — `weekIsLocked()` checks `status` *before*
+  `lock_time`, so a week that locked early (e.g. from a wrong initial `lock_time`) stays locked
+  even once `lock_time` is fixed to a real future deadline. The admin ops page's **"Lock now" /
+  "Unlock"** buttons (`cfb.admin_lock_week` / `cfb.admin_unlock_week`,
+  `supabase/migrations/20260904000000_cfb_admin_manual_lock_unlock.sql`) are the only way to move
+  `status` outside of the cron and the grader: "Lock now" forces an early lock (auto-filling
+  missing cards, same as the automatic path); "Unlock" resets `status` back to `scheduled` without
+  touching `lock_time` or existing picks — so unlocking a week whose `lock_time` is still in the
+  past just gets it re-locked by the cron within 10 minutes unless the admin also pushes the lock
+  time forward. Neither button touches a `graded` week.
 
 ---
 

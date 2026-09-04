@@ -61,6 +61,21 @@ export async function autofillCfbWeek(weekId) {
   return data ?? 0
 }
 
+// Manual admin override (ops page "Lock now" / "Unlock"): force a week's status
+// independent of lock_time. Lock mirrors the automatic cron behavior (flip status,
+// then auto-fill anyone missing a card); unlock just reopens the week for picks —
+// see the migration for why it doesn't also touch lock_time or existing picks.
+export async function adminLockWeek(weekId) {
+  const { data, error } = await cfb().rpc('admin_lock_week', { p_week_id: weekId })
+  if (error) throw error
+  return data ?? 0
+}
+
+export async function adminUnlockWeek(weekId) {
+  const { error } = await cfb().rpc('admin_unlock_week', { p_week_id: weekId })
+  if (error) throw error
+}
+
 // Trigger a live-scoreboard poll (admin "Refresh scores"); normally a ~1-min cron.
 export async function refreshCfbScores() {
   const { data, error } = await supabase.functions.invoke('poll-cfb-scores', { body: {} })
