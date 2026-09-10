@@ -11,6 +11,8 @@ export default function Footer() {
       <span>·</span>
       <Link to="/terms" className="text-warm-400 no-underline hover:underline">Terms</Link>
       <span>·</span>
+      <Link to="/install" className="text-warm-400 no-underline hover:underline">Add to Home Screen</Link>
+      <span>·</span>
       <span>© {new Date().getFullYear()} Poold</span>
     </div>
   )
