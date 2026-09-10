@@ -9,6 +9,12 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // We register the service worker ourselves (src/main.jsx) instead of using the
+      // plugin's auto-injected script, which only ever registers once on load and
+      // never re-checks — on iOS, an installed home-screen icon that's just sitting
+      // backgrounded can go stale until the user force-quits and relaunches it. Our
+      // own registration also checks on every foreground, catching that case.
+      injectRegister: false,
       // Precaches only the built app shell (JS/CSS/HTML/icons). No runtimeCaching
       // entries are added, so every Supabase call stays network-only, same as today —
       // installing the app must never make picks/leaderboard data look cached or stale.
