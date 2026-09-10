@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1B4332" />
+
+    <!-- PWA install/home-screen support. vite-plugin-pwa injects the manifest link
+         tag itself at build time; iOS Safari ignores the manifest's icon list, so it
+         needs this apple-touch-icon link explicitly. -->
+    <link rel="apple-touch-icon" href="/icons/icon-512.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Poold" />
 
     <!--
       Link-preview tags. A crawler (iMessage, WhatsApp, Slack, Discord, Twitter)
@@ -15,11 +24,11 @@
     -->
     <!-- og:start -->
     <title>Poold — Make it interesting.</title>
-    <meta name="description" content="Drop your picks. Jump in the pool. Make it interesting. Private pick'em pools for your friend group — no app, no password, no download." />
+    <meta name="description" content="Drop your picks. Jump in the pool. Make it interesting. Private pick'em pools for your friend group." />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Poold" />
     <meta property="og:title" content="Poold — Make it interesting." />
-    <meta property="og:description" content="Private pick'em pools for your friend group. No app, no password, no download." />
+    <meta property="og:description" content="Private pick'em pools for your friend group." />
     <meta property="og:url" content="https://getpoold.app/" />
     <meta property="og:image" content="https://getpoold.app/og-default.png" />
     <meta property="og:image:width" content="1200" />

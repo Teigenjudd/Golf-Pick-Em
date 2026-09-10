@@ -621,6 +621,17 @@ first-time visit to an in-progress card. `startedGameIds` (`gameHasStarted` in
   `formatLockLabel` in `src/utils/cfbFormat.js` — full date + local timezone, e.g.
   "Locks Sat, Sep 21, 12:00 PM PDT")
 - `CfbRulesButton` — a "How scoring works" trigger, right-aligned above the filter bar (same shared component as §10f)
+- `CfbCopyPicks` (`src/components/cfb/CfbCopyPicks.jsx`): "Already built this week's card
+  elsewhere?" — one pill button per *other* `open`-status CFB pool where this user already
+  has a full 6-pick card for the same real week (same `season_year` + `week_number`),
+  from `getCopyableCfbCards()` (`src/lib/cfb.js`). Matches source picks onto this pool's
+  own games by `cfbd_game_id` (the real-world game id, shared across every pool's copy of
+  the week's slate — not the pool-local `game_id`), so it works across pools that each own
+  their own event/weeks/games. Copies team choices only, never lines/spreads or the
+  double-down/underdog flag when it can't legally carry (e.g. the underdog side isn't the
+  same team under this pool's own line); a game already started here keeps whatever's on
+  file for it instead of being overwritten. Anything that can't carry over is dropped and
+  the notice line says how many slots to fill by hand; hidden once the week locks.
 - `CfbGameFilterBar` (`src/components/cfb/CfbGameFilterBar.jsx`): search box (team name),
   conference filter chips, and a sort control (kickoff / spread) — **view-only**, applied
   on top of the full games list via `filterAndSortGames`/`conferencesInPlay`
@@ -718,6 +729,32 @@ pool-detail).
 
 **States:** loading · pool-not-found · no-weeks-yet · slate-not-posted ("Lines for
 {weekLabel} post soon.") · no-filter-matches ("No games match your filters.") · normal.
+
+---
+
+### 10i. Install (Add to Home Screen) — `/install`
+
+**Theme:** General (sand background, brand-rust wordmark — same register as `/profile`)
+
+**What it does:** Static, public, no-auth how-to page for adding Poold to a phone's home
+screen. Not automatable — iOS only exposes "Add to Home Screen" inside Safari's Share
+sheet and Android only inside Chrome's overflow menu, and neither browser lets a page
+trigger that UI itself, so the page is plain numbered instructions rather than an install
+button. Two `StepCard`s (iPhone/Safari, Android/Chrome), each a numbered list. Linked from
+`Footer` (every landable page) and reachable directly at `/install`.
+
+**What backs it:** the app is now installable via `vite-plugin-pwa` (`vite.config.js`) —
+a web app manifest + a service worker that precaches only the built app shell (JS/CSS/
+HTML/icons, ~9 entries), with no `runtimeCaching` rules, so every Supabase call stays
+network-only and installing the app can never make picks/leaderboard data look stale.
+Icons (`public/icons/icon-192.png`, `icon-512.png`, `icon-512-maskable.png`) are generated
+by `npm run pwa:icons` → `scripts/pwa/build-icons.mjs` + `scripts/pwa/icon.html` (headless
+Chrome, brand-rust "P" monogram on sand — same toolchain pattern as the OG-card and
+email-header generators). `index.html` carries the manifest link (injected by the plugin),
+`theme-color`, and an explicit `apple-touch-icon` (iOS Safari ignores the manifest's own
+icon list). The site's default meta/OG description no longer claims "no app, no download"
+now that an installable PWA exists; the per-invite unfurl card's own copy (§2, "No app, no
+password, no download") is a separate string and is unchanged.
 
 ---
 
@@ -835,7 +872,7 @@ Generic bottom-sheet modal (backdrop scrim + slide-up panel with a drag handle, 
 
 ### `Footer` — `src/components/Footer.jsx`
 
-Privacy · Terms · © line. Rendered on every page a user can land on: Login, Join, Welcome, Dashboard, Profile, and the legal pages themselves. Both sign-in-link forms (Login, Join) additionally carry a consent line above it — "By signing in you agree to our Terms and Privacy Policy" — so agreement attaches to an action, not just to a link in a footer.
+Privacy · Terms · Add to Home Screen · © line. Rendered on every page a user can land on: Login, Join, Welcome, Dashboard, Profile, and the legal pages themselves. Both sign-in-link forms (Login, Join) additionally carry a consent line above it — "By signing in you agree to our Terms and Privacy Policy" — so agreement attaches to an action, not just to a link in a footer.
 
 ### `SportBadge` — `src/components/SportBadge.jsx`
 
@@ -904,6 +941,7 @@ each one a display-ready shape.
 | `CfbCardReadonly` | `card` (`{total, picks[]}` from `shapeCard`), `notice`, `variant` (`'autofilled'` or `null`), `weekLabel` | The frozen read-only card on the Picks page once a week locks (§10g) — brick left-bar chrome around `CfbCardRows`, plus the notice line above it |
 | `CfbCardTracker` | `atsCount`, `ddCount`, `dogCount`, `valid`, `warning`, `submitting`, `hasExistingCard`, `onSubmit` | Sticky "Card progress" panel on the picks builder (§10g) — progress bar + 3 stat tiles + submit button |
 | `CfbRulesButton` | none (owns its own open state) | "How scoring works" trigger button, fully hidden until clicked, then a modal explaining the 3 pick types (ATS, double-down, mandatory underdog) with worked examples and the underdog tier/point table. Shared by both live CFB pages (§10f, §10g) and both `/demo/cfb` pages so the copy can't drift |
+| `CfbCopyPicks` | `sources[]` (`{poolId, poolName, picks[]}` from `getCopyableCfbCards`), `onCopy(source)`, `notice` | Pill-button row offering to copy a full card from another of the user's open CFB pools for the same real week (§10g) — renders nothing when `sources` is empty |
 | `TeamCrest` | `src`, `alt`, `size` (default 20), `reserveSpace` (bool) | Small team logo (`cfb.games.home_team_logo`/`away_team_logo`, from CFBD's `teams/fbs` endpoint), letterboxed square, no circular mask. Renders nothing on a null/missing/failed URL — `reserveSpace` swaps that to an empty same-size box so a fixed-width crest column still lines up. Shared by `CfbGameCard` (§10g) and `CfbCardRows` so sizing/fallback can't drift |
 
 Display formatting shared by the picks page too: `src/utils/cfbFormat.js`

@@ -7,6 +7,7 @@ import Join from './pages/Join'
 import Picks from './pages/Picks'
 import Welcome from './pages/Welcome'
 import Profile from './pages/Profile'
+import Install from './pages/Install'
 import Privacy from './pages/legal/Privacy'
 import Terms from './pages/legal/Terms'
 import CreateTournament from './pages/admin/CreateTournament'
@@ -76,6 +77,7 @@ function App() {
           {/* Public on purpose — a policy you must sign in to read is not a policy */}
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
+          <Route path="/install" element={<Install />} />
 
           {/* Public demo — no auth, sample data (DemoProvider/DemoCfbProvider persist
               picks across /demo/*, one per sport) */}

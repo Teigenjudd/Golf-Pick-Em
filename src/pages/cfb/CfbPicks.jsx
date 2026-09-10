@@ -7,9 +7,10 @@ import CfbGameFilterBar from '../../components/cfb/CfbGameFilterBar'
 import CfbCardTracker from '../../components/cfb/CfbCardTracker'
 import CfbCardReadonly from '../../components/cfb/CfbCardReadonly'
 import CfbRulesButton from '../../components/cfb/CfbRulesButton'
+import CfbCopyPicks from '../../components/cfb/CfbCopyPicks'
 import {
   getCfbPool, getCfbPoolWeeks, getCfbWeekGames, getCfbWeekPicks, submitCfbWeekPicks,
-  weekIsLocked,
+  getCopyableCfbCards, weekIsLocked,
 } from '../../lib/cfb'
 import { cfbCardValidity, buildPicksPayload, shapeCard, gameHasStarted } from '../../utils/cfbCard'
 import { conferencesInPlay, filterAndSortGames } from '../../utils/cfbGameFilters'
@@ -80,6 +81,9 @@ export default function CfbPicks() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [submitted, setSubmitted] = useState(false)
+
+  const [copySources, setCopySources] = useState([])
+  const [copyNotice, setCopyNotice] = useState(null)
 
   // View-only controls for the game list — never affect pick state, slot counts, or
   // the submit payload, all of which stay keyed off the full `games` array below.
@@ -178,6 +182,25 @@ export default function CfbPicks() {
     return () => { active = false }
   }, [targetWeek, poolId, user?.id, resetRequested])
 
+  // Other pools where this user already has a full card in for the same real week
+  // (same season + week number) — powers the "copy picks from another pool" button.
+  // Skipped once the week is locked; nothing to copy into at that point.
+  useEffect(() => {
+    if (!targetWeek || !user?.id || !pool?.season_year || weekIsLocked(targetWeek)) {
+      setCopySources([])
+      return
+    }
+    let active = true
+    setCopyNotice(null)
+    getCopyableCfbCards(user.id, {
+      excludePoolId: poolId,
+      seasonYear: pool.season_year,
+      weekNumber: targetWeek.week_number,
+    }).then(sources => { if (active) setCopySources(sources) })
+      .catch(() => { if (active) setCopySources([]) })
+    return () => { active = false }
+  }, [targetWeek, poolId, user?.id, pool?.season_year])
+
   // A double-down flagged on a game that's no longer an ATS pick (deselected, or its
   // team changed) is cleared automatically — keeps state consistent without every
   // handler having to know about every other slot.
@@ -222,6 +245,50 @@ export default function CfbPicks() {
     if (atsPicks[gameId] != null) return // mutual exclusion — this game is an ATS pick
     setUnderdogGameId(dog => (dog === gameId ? null : gameId))
   }, [atsPicks, startedGameIds])
+
+  // Maps a source pool's picks onto THIS pool's games by cfbd_game_id (the real-world
+  // game id, shared across pools) and drops the result into the normal builder state —
+  // team choices only, never the source pool's lines. A game already kicked off here
+  // keeps whatever pick is already on file for it rather than being overwritten, same
+  // as the ?reset=1 carry-forward rule. Anything that can't be safely carried over
+  // (game not in this pool's slate, or no longer a legal underdog under this pool's
+  // current line) is dropped with a note so the player fills that slot by hand.
+  const handleCopyFromPool = useCallback((source) => {
+    const gameByCfbdId = new Map(games.map(g => [g.cfbd_game_id, g]))
+    const newAts = {}
+    let newDD = null
+    let newDog = null
+    let skipped = 0
+
+    source.picks.forEach(p => {
+      const game = gameByCfbdId.get(p.cfbd_game_id)
+      if (!game || startedGameIds.has(game.id)) { skipped++; return }
+      if (p.pick_type === 'ats') {
+        newAts[game.id] = p.selected_team
+        if (p.is_double_down) newDD = game.id
+      } else if (p.pick_type === 'underdog') {
+        if (game.underdog_team && game.underdog_team === p.selected_team) {
+          newDog = game.id
+        } else {
+          skipped++
+        }
+      }
+    })
+
+    setAtsPicks(prev => {
+      const merged = { ...newAts }
+      Object.entries(prev).forEach(([gid, team]) => { if (startedGameIds.has(gid)) merged[gid] = team })
+      return merged
+    })
+    setDoubleDownGameId(dd => (dd != null && startedGameIds.has(dd)) ? dd : newDD)
+    setUnderdogGameId(dog => (dog != null && startedGameIds.has(dog)) ? dog : newDog)
+
+    setCopyNotice(
+      skipped > 0
+        ? `Copied from ${source.poolName} — ${skipped} pick${skipped === 1 ? '' : 's'} couldn't carry over, so fill ${skipped === 1 ? 'it' : 'those'} in below.`
+        : `Copied from ${source.poolName} — double-check the lines below before you submit.`
+    )
+  }, [games, startedGameIds])
 
   const validity = useMemo(
     () => cfbCardValidity({ atsPicks, doubleDownGameId, underdogGameId }),
@@ -427,6 +494,8 @@ export default function CfbPicks() {
         <div className="flex justify-end mb-3">
           <CfbRulesButton />
         </div>
+
+        <CfbCopyPicks sources={copySources} onCopy={handleCopyFromPool} notice={copyNotice} />
 
         {resetRequested ? (
           <p className="text-[12px] mb-3" style={{ color: CFB_THEME.muted2 }}>

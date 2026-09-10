@@ -1,0 +1,49 @@
+<!doctype html>
+<!--
+  App-icon template for scripts/pwa/build-icons.mjs. Rendered once per size/variant via
+  headless Chrome (so the real Barlow Condensed webfont is used, same trick as
+  scripts/og/build-og.mjs) and screenshotted to a square PNG.
+
+  ?maskable=1 shrinks the glyph so it survives Android's circular/squircle crop, which
+  clips anything outside the inner ~80% safe zone.
+-->
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&display=swap" rel="stylesheet" />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #F8F0E4; /* sand — general-register background, same as OG card */
+      }
+      .glyph {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Barlow Condensed', sans-serif;
+        font-weight: 800;
+        color: #C14A18; /* brand-rust — same as the Login/Dashboard wordmark */
+        font-size: 62vw;
+        line-height: 1;
+      }
+      body.maskable .glyph {
+        font-size: 44vw; /* smaller so the P sits inside Android's mask safe zone */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="glyph">P</div>
+    <script>
+      if (new URLSearchParams(location.search).get('maskable') === '1') {
+        document.body.classList.add('maskable')
+      }
+    </script>
+  </body>
+</html>

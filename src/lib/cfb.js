@@ -322,6 +322,84 @@ export async function submitCfbWeekPicks(poolId, weekId, picks) {
   return data
 }
 
+// Full 6-pick cards this user already has in their OTHER cfb pools for the same real
+// week (same season_year + week_number), so the picks builder can offer "copy from
+// another pool". Matching pools by (season_year, week_number) rather than event/week id
+// is what lets this work across pools — each CFB pool owns its own event/weeks/games
+// (see the per-pool-events note in CLAUDE.md), so the same real week is a different row
+// in every pool. Each returned card's picks carry `cfbd_game_id` (the real-world game
+// id, shared across every pool's copy of that game) rather than a pool-local game_id —
+// the caller maps that onto its own week's games to find the equivalent game here.
+export async function getCopyableCfbCards(userId, { excludePoolId, seasonYear, weekNumber }) {
+  const { data: myParts } = await supabase
+    .from('pool_participants').select('pool_id').eq('user_id', userId)
+  const poolIds = [...new Set((myParts ?? []).map(p => p.pool_id))].filter(id => id !== excludePoolId)
+  if (!poolIds.length) return []
+
+  // Only 'open' pools — a draft/locked/complete pool isn't somewhere the player is
+  // actively picking this week, so it shouldn't offer up its old card to copy from.
+  const { data: pools } = await supabase
+    .from('pools').select('id, name, event_id').in('id', poolIds).eq('status', 'open')
+  if (!pools?.length) return []
+
+  const eventIds = [...new Set(pools.map(p => p.event_id))]
+  const { data: events } = await supabase
+    .from('events').select('id, sport_id').in('id', eventIds)
+  const cfbEventIds = new Set((events ?? []).filter(e => e.sport_id === 'cfb').map(e => e.id))
+  const cfbPools = pools.filter(p => cfbEventIds.has(p.event_id))
+  if (!cfbPools.length) return []
+
+  const cfbEventIdList = [...new Set(cfbPools.map(p => p.event_id))]
+  const { data: eds } = await cfb()
+    .from('event_details').select('event_id, season_year').in('event_id', cfbEventIdList)
+  const sameASeasonEventIds = new Set(
+    (eds ?? []).filter(e => e.season_year === seasonYear).map(e => e.event_id)
+  )
+  const candidatePools = cfbPools.filter(p => sameASeasonEventIds.has(p.event_id))
+  if (!candidatePools.length) return []
+
+  const { data: weeks } = await cfb()
+    .from('weeks').select('id, event_id')
+    .in('event_id', candidatePools.map(p => p.event_id))
+    .eq('week_number', weekNumber)
+  if (!weeks?.length) return []
+
+  const poolByEvent = {}
+  candidatePools.forEach(p => { poolByEvent[p.event_id] = p })
+  const poolByWeek = {}
+  weeks.forEach(w => { poolByWeek[w.id] = poolByEvent[w.event_id] })
+
+  const weekIds = weeks.map(w => w.id)
+  const { data: picks } = await cfb()
+    .from('picks')
+    .select('week_id, game_id, pick_type, selected_team, is_double_down')
+    .eq('user_id', userId)
+    .in('week_id', weekIds)
+  if (!picks?.length) return []
+
+  const picksByWeek = {}
+  picks.forEach(p => { (picksByWeek[p.week_id] ??= []).push(p) })
+
+  const gameIds = [...new Set(picks.map(p => p.game_id))]
+  const { data: games } = await cfb().from('games').select('id, cfbd_game_id').in('id', gameIds)
+  const cfbdIdByGame = {}
+  ;(games ?? []).forEach(g => { cfbdIdByGame[g.id] = g.cfbd_game_id })
+
+  return Object.entries(picksByWeek)
+    .filter(([, wp]) => wp.length >= 6)
+    .map(([weekId, wp]) => ({
+      poolId: poolByWeek[weekId].id,
+      poolName: poolByWeek[weekId].name,
+      picks: wp.map(p => ({
+        cfbd_game_id: cfbdIdByGame[p.game_id],
+        pick_type: p.pick_type,
+        selected_team: p.selected_team,
+        is_double_down: p.is_double_down,
+      })).filter(p => p.cfbd_game_id != null),
+    }))
+    .sort((a, b) => a.poolName.localeCompare(b.poolName))
+}
+
 // Line-movement history for one real game (oldest → newest), for a future UI chart.
 export async function getSpreadHistory(cfbdGameId) {
   const { data, error } = await cfb()
