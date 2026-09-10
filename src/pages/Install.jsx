@@ -55,6 +55,20 @@ export default function Install() {
           ]}
         />
 
+        <div className="rounded-[11px] bg-gold/10 border border-gold/30 px-[15px] py-[13px] mb-5">
+          <p className="text-[12.5px] font-semibold text-[#1C1610] leading-[1.45] m-0 mb-[6px]">
+            iPhone: set a password to sign in from the icon
+          </p>
+          <p className="text-[12.5px] text-warm-500 leading-[1.5] m-0">
+            iPhone won't open a sign-in link from Mail inside the installed icon — it always
+            opens Safari instead, and Safari doesn't share your login with the icon. So the
+            sign-in link still works, but only in Safari. To sign in directly from the
+            installed icon, set a password once from <Link to="/profile" className="text-brand font-medium">your Profile page</Link> (you'll
+            need to sign in with a link first if you haven't already) — after that, open
+            the icon and sign in with your password, no Safari detour needed.
+          </p>
+        </div>
+
         <StepCard
           icon="🤖"
           platform="Android"
@@ -69,7 +83,8 @@ export default function Install() {
 
         <p className="text-[12px] text-warm-400 leading-[1.5]">
           Once it's added, open Poold from the home screen icon instead of a browser tab —
-          same app, same login, just without the address bar.
+          same app, just without the address bar. (On iPhone, sign in with a password
+          from the icon, per the note above — a sign-in link will only open in Safari.)
         </p>
       </div>
 
