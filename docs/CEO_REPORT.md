@@ -1,12 +1,12 @@
 # Poold — CEO Report
 
-*Updated 2026-09-09 · latest: PR #69 (PWA installability + CFB pick copying)*
+*Updated 2026-09-09 · latest: PWA foreground update check + iPhone install-step cleanup*
 
 **Status:** 🟢 Golf live in prod · 🟢 CFB cut over to prod (all code + infra live) — no real season run through it yet · Sports live: **1** (CFB awaiting real users)
 
-**State of the app.** Golf pick'em is live in production (auth, pools, picks, live leaderboards, prize-pool math). CFB is fully cut over: edge functions deployed, three billable pollers armed. The app is now installable to a phone's home screen (a PWA, not a native app) via a new `/install` page.
+**State of the app.** Golf pick'em is live in production (auth, pools, picks, live leaderboards, prize-pool math). CFB is fully cut over: edge functions deployed, three billable pollers armed. The app is installable to a phone's home screen (a PWA, not a native app) via `/install`, and now re-checks for a new deploy every time a backgrounded install comes back to the foreground, not just on a fresh relaunch.
 
-**Recent wins.** Poold can now be added to a phone's home screen like a real app icon (data still always live — nothing is cached offline). Admins can manually lock/unlock a CFB week early if needed. A player in more than one CFB pool can copy an already-built weekly card into another pool instead of re-picking from scratch. Login still offers email+password alongside the sign-in link.
+**Recent wins.** An installed iOS home-screen icon no longer needs a full force-quit to pick up a new deploy — it re-checks on foreground. The `/install` page's iPhone password-sign-in note is now folded into the step list instead of a separate callout. Admins can manually lock/unlock a CFB week early if needed. A player in more than one CFB pool can copy an already-built weekly card into another pool instead of re-picking from scratch. Login still offers email+password alongside the sign-in link.
 
 **Next up.** Self-serve pool creation — still the top blocker for either sport, since pool creation remains founder-only.
 
