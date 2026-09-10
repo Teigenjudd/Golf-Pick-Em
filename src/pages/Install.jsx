@@ -48,26 +48,15 @@ export default function Install() {
           platform="iPhone / iPad"
           browser="Safari"
           steps={[
+            <>Make sure you have a password set on <Link to="/profile" className="text-brand font-medium">your Profile page</Link> — the
+              icon can only sign in with a password, not a sign-in link.</>,
             'Open getpoold.app in Safari — this only works from Safari, not Chrome or another browser.',
             <>Tap the <strong>Share</strong> icon (the square with an arrow pointing up) in the toolbar.</>,
             <>Scroll down and tap <strong>Add to Home Screen</strong>.</>,
             <>Tap <strong>Add</strong> in the top right.</>,
+            'Open Poold from the new icon and sign in with your password — a sign-in link will only ever open in Safari, not the icon.',
           ]}
         />
-
-        <div className="rounded-[11px] bg-gold/10 border border-gold/30 px-[15px] py-[13px] mb-5">
-          <p className="text-[12.5px] font-semibold text-[#1C1610] leading-[1.45] m-0 mb-[6px]">
-            iPhone: set a password to sign in from the icon
-          </p>
-          <p className="text-[12.5px] text-warm-500 leading-[1.5] m-0">
-            iPhone won't open a sign-in link from Mail inside the installed icon — it always
-            opens Safari instead, and Safari doesn't share your login with the icon. So the
-            sign-in link still works, but only in Safari. To sign in directly from the
-            installed icon, set a password once from <Link to="/profile" className="text-brand font-medium">your Profile page</Link> (you'll
-            need to sign in with a link first if you haven't already) — after that, open
-            the icon and sign in with your password, no Safari detour needed.
-          </p>
-        </div>
 
         <StepCard
           icon="🤖"
@@ -83,8 +72,7 @@ export default function Install() {
 
         <p className="text-[12px] text-warm-400 leading-[1.5]">
           Once it's added, open Poold from the home screen icon instead of a browser tab —
-          same app, just without the address bar. (On iPhone, sign in with a password
-          from the icon, per the note above — a sign-in link will only open in Safari.)
+          same app, just without the address bar.
         </p>
       </div>
 

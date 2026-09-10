@@ -756,11 +756,11 @@ icon list). The site's default meta/OG description no longer claims "no app, no 
 now that an installable PWA exists; the per-invite unfurl card's own copy (§2, "No app, no
 password, no download") is a separate string and is unchanged.
 
-A callout below the iPhone `StepCard` warns iPhone users specifically: iOS always opens a
-Mail sign-in link in Safari, never an already-installed home-screen icon, and Safari and
-the icon don't share a session either — so the icon needs its own sign-in path. It links to
-`/profile` to set a password (per the existing password-sign-in feature), which then works
-directly from the icon with no Safari hop.
+The iPhone `StepCard`'s steps open and close on that same point rather than a separate
+callout: step 1 sends the reader to `/profile` to set a password before they even add the
+icon, and the last step reminds them to sign in with that password once they open it — iOS
+always opens a Mail sign-in link in Safari, never an already-installed home-screen icon, and
+Safari and the icon don't share a session either, so the icon needs its own sign-in path.
 
 ---
 
