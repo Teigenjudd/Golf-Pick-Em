@@ -15,7 +15,7 @@ registerSW({
   onRegisteredSW(swUrl, registration) {
     if (!registration) return
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') registration.update()
+      if (document.visibilityState === 'visible') registration.update().catch(() => {})
     })
   },
 })
