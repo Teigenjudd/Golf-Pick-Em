@@ -16,6 +16,29 @@
 
 ---
 
+## 2026-09-28 — CFB week-status label stays `scheduled` until `lock_time`, even mid-slate; "in progress" label deferred
+
+**Decision:** `fix/cfb-week-premature-lock` (PR #72) fixed a live prod bug: the shared
+`gradeWeek` routine (`supabase/functions/_shared/cfbGrading.ts`) set a week's
+`status='locked'` any time it ran on a not-fully-final week, and `poll-cfb-scores` calls
+`gradeWeek` the moment *any single* game in a week goes final — so a Thursday game
+finishing could lock the whole week's picks (`cfb_submit_week_picks` gates submission on
+`status`) days before the real Saturday `lock_time`. Fixed to only flip to `'locked'` once
+`lock_time` has actually passed, matching the cron's (`process_locked_weeks`) existing rule
+— see `docs/CFB_FORMAT.md`'s "one-way ratchet" note. Per-game kickoff lock was untouched
+and already handled already-started games individually.
+
+**Open, deliberately deferred:** senior-dev review (`agents/senior-dev/reviews/fix-cfb-week-premature-lock.md`)
+flagged that this restores correct submission behavior but leaves a cosmetic gap — the
+admin ops page can show a week as `scheduled` while one of its games has already played and
+graded. No "in progress" label exists to distinguish that from a week nothing has happened
+in yet. Left as-is; not worth a new status value until it actually confuses someone running
+the ops page live. **Revisit if:** an admin reports the ops view as misleading during a live
+slate, or a between-status "in progress" label becomes cheap to add alongside other CFB ops
+work.
+
+---
+
 ## 2026-08-31 — Avatar photos are public-by-URL, not gated to pool members; `avatar_url` locked to our own Storage bucket
 
 **Decision:** `feat/profile-avatars` adds user-uploadable profile photos on top of the app's
