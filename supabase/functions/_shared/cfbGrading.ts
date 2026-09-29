@@ -136,12 +136,23 @@ export async function gradeWeek(
     picksGraded++
   }
 
-  // Week status: 'graded' once every game is final; otherwise reflect that it's past
-  // lock as 'locked'. (Cosmetic — lock_time is the authoritative pick gate.) The
-  // finalize override forces 'graded' regardless of allFinal — that's the whole point
-  // of the escape hatch: stop scan mode from re-polling a week stuck on a game that
-  // will never report final.
-  const nextStatus = finalize ? 'graded' : (allFinal ? 'graded' : 'locked')
+  // Week status: 'graded' once every game is final. Otherwise only flip to 'locked'
+  // if the week's own lock_time has actually passed — poll-cfb-scores calls gradeWeek
+  // for ANY week with a newly-final game, and CFB weeks routinely have a Tue/Wed/Thu
+  // game finish days before the rest of the week's Saturday slate even kicks off.
+  // cfb_submit_week_picks gates on status IN ('locked','graded') directly (not just
+  // lock_time), so setting 'locked' here unconditionally locked out picks for games
+  // that hadn't started yet. The finalize override still forces 'graded' regardless
+  // of allFinal — that's the whole point of the escape hatch: stop scan mode from
+  // re-polling a week stuck on a game that will never report final.
+  const lockTimePassed = !!(week.lock_time && new Date(week.lock_time) <= new Date())
+  const nextStatus = finalize
+    ? 'graded'
+    : allFinal
+      ? 'graded'
+      : lockTimePassed
+        ? 'locked'
+        : week.status
   if (week.status !== nextStatus) {
     await supabase.schema('cfb').from('weeks').update({ status: nextStatus }).eq('id', week.id)
   }

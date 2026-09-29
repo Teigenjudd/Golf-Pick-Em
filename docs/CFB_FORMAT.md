@@ -164,7 +164,11 @@ false → cover **+1**, no bonus.
   missing cards, same as the automatic path); "Unlock" resets `status` back to `scheduled` without
   touching `lock_time` or existing picks — so unlocking a week whose `lock_time` is still in the
   past just gets it re-locked by the cron within 10 minutes unless the admin also pushes the lock
-  time forward. Neither button touches a `graded` week.
+  time forward. Neither button touches a `graded` week. The grader (`gradeWeek`,
+  `supabase/functions/_shared/cfbGrading.ts`) honors the same `lock_time` gate before setting
+  `status='locked'` — it does not flip a week early just because one game in it went final
+  (`poll-cfb-scores` calls `gradeWeek` on every newly-final game, which can be days before the
+  rest of the week's slate kicks off).
 
 ---
 

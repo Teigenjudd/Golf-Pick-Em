@@ -341,7 +341,10 @@
   real latent bug (a lineless provider row read as a phantom pick'em `0` via `Number(null)
   === 0` instead of "no line"), now fixed. 173 tests pass repo-wide. Golf's
   `scoring.js`/`tierBuilder.js`/`format.js` are still uncovered — this item stays open for
-  those.
+  those. Also uncovered: `_shared/cfbGrading.ts`'s `gradeWeek` week-status transition
+  (`finalize`/`allFinal`/`lock_time`-passed branches) — exactly where the premature-lock
+  bug fixed in PR #72 lived; a small table-style unit test over those branches would catch
+  a regression here (senior-dev nit, `agents/senior-dev/reviews/fix-cfb-week-premature-lock.md`).
 
 - [ ] ⚪ **F5 — `MONTHLY_CAP = 1800` duplicated across both edge functions.**
   And `SLASH_GOLF_BASE`. Small, but they can drift. **Fix:** shared constant module
